@@ -1,10 +1,12 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ProxyAgent, fetch as undiciFetch } from 'undici';
 import { discoverSource } from './discovery';
 import { fetchArticle } from './fetch';
 import { createTranslateClient } from './translate';
+import { selectSourcesForRun } from './source-policy';
+import { loadSources } from './config';
+import { createFetchImpl } from './network';
 import { CATEGORIES } from '../../src/config/categories';
 import {
   isProcessed,
@@ -16,7 +18,6 @@ import {
 } from './persist';
 import type {
   ExtractedArticle,
-  FetchLike,
   Logger,
   ProcessedUrlState,
   SourceConfig,
@@ -31,7 +32,18 @@ interface CliOptions {
   limit?: number;
 }
 
-function parseArgs(argv: string[]): CliOptions {
+function parseLimit(value: string | undefined): number {
+  if (!value || !/^\d+$/.test(value)) {
+    throw new Error('--limit requires a non-negative integer (0 = unlimited)');
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) {
+    throw new Error('--limit is outside the supported integer range');
+  }
+  return parsed;
+}
+
+export function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = { dryRun: false };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -45,12 +57,15 @@ function parseArgs(argv: string[]): CliOptions {
         i += 1;
         options.sourceId = argv[i];
       }
+      if (!options.sourceId || options.sourceId.startsWith('-')) {
+        throw new Error('--source requires a source id');
+      }
     } else if (arg === '--limit' || arg === '-l' || arg.startsWith('--limit=')) {
       if (arg.startsWith('--limit=')) {
-        options.limit = Number.parseInt(arg.slice('--limit='.length), 10);
+        options.limit = parseLimit(arg.slice('--limit='.length));
       } else {
         i += 1;
-        options.limit = Number.parseInt(argv[i] ?? '', 10);
+        options.limit = parseLimit(argv[i]);
       }
     } else if (arg === '--help' || arg === '-h') {
       console.log(`Usage: npm run update -- [options]
@@ -86,67 +101,6 @@ const consoleLogger: Logger = {
     console.error(`error: ${message}`);
   },
 };
-
-async function loadSources(rootDir: string): Promise<SourceConfig[]> {
-  const file = path.join(rootDir, 'src', 'data', 'sources.json');
-  const raw = await fs.readFile(file, 'utf8');
-  const parsed = JSON.parse(raw) as unknown;
-  if (!Array.isArray(parsed)) throw new Error(`${file} must contain a JSON array of sources`);
-  return parsed as SourceConfig[];
-}
-
-function buildFetchImpl(logger: Logger): FetchLike {
-  const proxyEnabled = process.env.USE_PROXY === 'true';
-  const proxyUrl = (process.env.PROXY_URL ?? 'http://127.0.0.1:7897').trim();
-  const noProxy = (process.env.NO_PROXY ?? '')
-    .split(/[\s,]+/)
-    .map((entry) => entry.trim().toLowerCase())
-    .filter((entry) => entry.length > 0 && entry !== '*');
-
-  if (!proxyEnabled) {
-    logger.info('proxy: disabled (set USE_PROXY=true to enable)');
-    return fetch;
-  }
-
-  const bypassesProxy = (input: string | URL | Request): boolean => {
-    let hostname = '';
-    if (typeof input === 'string') {
-      try {
-        hostname = new URL(input).hostname;
-      } catch {
-        return false;
-      }
-    } else if (input instanceof URL) {
-      hostname = input.hostname;
-    } else if (input?.url) {
-      try {
-        hostname = new URL(input.url).hostname;
-      } catch {
-        return false;
-      }
-    }
-    const host = hostname.toLowerCase().replace(/^www\./, '');
-    return noProxy.some((entry) => host === entry || host.endsWith(`.${entry}`));
-  };
-
-  if (!/^https?:\/\//i.test(proxyUrl)) {
-    logger.warn(`PROXY_URL "${proxyUrl}" is not a valid http(s) URL; continuing without proxy`);
-    return fetch;
-  }
-
-  const dispatcher = new ProxyAgent(proxyUrl);
-  logger.info(
-    `proxy: enabled (${proxyUrl})${noProxy.length ? `, bypass: ${noProxy.join(', ')}` : ''}`,
-  );
-  const proxiedFetch = undiciFetch as unknown as (
-    input: string | URL | Request,
-    init?: RequestInit & { dispatcher?: ProxyAgent },
-  ) => Promise<Response>;
-  return (input, init) =>
-    bypassesProxy(input)
-      ? fetch(input, init)
-      : proxiedFetch(input, { ...(init ?? {}), dispatcher });
-}
 
 async function reconcileProcessed(
   rootDir: string,
@@ -184,6 +138,34 @@ async function run() {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const logger = consoleLogger;
 
+  const sources = await loadSources(rootDir);
+  if (options.sourceId) {
+    const matched = sources.filter((source) => source.id === options.sourceId);
+    if (!matched.length) {
+      logger.error(`Unknown source id "${options.sourceId}". Available: ${sources.map((s) => s.id).join(', ')}`);
+      process.exit(1);
+    }
+    sources.splice(0, sources.length, ...matched);
+  }
+
+  const selection = selectSourcesForRun(sources, options.dryRun);
+  if (!options.dryRun && options.sourceId && selection.skipped.length > 0) {
+    logger.error(
+      `Source "${options.sourceId}" is dry-run-only; use npm run update:dry -- --source ${options.sourceId}.`,
+    );
+    process.exit(1);
+  }
+  sources.splice(0, sources.length, ...selection.runnable);
+  if (selection.skipped.length > 0) {
+    logger.info(
+      `Skipping ${selection.skipped.length} dry-run-only source(s): ${selection.skipped.map((source) => source.id).join(', ')}`,
+    );
+  }
+  if (sources.length === 0) {
+    logger.info('No active sources selected; nothing to update.');
+    return;
+  }
+
   const apiKey = process.env.OPENAI_API_KEY ?? '';
   const baseUrl = process.env.OPENAI_BASE_URL ?? '';
   const model = process.env.TRANSLATION_MODEL ?? '';
@@ -195,21 +177,11 @@ async function run() {
     process.exit(1);
   }
 
-  const sources = await loadSources(rootDir);
-  if (options.sourceId) {
-    const matched = sources.filter((source) => source.id === options.sourceId);
-    if (!matched.length) {
-      logger.error(`Unknown source id "${options.sourceId}". Available: ${sources.map((s) => s.id).join(', ')}`);
-      process.exit(1);
-    }
-    sources.splice(0, sources.length, ...matched);
-  }
-
   const state = await loadProcessedState(rootDir);
   const reconciled = await reconcileProcessed(rootDir, sources, state, logger);
   let stateChanged = reconciled > 0;
   const limit = options.limit === undefined ? DEFAULT_LIMIT_PER_SOURCE : options.limit;
-  const fetchImpl = buildFetchImpl(logger);
+  const fetchImpl = createFetchImpl(logger);
   const translate = options.dryRun
     ? undefined
     : createTranslateClient({ apiKey, baseUrl, model, fetchImpl });
@@ -253,7 +225,11 @@ async function run() {
         try {
           const article: ExtractedArticle = await fetchArticle(source, item, fetchImpl);
           if (!translate) {
-            logger.info(`  would translate + persist: ${item.url}`);
+            logger.info(
+              source.update_mode === 'dry-run-only'
+                ? `  scaffold validated (translation disabled): ${item.url}`
+                : `  would translate + persist: ${item.url}`,
+            );
             logger.info(
               `    title=${article.title} date=${article.publishedAt || 'unknown'} ` +
                 `lang=${article.originalLanguage} markdown=${article.contentMarkdown.length} chars`,
@@ -309,7 +285,9 @@ async function run() {
   if (summary.failed > 0) logger.warn(`${summary.failed} item(s) failed; see errors above.`);
 }
 
-run().catch((error) => {
-  console.error(`fatal: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
-  process.exit(1);
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  run().catch((error) => {
+    console.error(`fatal: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
+    process.exit(1);
+  });
+}

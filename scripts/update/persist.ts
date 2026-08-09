@@ -87,6 +87,7 @@ function buildFrontmatter(
   const lines: string[] = ['---'];
   lines.push(`blog_id: ${yamlScalar(blog.id)}`);
   lines.push(`original_url: ${yamlScalar(article.url)}`);
+  if (article.imageUrl) lines.push(`image_url: ${yamlScalar(article.imageUrl)}`);
   lines.push(`original_title: ${yamlScalar(article.title)}`);
   lines.push(`translated_title: ${yamlScalar(translation.translatedTitle)}`);
   lines.push(`published_at: ${yamlDate(article.publishedAt)}`);

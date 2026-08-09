@@ -3,6 +3,7 @@ import TurndownService from 'turndown';
 import { JSDOM } from 'jsdom';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { proxyUrlFor } from './network';
 import type { DiscoveredArticle, ExtractedArticle, FetchLike, SourceConfig } from './types';
 
 const execFileAsync = promisify(execFile);
@@ -35,9 +36,8 @@ async function fetchWithCurl(url: string): Promise<string> {
     '-H',
     'Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8',
   ];
-  const proxyEnabled = process.env.USE_PROXY === 'true';
-  const proxyUrl = (process.env.PROXY_URL ?? 'http://127.0.0.1:7897').trim();
-  if (proxyEnabled && /^https?:\/\//i.test(proxyUrl)) args.push('-x', proxyUrl);
+  const proxyUrl = proxyUrlFor(url);
+  if (proxyUrl) args.push('-x', proxyUrl);
   args.push(url);
   const { stdout } = await execFileAsync('curl', args, {
     maxBuffer: 20 * 1024 * 1024,
@@ -97,6 +97,27 @@ function resolveAuthor(document: Document): string {
       'meta[property="author"]',
     ]) ?? ''
   );
+}
+
+function absoluteHttpUrl(value: string | undefined, baseUrl: string): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value, baseUrl);
+    return /^https?:$/.test(url.protocol) ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveHeadImage(document: Document, articleUrl: string): string | undefined {
+  const value =
+    metaContent(document, [
+      'meta[property="og:image"]',
+      'meta[property="og:image:url"]',
+      'meta[name="twitter:image"]',
+      'meta[name="twitter:image:src"]',
+    ]) ?? document.querySelector('link[rel="image_src"]')?.getAttribute('href')?.trim();
+  return absoluteHttpUrl(value, articleUrl);
 }
 
 function jsonLdDatePublished(document: Document): string | undefined {
@@ -173,16 +194,56 @@ function removeNoiseBlocks(content: Element, title: string): void {
   }
 }
 
+function srcsetCandidates(value: string | null): string[] {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((candidate, index) => {
+      const [url = '', descriptor = ''] = candidate.trim().split(/\s+/);
+      const amount = Number.parseFloat(descriptor);
+      const score = Number.isFinite(amount) ? amount : 0;
+      return { url, score, index };
+    })
+    .filter((candidate) => candidate.url)
+    .sort((left, right) => right.score - left.score || right.index - left.index)
+    .map((candidate) => candidate.url);
+}
+
+export function resolveImageUrl(image: Element, baseUrl: string): string | undefined {
+  const pictureSrcset = image.closest('picture')?.querySelector('source[srcset]')?.getAttribute('srcset') ?? null;
+  const candidates = [
+    image.getAttribute('data-original'),
+    image.getAttribute('data-lazy-src'),
+    image.getAttribute('data-src'),
+    ...srcsetCandidates(image.getAttribute('srcset')),
+    ...srcsetCandidates(pictureSrcset),
+    image.getAttribute('src'),
+  ];
+
+  for (const value of candidates) {
+    if (!value || /^(?:data|blob):/i.test(value)) continue;
+    try {
+      const url = new URL(value, baseUrl);
+      if (/^https?:$/.test(url.protocol)) return url.toString();
+    } catch {
+      // Try the next lazy-loading or srcset candidate.
+    }
+  }
+  return undefined;
+}
+
 function absolutizeUrls(root: Element, baseUrl: string): void {
-  const base = new URL(baseUrl);
-  for (const el of root.querySelectorAll('img[src], a[href]')) {
-    const attr = el.tagName === 'IMG' ? 'src' : 'href';
-    const value = el.getAttribute(attr);
+  for (const image of root.querySelectorAll('img')) {
+    const url = resolveImageUrl(image, baseUrl);
+    if (url) image.setAttribute('src', url);
+  }
+  for (const anchor of root.querySelectorAll('a[href]')) {
+    const value = anchor.getAttribute('href');
     if (!value) continue;
     try {
-      el.setAttribute(attr, new URL(value, base).toString());
+      anchor.setAttribute('href', new URL(value, baseUrl).toString());
     } catch {
-      // leave invalid values untouched
+      // Leave invalid values untouched.
     }
   }
 }
@@ -221,6 +282,26 @@ function toMarkdown(content: HTMLElement): string {
   return turndown.turndown(content).trim();
 }
 
+const RELATED_SECTION_HEADING =
+  /^#{1,6}\s+(?:\*{1,2})?(?:related(?:\s+(?:content|articles?|posts?))?|you may also like|相关阅读|相关内容|推荐阅读)(?:\*{1,2})?\s*$/i;
+
+/**
+ * Remove presentation-only fragments that Readability can flatten into the
+ * article body. These fragments have no editorial meaning once detached from
+ * their source carousel or recommendation widget.
+ */
+export function normalizeArticleMarkdown(markdown: string): string {
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+  const relatedIndex = lines.findIndex((line) => RELATED_SECTION_HEADING.test(line.trim()));
+  const body = (relatedIndex >= 0 ? lines.slice(0, relatedIndex) : lines).join('\n');
+
+  return body
+    .replace(/(?:^|\n)\s*\d{1,2}\s*\/\s*(?:\n\s*)?\d{1,2}\s*(?=\n|$)/g, '\n')
+    .replace(/!\[\s*logo\s*\]/gi, '![logo]')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export async function fetchArticle(
   source: SourceConfig,
   discovered: DiscoveredArticle,
@@ -242,6 +323,7 @@ export async function fetchArticle(
   const ogTitle = metaContent(document, ['meta[property="og:title"]', 'meta[name="og:title"]']);
   const documentTitle = document.title.trim() || undefined;
   const author = resolveAuthor(document);
+  const headImageUrl = resolveHeadImage(document, articleUrl);
   const publishedAt = resolvePublishedAt(document, discovered);
   const originalLanguage = resolveLanguage(document);
 
@@ -259,6 +341,8 @@ export async function fetchArticle(
   contentNode.innerHTML = parsed.content;
   removeNoiseBlocks(contentNode, title);
   absolutizeUrls(contentNode, articleUrl);
+  const imageUrl =
+    headImageUrl ?? absoluteHttpUrl(contentNode.querySelector('img[src]')?.getAttribute('src') ?? undefined, articleUrl);
 
   const textLength = (parsed.textContent ?? '').replace(/\s+/g, ' ').trim().length;
   if (textLength < MIN_CONTENT_CHARS) {
@@ -267,7 +351,7 @@ export async function fetchArticle(
     );
   }
 
-  const contentMarkdown = toMarkdown(contentNode);
+  const contentMarkdown = normalizeArticleMarkdown(toMarkdown(contentNode));
   if (!contentMarkdown) {
     throw new Error(`${source.id} ${articleUrl}: extracted content is empty after Markdown conversion`);
   }
@@ -276,6 +360,7 @@ export async function fetchArticle(
     url: articleUrl,
     title,
     author,
+    ...(imageUrl ? { imageUrl } : {}),
     publishedAt,
     originalLanguage,
     contentMarkdown,

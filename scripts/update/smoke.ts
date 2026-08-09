@@ -2,8 +2,23 @@ import { strict as assert } from 'node:assert';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { JSDOM } from 'jsdom';
 import { normalizeCategories } from './classify';
+import { isCandidateArticle } from './discovery';
+import { validateSourceConfigs } from './config';
+import { normalizeArticleMarkdown, resolveImageUrl } from './fetch';
+import { parseArgs } from './index';
+import { extractLocalizedAlternates, selectOfficialChineseAlternate } from './localization';
+import { loadProxySettings, proxyUrlFor } from './network';
 import { createTranslateClient } from './translate';
+import {
+  chunkMarkdown,
+  createTranslationPlan,
+  protectMarkdown,
+  restoreMarkdown,
+} from './translation-plan';
+import { selectSourcesForRun } from './source-policy';
 import {
   isProcessed,
   loadProcessedState,
@@ -27,11 +42,13 @@ const blog: SourceConfig = {
   homepage_url: 'https://example.com/',
   blog_url: 'https://example.com/blog',
   domain: 'example.com',
+  update_mode: 'active',
 };
 
 const article: ExtractedArticle = {
   url: 'https://example.com/blog/hello-world/',
   title: 'Hello World',
+  imageUrl: 'https://cdn.example.com/hello-world.jpg',
   publishedAt: '2025-06-01',
   originalLanguage: 'en',
   contentMarkdown: '# Hello\n\nThis is the original body.',
@@ -62,6 +79,7 @@ async function run() {
     assert.match(written, /^---\n/);
     assert.match(written, /blog_id: "smoke-blog"/);
     assert.match(written, /original_url: "https:\/\/example\.com\/blog\/hello-world\/"/);
+    assert.match(written, /image_url: "https:\/\/cdn\.example\.com\/hello-world\.jpg"/);
     assert.match(written, /published_at: 2025-06-01/);
     assert.match(written, /translation_model: "smoke-model"/);
     assert.match(written, /source_domain: "example\.com"/);
@@ -112,6 +130,140 @@ async function run() {
     assert.deepEqual(normalizeCategories(null, CATEGORIES), ['Other']);
     assert.deepEqual(normalizeCategories(['Bogus'], CATEGORIES), ['Other']);
     assert.deepEqual(normalizeCategories(['ai', 'Agent', 'ai'], CATEGORIES), ['AI', 'Agent']);
+
+    // source policy: only explicitly active sources run in full mode
+    const scaffold: SourceConfig = { ...blog, id: 'scaffold-blog', update_mode: 'dry-run-only' };
+    assert.deepEqual(
+      selectSourcesForRun([blog, scaffold], false),
+      { runnable: [blog], skipped: [scaffold] },
+    );
+    assert.deepEqual(
+      selectSourcesForRun([blog, scaffold], true),
+      { runnable: [blog, scaffold], skipped: [] },
+    );
+    const invalidMode = { ...blog, id: 'invalid-mode', update_mode: 'typo' } as unknown as SourceConfig;
+    assert.deepEqual(
+      selectSourcesForRun([invalidMode], false),
+      { runnable: [], skipped: [invalidMode] },
+    );
+    const missingMode = { ...blog, id: 'missing-mode' } as SourceConfig;
+    delete missingMode.update_mode;
+    assert.deepEqual(
+      selectSourcesForRun([missingMode], false),
+      { runnable: [], skipped: [missingMode] },
+    );
+
+    // config: reject fail-open modes, duplicate ids, and malformed URLs
+    assert.deepEqual(validateSourceConfigs([blog]).issues, []);
+    const invalidConfig = validateSourceConfigs([
+      { ...blog, update_mode: undefined },
+      { ...blog, homepage_url: '/relative' },
+    ]);
+    assert.match(invalidConfig.issues.map((issue) => issue.message).join(' | '), /must be explicit/);
+    assert.match(invalidConfig.issues.map((issue) => issue.message).join(' | '), /duplicate source id/);
+    assert.match(invalidConfig.issues.map((issue) => issue.message).join(' | '), /absolute http/);
+
+    // discovery policy: include an article prefix while excluding nested listing paths
+    const filteredSource: SourceConfig = {
+      ...blog,
+      domain: 'example.com',
+      article_paths: ['/blog'],
+      exclude_paths: ['/blog/topic'],
+    };
+    assert.equal(isCandidateArticle('https://example.com/blog/agent-evals', filteredSource), true);
+    assert.equal(isCandidateArticle('https://example.com/blog/topic/agents', filteredSource), false);
+    assert.equal(isCandidateArticle('https://example.com/blog', filteredSource), false);
+
+    // image policy: prefer original/lazy remote source and absolutize it
+    const imageDocument = new JSDOM(
+      '<img src="data:image/gif;base64,AA" data-src="/media/full.png" srcset="/media/small.png 1x, /media/large.png 2x">',
+      { url: 'https://example.com/blog/post' },
+    ).window.document;
+    assert.equal(
+      resolveImageUrl(imageDocument.querySelector('img')!, 'https://example.com/blog/post'),
+      'https://example.com/media/full.png',
+    );
+
+    // extraction cleanup: carousel counters and source-site recommendations never enter articles
+    const cleanedMarkdown = normalizeArticleMarkdown(
+      '正文。\n\n![ logo](https://cdn.example.com/logo.svg)\n\n01 /\n\n16\n\n## Related content\n\n### Promo',
+    );
+    assert.equal(cleanedMarkdown, '正文。\n\n![logo](https://cdn.example.com/logo.svg)');
+
+    // localization: exact preferred official Chinese alternate wins
+    const alternates = extractLocalizedAlternates(
+      '<link rel="alternate" hreflang="zh" href="/zh/post"><link rel="alternate" hreflang="zh-CN" href="/cn/post">',
+      'https://example.com/en/post',
+    );
+    assert.equal(selectOfficialChineseAlternate(alternates)?.url, 'https://example.com/cn/post');
+    assert.equal(
+      selectOfficialChineseAlternate([{ language: 'zh-Hant', url: 'https://example.com/hant/post' }]),
+      undefined,
+    );
+
+    // network: invalid switches fail loudly; NO_PROXY applies to every fetch path
+    assert.throws(() => loadProxySettings({ USE_PROXY: 'TRUE' }), /exactly "true" or "false"/);
+    const proxySettings = loadProxySettings({
+      USE_PROXY: 'true',
+      PROXY_URL: 'http://127.0.0.1:7897',
+      NO_PROXY: 'example.com',
+    });
+    assert.equal(proxyUrlFor('https://api.example.com/data', proxySettings), undefined);
+    assert.equal(proxyUrlFor('https://outside.example/data', proxySettings), 'http://127.0.0.1:7897');
+
+    // translation V2 scaffold: AST protection restores URLs/code exactly
+    const protectedMarkdown = protectMarkdown(
+      '## Agent\n\n[docs](https://example.com/docs?a=1&b=2) ![diagram](https://cdn.example.com/a.png) `npm run build`\n\n```ts\nconst url = "https://inside.example";\n```',
+    );
+    const restoredMarkdown = restoreMarkdown(protectedMarkdown.text, protectedMarkdown.spans);
+    assert.match(restoredMarkdown, /https:\/\/example\.com\/docs\?a=1&b=2/);
+    assert.match(restoredMarkdown, /https:\/\/cdn\.example\.com\/a\.png/);
+    assert.match(restoredMarkdown, /npm run build/);
+    assert.match(restoredMarkdown, /https:\/\/inside\.example/);
+    assert.throws(
+      () => restoreMarkdown(protectedMarkdown.text.replace(protectedMarkdown.spans[0].token, ''), protectedMarkdown.spans),
+      /expected exactly 1/,
+    );
+    const tick = '`';
+    const trickyCode = `${tick.repeat(4)}md\ninside ${tick.repeat(3)} fence\n${tick.repeat(4)}\n\nUse ${tick.repeat(2)}a ${tick} b${tick.repeat(2)}.`;
+    const protectedTrickyCode = protectMarkdown(trickyCode);
+    const restoredTrickyCode = restoreMarkdown(protectedTrickyCode.text, protectedTrickyCode.spans);
+    assert.match(restoredTrickyCode, /^````md\ninside ``` fence\n````/);
+    assert.match(restoredTrickyCode, /Use ``a ` b``\./);
+
+    // translation V2 scaffold: GFM table remains one structural block and heading paths follow depth
+    const plannedChunks = chunkMarkdown(
+      '# Top\n\nIntro.\n\n## Details\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\n### Code\n\n```ts\nconst x = 1;\n```',
+      { maxTokens: 20 },
+    );
+    assert.equal(plannedChunks.some((chunk) => chunk.source.includes('| A | B |') && chunk.source.includes('| 1 | 2 |')), true);
+    assert.equal(plannedChunks.some((chunk) => chunk.headingPath.join(' / ') === 'Top / Details / Code'), true);
+    assert.deepEqual(chunkMarkdown('## Starts at H2\n\nBody.')[0].headingPath, ['Starts at H2']);
+    assert.equal(createTranslationPlan({ markdown: '这是原生中文内容。' }).mode, 'native-zh');
+    assert.equal(createTranslationPlan({ markdown: 'English article.', officialZh: '/zh/article' }).mode, 'official-zh');
+    assert.equal(createTranslationPlan({ markdown: 'English article.' }).mode, 'translate');
+
+    // CLI: invalid or missing limits must never degrade into unlimited mode
+    assert.deepEqual(parseArgs(['--limit', '0']), { dryRun: false, limit: 0 });
+    assert.throws(() => parseArgs(['--limit', 'abc']), /non-negative integer/);
+    assert.throws(() => parseArgs(['--limit', '-1']), /non-negative integer/);
+    assert.throws(() => parseArgs(['--limit']), /non-negative integer/);
+    assert.throws(() => parseArgs(['--source']), /requires a source id/);
+
+    // Real config: every scaffold source is excluded from a full update.
+    const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+    const configuredSources = JSON.parse(
+      await readFile(path.join(projectRoot, 'src', 'data', 'sources.json'), 'utf8'),
+    ) as SourceConfig[];
+    const configuredScaffolds = configuredSources.filter(
+      (source) => source.update_mode === 'dry-run-only',
+    );
+    const configuredActive = configuredSources.filter((source) => source.update_mode === 'active');
+    assert.equal(validateSourceConfigs(configuredSources).issues.length, 0);
+    assert.equal(configuredActive.length > 0, true);
+    assert.equal(configuredScaffolds.length > 0, true);
+    assert.equal(selectSourcesForRun(configuredScaffolds, false).runnable.length, 0);
+    assert.equal(selectSourcesForRun(configuredScaffolds, false).skipped.length, configuredScaffolds.length);
 
     // translate: valid JSON path
     const calls: Array<{ input: string; init: RequestInit }> = [];
@@ -208,7 +360,9 @@ async function run() {
   }
 }
 
-run().catch((error) => {
-  console.error(`smoke: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
-  process.exit(1);
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  run().catch((error) => {
+    console.error(`smoke: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
+    process.exit(1);
+  });
+}

@@ -38,6 +38,7 @@ const articles = defineCollection({
     .object({
       blog_id: z.string().min(1),
       original_url: webUrl,
+      image_url: webUrl.optional(),
       original_title: z.string().min(1),
       translated_title: z.string().min(1),
       published_at: z.coerce.date(),
@@ -55,6 +56,7 @@ const articles = defineCollection({
       ...article,
       blogId: article.blog_id,
       originalUrl: article.original_url,
+      imageUrl: article.image_url,
       originalTitle: article.original_title,
       translatedTitle: article.translated_title,
       publishedAt: article.published_at,

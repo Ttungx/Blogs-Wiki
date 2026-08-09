@@ -1,6 +1,22 @@
 import type { DiscoveredArticle, FetchLike, SourceConfig } from './types';
 import { canonicalizeUrl, isLikelyArticleUrl, uniqueCanonicalUrls } from './urls';
 
+export interface DiscoveryPathDiagnostic {
+  name: 'rss' | 'sitemap' | 'listing';
+  configured: boolean;
+  ok: boolean;
+  rawCount: number;
+  candidateCount: number;
+  durationMs: number;
+  error?: string;
+}
+
+export interface DiscoveryDiagnostic {
+  sourceId: string;
+  paths: DiscoveryPathDiagnostic[];
+  candidates: DiscoveredArticle[];
+}
+
 const USER_AGENT = 'BlogsWikiBot/0.1 (+https://github.com; article discovery only)';
 
 function decodeEntities(value: string): string {
@@ -25,10 +41,15 @@ function stripTags(value: string): string {
   return decodeEntities(value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
 }
 
-function isCandidateArticle(url: string, source: SourceConfig): boolean {
+export function isCandidateArticle(url: string, source: SourceConfig): boolean {
   if (!isLikelyArticleUrl(url, source.domain)) return false;
-  if (!source.article_paths?.length) return true;
   const pathname = new URL(url).pathname.replace(/\/+$/, '');
+  const excluded = source.exclude_paths?.some((prefix) => {
+    const normalized = prefix.replace(/\/+$/, '');
+    return pathname === normalized || pathname.startsWith(`${normalized}/`);
+  });
+  if (excluded) return false;
+  if (!source.article_paths?.length) return true;
   return source.article_paths.some((prefix) => {
     const normalized = prefix.replace(/\/+$/, '');
     // The article must live under the prefix; the bare prefix itself (e.g.
@@ -107,24 +128,35 @@ async function fromFeed(source: SourceConfig, fetchImpl: FetchLike): Promise<Dis
     .filter((item) => isLikelyArticleUrl(item.url, source.domain));
 }
 
-async function fromSitemap(source: SourceConfig, fetchImpl: FetchLike): Promise<DiscoveredArticle[]> {
-  if (!source.sitemap_url) return [];
-  const rootXml = await fetchText(fetchImpl, source.sitemap_url, `${source.id} sitemap`);
-  const rootEntries = parseSitemap(rootXml, source.sitemap_url);
+interface SitemapCollectResult {
+  entries: SitemapEntry[];
+  rawCount: number;
+}
+
+async function collectSitemapEntries(source: SourceConfig, fetchImpl: FetchLike): Promise<SitemapCollectResult> {
+  const sitemapUrl = source.sitemap_url as string;
+  const rootXml = await fetchText(fetchImpl, sitemapUrl, `${source.id} sitemap`);
+  const rootEntries = parseSitemap(rootXml, sitemapUrl);
   const childSitemaps = rootEntries.filter((item) => item.childSitemap).slice(0, 10);
 
   if (!childSitemaps.length) {
-    return rootEntries.filter((item) => isLikelyArticleUrl(item.url, source.domain));
+    return { entries: rootEntries, rawCount: rootEntries.length };
   }
 
   const childResults = await Promise.allSettled(childSitemaps.map(async ({ url }) => {
     const xml = await fetchText(fetchImpl, url, `${source.id} child sitemap`);
     return parseSitemap(xml, url);
   }));
-
-  return uniqueCanonicalUrls(childResults.flatMap((result) =>
+  const childEntries = childResults.flatMap((result) =>
     result.status === 'fulfilled' ? result.value : [],
-  )).filter((item) => isLikelyArticleUrl(item.url, source.domain));
+  );
+  return { entries: uniqueCanonicalUrls(childEntries), rawCount: childEntries.length };
+}
+
+async function fromSitemap(source: SourceConfig, fetchImpl: FetchLike): Promise<DiscoveredArticle[]> {
+  if (!source.sitemap_url) return [];
+  const { entries } = await collectSitemapEntries(source, fetchImpl);
+  return entries.filter((item) => isLikelyArticleUrl(item.url, source.domain));
 }
 
 async function fromListing(source: SourceConfig, fetchImpl: FetchLike): Promise<DiscoveredArticle[]> {
@@ -154,4 +186,96 @@ export async function discoverSource(
   }
 
   throw new Error(`${source.id} discovery failed (${errors.join('; ')})`);
+}
+
+export async function diagnoseSourceDiscovery(
+  source: SourceConfig,
+  fetchImpl: FetchLike = fetch,
+): Promise<DiscoveryDiagnostic> {
+  interface PathRun {
+    diagnostic: DiscoveryPathDiagnostic;
+    candidates: DiscoveredArticle[];
+  }
+
+  const runPath = async (
+    name: DiscoveryPathDiagnostic['name'],
+    configured: boolean,
+    run: () => Promise<{ rawCount: number; candidates: DiscoveredArticle[] }>,
+  ): Promise<PathRun> => {
+    const startedAt = Date.now();
+    if (!configured) {
+      return {
+        diagnostic: {
+          name,
+          configured: false,
+          ok: false,
+          rawCount: 0,
+          candidateCount: 0,
+          durationMs: Date.now() - startedAt,
+        },
+        candidates: [],
+      };
+    }
+    try {
+      const { rawCount, candidates } = await run();
+      return {
+        diagnostic: {
+          name,
+          configured: true,
+          ok: true,
+          rawCount,
+          candidateCount: candidates.length,
+          durationMs: Date.now() - startedAt,
+        },
+        candidates,
+      };
+    } catch (error) {
+      return {
+        diagnostic: {
+          name,
+          configured: true,
+          ok: false,
+          rawCount: 0,
+          candidateCount: 0,
+          durationMs: Date.now() - startedAt,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        candidates: [],
+      };
+    }
+  };
+
+  const [rss, sitemap, listing] = await Promise.all([
+    runPath('rss', Boolean(source.rss_url), async () => {
+      const rssUrl = source.rss_url as string;
+      const xml = await fetchText(fetchImpl, rssUrl, `${source.id} RSS`);
+      const entries = parseFeed(xml, rssUrl);
+      return {
+        rawCount: entries.length,
+        candidates: entries.filter((item) => isCandidateArticle(item.url, source)),
+      };
+    }),
+    runPath('sitemap', Boolean(source.sitemap_url), async () => {
+      const { entries, rawCount } = await collectSitemapEntries(source, fetchImpl);
+      return {
+        rawCount,
+        candidates: entries.filter((item) => isCandidateArticle(item.url, source)),
+      };
+    }),
+    runPath('listing', Boolean(source.blog_url), async () => {
+      const listingUrl = source.blog_url as string;
+      const html = await fetchText(fetchImpl, listingUrl, `${source.id} listing`);
+      const entries = parseListing(html, listingUrl, source.domain);
+      return {
+        rawCount: entries.length,
+        candidates: entries.filter((item) => isCandidateArticle(item.url, source)),
+      };
+    }),
+  ]);
+
+  return {
+    sourceId: source.id,
+    paths: [rss.diagnostic, sitemap.diagnostic, listing.diagnostic],
+    candidates: uniqueCanonicalUrls([...rss.candidates, ...sitemap.candidates, ...listing.candidates]),
+  };
 }

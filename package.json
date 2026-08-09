@@ -9,6 +9,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "test:update": "tsx scripts/update/smoke.ts",
+    "audit:source": "tsx --env-file-if-exists=.env scripts/update/audit.ts",
     "update": "tsx --env-file-if-exists=.env scripts/update/index.ts",
     "update:dry": "tsx --env-file-if-exists=.env scripts/update/index.ts --dry-run"
   },
@@ -18,12 +19,17 @@
     "astro": "^7.2.0",
     "jsdom": "^29.1.1",
     "pagefind": "^1.5.2",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-stringify": "^11.0.0",
     "turndown": "^7.2.4",
-    "undici": "^8.10.0"
+    "undici": "^8.10.0",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
     "@types/jsdom": "^30.0.0",
+    "@types/mdast": "^4.0.4",
     "@types/node": "^26.2.0",
     "@types/turndown": "^5.0.6",
     "tsx": "^4.20.5",
