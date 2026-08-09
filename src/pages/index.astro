@@ -2,7 +2,6 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import BlogShelfCard from '../components/BlogShelfCard.astro';
-import { sitePath } from '../lib/urls';
 
 const [blogs, articles] = await Promise.all([
   getCollection('blogs'),
@@ -14,49 +13,44 @@ for (const article of articles) {
   articleCount.set(article.data.blogId, (articleCount.get(article.data.blogId) ?? 0) + 1);
 }
 
-const sortedBlogs = [...blogs].sort((a, b) => {
-  if (a.data.type !== b.data.type) return a.data.type === 'company' ? -1 : 1;
-  return a.data.name.localeCompare(b.data.name);
-});
+const companyBlogs = blogs
+  .filter((blog) => blog.data.type === 'company')
+  .sort((a, b) => a.data.name.localeCompare(b.data.name));
+const personalBlogs = blogs
+  .filter((blog) => blog.data.type === 'personal')
+  .sort((a, b) => a.data.name.localeCompare(b.data.name));
 ---
 
 <BaseLayout description="持续收录高质量博客文章，并提供统一的中文翻译阅读体验。" pageClass="home-page">
   <main id="main-content">
     <section class="home-hero shell">
-      <p class="eyebrow">Curated blog archive · 译文馆藏</p>
       <h1>
-        <span>好文章，</span>
-        <span>值得被重新发现。</span>
+        <span>值得读的博客</span>
+        <span>不该被语言阻隔</span>
       </h1>
-      <div class="home-hero-bottom">
-        <p>从 AI 实验室、工程团队到独立作者。我们只收集文章，并保留作者的声音。</p>
-        <a href={sitePath('search/')}>
-          搜索全部馆藏
-          <span aria-hidden="true">↗</span>
-        </a>
-      </div>
+      <p>精选 AI、技术与更广阔世界中的优质博客。</p>
+      <div class="hero-divider" aria-hidden="true"><span>✦</span></div>
     </section>
 
     <section class="shelf shell" aria-labelledby="shelf-title">
-      <header class="section-heading">
-        <div>
-          <p class="eyebrow">The shelf</p>
-          <h2 id="shelf-title">博客书架</h2>
-        </div>
-        <p>{sortedBlogs.length} 个来源 · {articles.length} 篇译文</p>
-      </header>
+      <h2 id="shelf-title" class="visually-hidden">博客索引</h2>
 
       <div class="shelf-grid">
-        {sortedBlogs.map((blog, index) => (
+        {companyBlogs.map((blog, index) => (
           <BlogShelfCard blog={blog} articleCount={articleCount.get(blog.id) ?? 0} {index} />
         ))}
       </div>
-    </section>
-
-    <section class="home-statement shell" aria-label="馆藏原则">
-      <p>不复制网站，只整理文章。</p>
-      <p>不改变原意，只改善阅读。</p>
-      <span>Blogs Wiki / 001</span>
+      {personalBlogs.length > 0 && (
+        <div class="shelf-grid shelf-grid--people">
+          {personalBlogs.map((blog, index) => (
+            <BlogShelfCard
+              blog={blog}
+              articleCount={articleCount.get(blog.id) ?? 0}
+              index={companyBlogs.length + index}
+            />
+          ))}
+        </div>
+      )}
     </section>
   </main>
 </BaseLayout>

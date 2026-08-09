@@ -1,14 +1,12 @@
 ---
-import { sitePath } from '../lib/urls';
+const githubUrl = 'https://github.com/Ttungx/Blogs-Wiki';
 ---
 
 <footer class="site-footer">
   <div class="footer-inner shell">
-    <p>值得读的博客，统一的中文阅读体验。</p>
-    <div>
-      <a href={sitePath()}>馆藏</a>
-      <a href={sitePath('search/')}>搜索</a>
-      <span>© {new Date().getFullYear()} Blogs Wiki</span>
-    </div>
+    <p>
+      Blogs Wiki 是一个开放索引。
+      <a href={githubUrl} target="_blank" rel="noreferrer">在 GitHub 上了解更多</a>
+    </p>
   </div>
 </footer>

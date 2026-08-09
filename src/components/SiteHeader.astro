@@ -3,25 +3,28 @@ import { sitePath } from '../lib/urls';
 
 const currentPath = Astro.url.pathname;
 const searchActive = currentPath.includes('/search');
+const githubUrl = 'https://github.com/Ttungx/Blogs-Wiki';
 ---
 
 <header class="site-header">
   <div class="header-inner shell">
     <a class="wordmark" href={sitePath()} aria-label="Blogs Wiki 首页">
-      <span class="wordmark-mark" aria-hidden="true">
-        <i></i><i></i>
-      </span>
       <span>Blogs Wiki</span>
     </a>
 
     <nav class="site-nav" aria-label="主导航">
-      <a href={sitePath()} aria-current={!searchActive ? 'page' : undefined}>馆藏</a>
       <a href={sitePath('search/')} aria-current={searchActive ? 'page' : undefined}>
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <circle cx="8.5" cy="8.5" r="5.75"></circle>
           <path d="m13 13 4 4"></path>
         </svg>
         搜索
+      </a>
+      <a href={githubUrl} target="_blank" rel="noreferrer">
+        <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2.7a9.5 9.5 0 0 0-3 18.52c.48.09.65-.2.65-.46v-1.67c-2.66.58-3.22-1.13-3.22-1.13-.44-1.1-1.06-1.4-1.06-1.4-.87-.59.07-.58.07-.58.96.07 1.47.99 1.47.99.85 1.46 2.24 1.04 2.79.8.08-.62.33-1.04.61-1.28-2.13-.24-4.36-1.06-4.36-4.7 0-1.04.37-1.89.98-2.56-.1-.24-.43-1.21.09-2.52 0 0 .8-.26 2.61.98A9.1 9.1 0 0 1 12 7.37a9 9 0 0 1 2.38.32c1.81-1.24 2.6-.98 2.6-.98.52 1.31.2 2.28.1 2.52.61.67.98 1.52.98 2.56 0 3.65-2.24 4.45-4.37 4.69.34.3.65.88.65 1.77v2.51c0 .26.17.55.66.46A9.5 9.5 0 0 0 12 2.7Z"></path>
+        </svg>
+        GitHub
       </a>
     </nav>
   </div>

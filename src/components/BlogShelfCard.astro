@@ -1,7 +1,6 @@
 ---
 import type { CollectionEntry } from 'astro:content';
 import BlogMark from './BlogMark.astro';
-import CategoryPill from './CategoryPill.astro';
 import { sitePath } from '../lib/urls';
 
 interface Props {
@@ -11,25 +10,25 @@ interface Props {
 }
 
 const { blog, articleCount, index } = Astro.props;
-const { name, type, logo, avatar, description, categories = [] } = blog.data;
+const { name, type, logo, avatar } = blog.data;
 ---
 
 <article class="shelf-card" style={`--shelf-index: ${index}`}>
   <a href={sitePath(`blogs/${blog.id}/`)} aria-label={`打开 ${name} 文章收集册`}>
-    <span class="shelf-card-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-    <BlogMark {name} {type} {logo} {avatar} size="large" />
+    <BlogMark {name} {type} {logo} {avatar} size="medium" />
     <span class="shelf-card-copy">
-      <span class="shelf-card-kind">{type === 'personal' ? '个人博客' : '机构博客'}</span>
       <strong>{name}</strong>
-      <span class="shelf-card-description">{description}</span>
-      <span class="shelf-card-tags">
-        {categories.slice(0, 2).map((category) => <CategoryPill label={category} quiet />)}
+      <span class:list={['shelf-card-kind', { 'shelf-card-kind--personal': type === 'personal' }]}>
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          {type === 'personal' ? (
+            <path d="M8 7.2a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm-4.25 6.1c.28-2.22 1.73-3.55 4.25-3.55s3.97 1.33 4.25 3.55H3.75Z"></path>
+          ) : (
+            <path d="M3 13.2V5.8l5-3 5 3v7.4M1.8 13.2h12.4M5.4 6.8v1M8 6.8v1m2.6-1v1M5.4 10v1M8 10v1m2.6-1v1"></path>
+          )}
+        </svg>
+        {type === 'personal' ? '个人作者' : '机构博客'}
       </span>
+      <span class="shelf-card-count">{articleCount} 篇文章</span>
     </span>
-    <span class="shelf-card-count">
-      <b>{articleCount}</b>
-      <span>篇译文</span>
-    </span>
-    <span class="shelf-card-arrow" aria-hidden="true">↗</span>
   </a>
 </article>
