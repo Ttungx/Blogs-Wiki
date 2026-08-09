@@ -1,0 +1,112 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import BlogMark from '../../components/BlogMark.astro';
+import CategoryPill from '../../components/CategoryPill.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { sitePath } from '../../lib/urls';
+
+export async function getStaticPaths() {
+  const [blogs, articles] = await Promise.all([
+    getCollection('blogs'),
+    getCollection('articles'),
+  ]);
+
+  return articles.flatMap((article) => {
+    const blog = blogs.find((entry) => entry.id === article.data.blogId);
+    return blog ? [{ params: { id: article.id }, props: { article, blog } }] : [];
+  });
+}
+
+interface Props {
+  article: CollectionEntry<'articles'>;
+  blog: CollectionEntry<'blogs'>;
+}
+
+const { article, blog } = Astro.props;
+const { Content } = await render(article);
+const publishedDate = new Date(article.data.publishedAt);
+const translatedDate = new Date(article.data.translatedAt);
+const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<BaseLayout
+  title={article.data.translatedTitle}
+  description={`${blog.data.name}：${article.data.translatedTitle}`}
+  pageClass="reader-page"
+>
+  <main id="main-content" data-pagefind-body>
+    <article class="reader">
+      <header class="reader-header shell">
+        <a class="reader-source" href={sitePath(`blogs/${blog.id}/`)}>
+          <BlogMark
+            name={blog.data.name}
+            type={blog.data.type}
+            logo={blog.data.logo}
+            avatar={blog.data.avatar}
+            size="small"
+          />
+          <span>
+            <small>来自</small>
+            <strong data-pagefind-filter="blog">{blog.data.name}</strong>
+          </span>
+          <i aria-hidden="true">↗</i>
+        </a>
+
+        <div class="reader-title-block">
+          <div class="reader-kicker">
+            <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
+            <span>译文</span>
+          </div>
+          <h1 data-pagefind-meta="title">{article.data.translatedTitle}</h1>
+          <p class="reader-original-title" lang="en">{article.data.originalTitle}</p>
+        </div>
+
+        <div class="reader-meta-grid">
+          <div>
+            <span>分类</span>
+            <p>
+              {article.data.categories.map((category) => <CategoryPill label={category} />)}
+            </p>
+          </div>
+          <div>
+            <span>翻译自</span>
+            <strong>{article.data.translationModel}</strong>
+          </div>
+          <div>
+            <span>译于</span>
+            <strong>{dateFormatter.format(translatedDate)}</strong>
+          </div>
+          <a href={article.data.originalUrl} target="_blank" rel="noreferrer">
+            查看原文 <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </header>
+
+      {article.data.demo && (
+        <aside class="demo-notice shell" aria-label="演示内容说明">
+          <span>Demo</span>
+          <p>此页用于验证内容模型与阅读排版，不代表完整官方译文。</p>
+        </aside>
+      )}
+
+      <div class="reader-content prose">
+        <Content />
+      </div>
+
+      <footer class="reader-end shell">
+        <div>
+          <p>原文版权归原作者与来源网站所有。</p>
+          <a href={article.data.originalUrl} target="_blank" rel="noreferrer">继续阅读原文 ↗</a>
+        </div>
+        <a class="back-to-collection" href={sitePath(`blogs/${blog.id}/`)}>
+          <span aria-hidden="true">←</span>
+          返回 {blog.data.name} 收集册
+        </a>
+      </footer>
+    </article>
+  </main>
+</BaseLayout>

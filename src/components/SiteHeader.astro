@@ -1,0 +1,28 @@
+---
+import { sitePath } from '../lib/urls';
+
+const currentPath = Astro.url.pathname;
+const searchActive = currentPath.includes('/search');
+---
+
+<header class="site-header">
+  <div class="header-inner shell">
+    <a class="wordmark" href={sitePath()} aria-label="Blogs Wiki 首页">
+      <span class="wordmark-mark" aria-hidden="true">
+        <i></i><i></i>
+      </span>
+      <span>Blogs Wiki</span>
+    </a>
+
+    <nav class="site-nav" aria-label="主导航">
+      <a href={sitePath()} aria-current={!searchActive ? 'page' : undefined}>馆藏</a>
+      <a href={sitePath('search/')} aria-current={searchActive ? 'page' : undefined}>
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="5.75"></circle>
+          <path d="m13 13 4 4"></path>
+        </svg>
+        搜索
+      </a>
+    </nav>
+  </div>
+</header>

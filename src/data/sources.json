@@ -1,0 +1,60 @@
+[
+  {
+    "id": "openai",
+    "name": "OpenAI",
+    "type": "company",
+    "homepage_url": "https://openai.com/",
+    "blog_url": "https://openai.com/news/",
+    "domain": "openai.com",
+    "rss_url": "https://openai.com/news/rss.xml",
+    "sitemap_url": "https://openai.com/sitemap.xml",
+    "article_paths": [
+      "/index",
+      "/news"
+    ]
+  },
+  {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "type": "company",
+    "homepage_url": "https://www.anthropic.com/",
+    "blog_url": "https://www.anthropic.com/research",
+    "domain": "anthropic.com",
+    "sitemap_url": "https://www.anthropic.com/sitemap.xml",
+    "article_paths": [
+      "/research",
+      "/engineering",
+      "/news"
+    ]
+  },
+  {
+    "id": "cloudflare",
+    "name": "Cloudflare Blog",
+    "type": "company",
+    "homepage_url": "https://www.cloudflare.com/",
+    "blog_url": "https://blog.cloudflare.com/",
+    "domain": "blog.cloudflare.com",
+    "rss_url": "https://blog.cloudflare.com/rss/",
+    "sitemap_url": "https://blog.cloudflare.com/sitemap.xml"
+  },
+  {
+    "id": "simon-willison",
+    "name": "Simon Willison's Weblog",
+    "type": "personal",
+    "homepage_url": "https://simonwillison.net/",
+    "blog_url": "https://simonwillison.net/",
+    "domain": "simonwillison.net",
+    "rss_url": "https://simonwillison.net/atom/everything/",
+    "sitemap_url": "https://simonwillison.net/sitemap.xml"
+  },
+  {
+    "id": "lilian-weng",
+    "name": "Lil'Log",
+    "type": "personal",
+    "homepage_url": "https://lilianweng.github.io/",
+    "blog_url": "https://lilianweng.github.io/",
+    "domain": "lilianweng.github.io",
+    "rss_url": "https://lilianweng.github.io/index.xml",
+    "sitemap_url": "https://lilianweng.github.io/sitemap.xml"
+  }
+]

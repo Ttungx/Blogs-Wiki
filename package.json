@@ -1,0 +1,32 @@
+{
+  "name": "blogs-wiki",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && pagefind --site dist",
+    "preview": "astro preview",
+    "check": "astro check",
+    "test:update": "tsx scripts/update/smoke.ts",
+    "update": "tsx --env-file-if-exists=.env scripts/update/index.ts",
+    "update:dry": "tsx --env-file-if-exists=.env scripts/update/index.ts --dry-run"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "@mozilla/readability": "^0.6.0",
+    "astro": "^7.2.0",
+    "jsdom": "^29.1.1",
+    "pagefind": "^1.5.2",
+    "turndown": "^7.2.4",
+    "undici": "^8.10.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.6",
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^26.2.0",
+    "@types/turndown": "^5.0.6",
+    "tsx": "^4.20.5",
+    "typescript": "^6.0.2"
+  }
+}

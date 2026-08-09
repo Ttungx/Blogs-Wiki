@@ -1,0 +1,35 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import BlogMark from './BlogMark.astro';
+import CategoryPill from './CategoryPill.astro';
+import { sitePath } from '../lib/urls';
+
+interface Props {
+  blog: CollectionEntry<'blogs'>;
+  articleCount: number;
+  index: number;
+}
+
+const { blog, articleCount, index } = Astro.props;
+const { name, type, logo, avatar, description, categories = [] } = blog.data;
+---
+
+<article class="shelf-card" style={`--shelf-index: ${index}`}>
+  <a href={sitePath(`blogs/${blog.id}/`)} aria-label={`打开 ${name} 文章收集册`}>
+    <span class="shelf-card-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+    <BlogMark {name} {type} {logo} {avatar} size="large" />
+    <span class="shelf-card-copy">
+      <span class="shelf-card-kind">{type === 'personal' ? '个人博客' : '机构博客'}</span>
+      <strong>{name}</strong>
+      <span class="shelf-card-description">{description}</span>
+      <span class="shelf-card-tags">
+        {categories.slice(0, 2).map((category) => <CategoryPill label={category} quiet />)}
+      </span>
+    </span>
+    <span class="shelf-card-count">
+      <b>{articleCount}</b>
+      <span>篇译文</span>
+    </span>
+    <span class="shelf-card-arrow" aria-hidden="true">↗</span>
+  </a>
+</article>

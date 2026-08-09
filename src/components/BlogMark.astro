@@ -1,0 +1,29 @@
+---
+import { assetPath } from '../lib/urls';
+
+interface Props {
+  name: string;
+  logo?: string;
+  avatar?: string;
+  type?: 'company' | 'personal';
+  size?: 'small' | 'medium' | 'large';
+}
+
+const { name, logo, avatar, type = 'company', size = 'medium' } = Astro.props;
+const source = assetPath(type === 'personal' ? avatar ?? logo : logo ?? avatar);
+const initials = name
+  .split(/[\s_-]+/)
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((part) => part[0])
+  .join('')
+  .toUpperCase();
+---
+
+<span class:list={['blog-mark', `blog-mark--${size}`, { 'blog-mark--portrait': type === 'personal' }] }>
+  {source ? (
+    <img src={source} alt="" width="96" height="96" loading={size === 'large' ? 'eager' : 'lazy'} />
+  ) : (
+    <span aria-hidden="true">{initials}</span>
+  )}
+</span>

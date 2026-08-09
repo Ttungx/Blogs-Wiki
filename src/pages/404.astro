@@ -1,0 +1,13 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { sitePath } from '../lib/urls';
+---
+
+<BaseLayout title="页面未找到" pageClass="not-found-page">
+  <main id="main-content" class="not-found shell">
+    <p class="eyebrow">404 / Missing page</p>
+    <h1>这一页还没被收进馆藏。</h1>
+    <p>链接可能已经改变，或文章仍在等待处理。</p>
+    <a href={sitePath()}>返回博客书架 <span aria-hidden="true">↗</span></a>
+  </main>
+</BaseLayout>

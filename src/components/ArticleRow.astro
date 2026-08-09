@@ -1,0 +1,43 @@
+---
+import CategoryPill from './CategoryPill.astro';
+import { sitePath } from '../lib/urls';
+
+interface Props {
+  id: string;
+  translatedTitle: string;
+  originalTitle: string;
+  publishedAt: Date | string;
+  categories: string[];
+  index?: number;
+}
+
+const {
+  id,
+  translatedTitle,
+  originalTitle,
+  publishedAt,
+  categories,
+  index = 0,
+} = Astro.props;
+const date = new Date(publishedAt);
+const formattedDate = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(date);
+---
+
+<article class="article-row">
+  <a href={sitePath(`articles/${id}/`)} aria-label={`阅读：${translatedTitle}`}>
+    <span class="article-row-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+    <span class="article-row-main">
+      <span class="article-row-title">{translatedTitle}</span>
+      <span class="article-row-original" lang="en">{originalTitle}</span>
+      <span class="article-row-categories">
+        {categories.map((category) => <CategoryPill label={category} quiet />)}
+      </span>
+    </span>
+    <time datetime={date.toISOString()}>{formattedDate}</time>
+    <span class="article-row-arrow" aria-hidden="true">↗</span>
+  </a>
+</article>

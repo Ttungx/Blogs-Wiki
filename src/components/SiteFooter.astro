@@ -1,0 +1,14 @@
+---
+import { sitePath } from '../lib/urls';
+---
+
+<footer class="site-footer">
+  <div class="footer-inner shell">
+    <p>值得读的博客，统一的中文阅读体验。</p>
+    <div>
+      <a href={sitePath()}>馆藏</a>
+      <a href={sitePath('search/')}>搜索</a>
+      <span>© {new Date().getFullYear()} Blogs Wiki</span>
+    </div>
+  </div>
+</footer>

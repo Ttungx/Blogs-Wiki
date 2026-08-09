@@ -1,0 +1,190 @@
+---
+interface SearchItem {
+  kind: 'blog' | 'article';
+  title: string;
+  originalTitle?: string;
+  subtitle: string;
+  url: string;
+  date?: string;
+  categories?: string[];
+}
+
+interface Props {
+  items: SearchItem[];
+}
+
+const { items } = Astro.props;
+const serializedItems = JSON.stringify(items).replace(/</g, '\\u003c');
+const basePath = import.meta.env.BASE_URL;
+---
+
+<section class="search-panel" data-search-panel>
+  <form class="search-form" role="search">
+    <label for="site-search">在馆藏中搜索</label>
+    <div class="search-field">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="10.5" cy="10.5" r="6.75"></circle>
+        <path d="m16 16 5 5"></path>
+      </svg>
+      <input
+        id="site-search"
+        name="q"
+        type="search"
+        placeholder="博客、作者、中文或原始标题"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <kbd>Esc</kbd>
+    </div>
+  </form>
+
+  <div class="search-status" aria-live="polite">
+    <span data-search-count>全部馆藏</span>
+    <span data-search-mode>标题与来源索引</span>
+  </div>
+  <div class="search-results" data-search-results></div>
+  <noscript><p class="empty-state">搜索需要启用 JavaScript。</p></noscript>
+</section>
+
+<script id="search-index" type="application/json" set:html={serializedItems} is:inline></script>
+<script is:inline define:vars={{ basePath }}>
+  const panel = document.querySelector('[data-search-panel]');
+  const dataNode = document.querySelector('#search-index');
+
+  if (panel && dataNode) {
+    const items = JSON.parse(dataNode.textContent || '[]');
+    const form = panel.querySelector('form');
+    const input = panel.querySelector('input');
+    const results = panel.querySelector('[data-search-results]');
+    const count = panel.querySelector('[data-search-count]');
+    const mode = panel.querySelector('[data-search-mode]');
+    let requestId = 0;
+
+    const normalized = (value) => String(value || '').toLocaleLowerCase('zh-CN');
+    const searchable = (item) => normalized([
+      item.title,
+      item.originalTitle,
+      item.subtitle,
+      ...(item.categories || []),
+    ].join(' '));
+
+    const makeResult = (item, index) => {
+      const link = document.createElement('a');
+      link.className = 'search-result';
+      link.href = item.url;
+
+      const number = document.createElement('span');
+      number.className = 'search-result-number';
+      number.textContent = String(index + 1).padStart(2, '0');
+
+      const copy = document.createElement('span');
+      copy.className = 'search-result-copy';
+      const meta = document.createElement('span');
+      meta.className = 'search-result-meta';
+      meta.textContent = `${item.kind === 'blog' ? '博客' : '文章'} · ${item.subtitle}`;
+      const title = document.createElement('strong');
+      title.textContent = item.title;
+      copy.append(meta, title);
+
+      if (item.originalTitle) {
+        const original = document.createElement('span');
+        original.className = 'search-result-original';
+        original.textContent = item.originalTitle;
+        copy.append(original);
+      }
+
+      const tail = document.createElement('span');
+      tail.className = 'search-result-tail';
+      tail.textContent = item.date || '打开';
+      link.append(number, copy, tail);
+      return link;
+    };
+
+    const render = (matches, query, indexMode = '标题与来源索引') => {
+      results.replaceChildren();
+      count.textContent = query ? `${matches.length} 个结果` : `全部 ${matches.length} 项馆藏`;
+      mode.textContent = indexMode;
+
+      if (!matches.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        const title = document.createElement('strong');
+        title.textContent = '没有找到匹配内容';
+        const hint = document.createElement('span');
+        hint.textContent = '试试博客名、作者名，或更短的关键词。';
+        empty.append(title, hint);
+        results.append(empty);
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      matches.forEach((item, index) => fragment.append(makeResult(item, index)));
+      results.append(fragment);
+    };
+
+    const localSearch = (query) => {
+      const needle = normalized(query.trim());
+      return needle ? items.filter((item) => searchable(item).includes(needle)) : items;
+    };
+
+    const runSearch = async () => {
+      const query = input.value.trim();
+      const currentRequest = ++requestId;
+      const localMatches = localSearch(query);
+      render(localMatches, query);
+
+      const url = new URL(window.location.href);
+      query ? url.searchParams.set('q', query) : url.searchParams.delete('q');
+      history.replaceState(null, '', url);
+
+      if (query.length < 2) return;
+
+      try {
+        const pagefindUrl = `${basePath}pagefind/pagefind.js`;
+        const pagefind = await import(/* @vite-ignore */ pagefindUrl);
+        await pagefind.init();
+        const response = await pagefind.search(query);
+        const pagefindItems = await Promise.all(
+          response.results.slice(0, 30).map(async (result) => {
+            const data = await result.data();
+            const local = items.find((item) => {
+              const itemUrl = new URL(item.url, window.location.origin).pathname.replace(/\/$/, '');
+              const resultUrl = new URL(data.url, window.location.origin).pathname.replace(/\/$/, '');
+              return itemUrl === resultUrl;
+            });
+            return local;
+          }),
+        );
+        const matches = pagefindItems.filter(Boolean);
+        if (currentRequest === requestId && matches.length) {
+          render(matches, query, 'Pagefind 全文索引');
+        }
+      } catch {
+        // Pagefind exists only after a production build. Local title search stays usable in dev.
+      }
+    };
+
+    let timer;
+    input.addEventListener('input', () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(runSearch, 100);
+    });
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      runSearch();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && document.activeElement === input) {
+        input.value = '';
+        runSearch();
+      }
+      if (event.key === '/' && document.activeElement !== input) {
+        event.preventDefault();
+        input.focus();
+      }
+    });
+
+    input.value = new URL(window.location.href).searchParams.get('q') || '';
+    runSearch();
+  }
+</script>

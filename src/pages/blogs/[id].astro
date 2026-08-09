@@ -1,0 +1,98 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import ArticleRow from '../../components/ArticleRow.astro';
+import BlogMark from '../../components/BlogMark.astro';
+import CategoryPill from '../../components/CategoryPill.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const [blogs, articles] = await Promise.all([
+    getCollection('blogs'),
+    getCollection('articles'),
+  ]);
+
+  return blogs.map((blog) => ({
+    params: { id: blog.id },
+    props: {
+      blog,
+      articles: articles
+        .filter((article) => article.data.blogId === blog.id)
+        .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf()),
+    },
+  }));
+}
+
+interface Props {
+  blog: CollectionEntry<'blogs'>;
+  articles: CollectionEntry<'articles'>[];
+}
+
+const { blog, articles } = Astro.props;
+const { name, type, logo, avatar, description, blogUrl, homepageUrl, categories = [] } = blog.data;
+---
+
+<BaseLayout title={name} description={description} pageClass="collection-page">
+  <main id="main-content" data-pagefind-body>
+    <section class="collection-hero shell">
+      <div class="collection-identity">
+        <BlogMark {name} {type} {logo} {avatar} size="large" />
+        <div>
+          <p class="eyebrow">{type === 'personal' ? 'Independent archive' : 'Publication archive'}</p>
+          <h1 data-pagefind-meta="title">{name}</h1>
+        </div>
+      </div>
+
+      <div class="collection-intro">
+        <p>{description}</p>
+        <a href={blogUrl ?? homepageUrl} target="_blank" rel="noreferrer">
+          访问原博客 <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+
+      <dl class="collection-facts">
+        <div>
+          <dt>馆藏</dt>
+          <dd>{articles.length} 篇文章</dd>
+        </div>
+        <div>
+          <dt>来源</dt>
+          <dd>{type === 'personal' ? '独立作者' : '公司 / 机构'}</dd>
+        </div>
+        <div>
+          <dt>主题</dt>
+          <dd class="fact-tags">
+            {categories.map((category) => <CategoryPill label={category} />)}
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="collection-index shell" aria-labelledby="article-index-title">
+      <header class="section-heading section-heading--compact">
+        <div>
+          <p class="eyebrow">Collected writing</p>
+          <h2 id="article-index-title">文章目录</h2>
+        </div>
+        <p>按原始发布时间倒序</p>
+      </header>
+
+      <div class="article-list">
+        {articles.length ? articles.map((article, index) => (
+          <ArticleRow
+            id={article.id}
+            translatedTitle={article.data.translatedTitle}
+            originalTitle={article.data.originalTitle}
+            publishedAt={article.data.publishedAt}
+            categories={article.data.categories}
+            {index}
+          />
+        )) : (
+          <div class="empty-state">
+            <strong>还没有收录文章</strong>
+            <span>更新流程发现新文章后会出现在这里。</span>
+          </div>
+        )}
+      </div>
+    </section>
+  </main>
+</BaseLayout>
