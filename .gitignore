@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+.env
+.DS_Store
+*.log
+
+# 文章正文与运行状态暂不入库（临时；恢复时删除以下两行）
+src/content/articles/
+src/data/processed-urls.json
