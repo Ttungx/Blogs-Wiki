@@ -62,9 +62,12 @@ GitHub Actions 使用同名 Repository Secrets：`OPENAI_API_KEY`、`OPENAI_BASE
 
 ## 目录
 
+博客来源的适配状态、审核队列和逐站接入流程统一记录在 [`docs/blog-source-registry.md`](docs/blog-source-registry.md)。
+
 ```text
 .
 ├── .github/workflows/   # 定时、手动更新及 GitHub Pages 部署
+├── docs/                # 来源登记、逐站研究与项目文档
 ├── public/              # 原样复制的静态资源
 ├── scripts/update/      # 发现、抓取、翻译、分类、持久化业务逻辑
 ├── src/components/      # 站点组件
@@ -100,6 +103,8 @@ schedule / workflow_dispatch
 更新管道的业务代码位于 `scripts/update/`：`discovery.ts`（RSS → Sitemap → 列表页三级发现）、`fetch.ts`（Readability + Turndown 提取正文与元数据）、`translate.ts`（OpenAI-compatible 翻译客户端，JSON 输出校验与重试）、`classify.ts`（分类归一化，只能从预定义集合选择）、`persist.ts`（文章写入与 `processed-urls.json` 状态）、`index.ts`（编排入口）。翻译模型与分类在一次模型调用中完成，`translation_model` 来自实际配置并写入每篇文章元数据。
 
 来源列表位于 `src/data/sources.json`，每个来源可配 `rss_url` / `sitemap_url` / `blog_url` 三级发现，以及可选的 `article_paths` 白名单（只收录指定路径前缀下的文章，用于过滤公司站点的产品页、招聘页等）。无任何日期来源的站点（如 Paul Graham 的未标注日期文章）无法生成符合内容模型的文章，不应加入自动更新来源；如需收录，应使用带日期的发现源或人工导入。
+
+待完整适配的来源可设置 `update_mode: "dry-run-only"`：它们参与 `npm run update:dry` 的发现与抓取验证，但完整更新会自动跳过，避免提前调用翻译模型或写入文章。可用 `exclude_paths` 排除位于文章路径下的标签、主题或列表页。
 
 ## GitHub Pages 配置
 
