@@ -4,6 +4,8 @@ import ArticleRow from '../../components/ArticleRow.astro';
 import BlogMark from '../../components/BlogMark.astro';
 import CategoryPill from '../../components/CategoryPill.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { byOriginalPublicationDateDesc } from '../../lib/article-dates';
+import { sitePath } from '../../lib/urls';
 
 export async function getStaticPaths() {
   const [blogs, articles] = await Promise.all([
@@ -17,7 +19,7 @@ export async function getStaticPaths() {
       blog,
       articles: articles
         .filter((article) => article.data.blogId === blog.id)
-        .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf()),
+        .sort(byOriginalPublicationDateDesc),
     },
   }));
 }
@@ -29,6 +31,22 @@ interface Props {
 
 const { blog, articles } = Astro.props;
 const { name, type, logo, avatar, description, blogUrl, homepageUrl, categories = [] } = blog.data;
+
+function firstRemoteImage(markdown: string | undefined): string | undefined {
+  const match = markdown?.match(/!\[[^\]]*\]\((https?:\/\/[^\s)]+(?:\?[^\s)]*)?)/i);
+  return match?.[1];
+}
+
+function imageFor(article: CollectionEntry<'articles'>): string | undefined {
+  return article.data.imageUrl ?? firstRemoteImage(article.body);
+}
+
+const [featuredArticle, ...remainingArticles] = articles;
+const featuredImage = featuredArticle ? imageFor(featuredArticle) : undefined;
+const featuredDate = featuredArticle ? new Date(featuredArticle.data.publishedAt) : undefined;
+const featuredDateText = featuredDate
+  ? `${featuredDate.getFullYear()}/${String(featuredDate.getMonth() + 1).padStart(2, '0')}/${String(featuredDate.getDate()).padStart(2, '0')}`
+  : '';
 ---
 
 <BaseLayout title={name} description={description} pageClass="collection-page">
@@ -68,30 +86,61 @@ const { name, type, logo, avatar, description, blogUrl, homepageUrl, categories 
     </section>
 
     <section class="collection-index shell" aria-labelledby="article-index-title">
-      <header class="section-heading section-heading--compact">
-        <div>
-          <p class="eyebrow">Collected writing</p>
-          <h2 id="article-index-title">文章目录</h2>
-        </div>
-        <p>按原始发布时间倒序</p>
+      {featuredArticle ? (
+        <article class="featured-article">
+          <a
+            class:list={['featured-article-link', { 'featured-article-link--no-image': !featuredImage }]}
+            href={sitePath(`articles/${featuredArticle.id}/`)}
+          >
+            <span class="featured-article-copy">
+              <span class="eyebrow">Latest · 最新</span>
+              <strong>{featuredArticle.data.translatedTitle}</strong>
+              <span class="featured-article-original" lang="en">{featuredArticle.data.originalTitle}</span>
+              {featuredArticle.data.excerpt && (
+                <span class="featured-article-excerpt">{featuredArticle.data.excerpt}</span>
+              )}
+              <span class="featured-article-meta">
+                <time datetime={featuredDate?.toISOString()}>{featuredDateText}</time>
+                {featuredArticle.data.categories.map((category) => <CategoryPill label={category} quiet />)}
+              </span>
+            </span>
+            {featuredImage && (
+              <span class="featured-article-image" aria-hidden="true">
+                <img
+                  src={featuredImage}
+                  alt=""
+                  loading="eager"
+                  decoding="async"
+                  fetchpriority="high"
+                  referrerpolicy="no-referrer"
+                />
+              </span>
+            )}
+          </a>
+        </article>
+      ) : null}
+
+      <header class="article-index-heading">
+        <p id="article-index-title">Collected writing <span>/ 全部文章</span></p>
+        <span>按原文发表日期排序 <i aria-hidden="true">⌄</i></span>
       </header>
 
       <div class="article-list">
-        {articles.length ? articles.map((article, index) => (
+        {remainingArticles.length ? remainingArticles.map((article) => (
           <ArticleRow
             id={article.id}
             translatedTitle={article.data.translatedTitle}
             originalTitle={article.data.originalTitle}
             publishedAt={article.data.publishedAt}
             categories={article.data.categories}
-            {index}
+            imageUrl={imageFor(article)}
           />
-        )) : (
+        )) : !featuredArticle ? (
           <div class="empty-state">
             <strong>还没有收录文章</strong>
             <span>更新流程发现新文章后会出现在这里。</span>
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   </main>

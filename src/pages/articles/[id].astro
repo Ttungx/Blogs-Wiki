@@ -3,6 +3,7 @@ import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BlogMark from '../../components/BlogMark.astro';
 import CategoryPill from '../../components/CategoryPill.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { byOriginalPublicationDateDesc } from '../../lib/article-dates';
 import { sitePath } from '../../lib/urls';
 
 export async function getStaticPaths() {
@@ -13,16 +14,21 @@ export async function getStaticPaths() {
 
   return articles.flatMap((article) => {
     const blog = blogs.find((entry) => entry.id === article.data.blogId);
-    return blog ? [{ params: { id: article.id }, props: { article, blog } }] : [];
+    const relatedArticles = articles
+      .filter((entry) => entry.id !== article.id && entry.data.blogId === article.data.blogId)
+      .sort(byOriginalPublicationDateDesc)
+      .slice(0, 3);
+    return blog ? [{ params: { id: article.id }, props: { article, blog, relatedArticles } }] : [];
   });
 }
 
 interface Props {
   article: CollectionEntry<'articles'>;
   blog: CollectionEntry<'blogs'>;
+  relatedArticles: CollectionEntry<'articles'>[];
 }
 
-const { article, blog } = Astro.props;
+const { article, blog, relatedArticles } = Astro.props;
 const { Content } = await render(article);
 const publishedDate = new Date(article.data.publishedAt);
 const translatedDate = new Date(article.data.translatedAt);
@@ -30,6 +36,11 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
+});
+const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
 });
 ---
 
@@ -58,11 +69,14 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
 
         <div class="reader-title-block">
           <div class="reader-kicker">
+            <span>原文发表于</span>
             <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
-            <span>译文</span>
           </div>
           <h1 data-pagefind-meta="title">{article.data.translatedTitle}</h1>
           <p class="reader-original-title" lang="en">{article.data.originalTitle}</p>
+          <p class="reader-translation-note">
+            译于 <time datetime={translatedDate.toISOString()}>{dateFormatter.format(translatedDate)}</time>
+          </p>
         </div>
 
         <div class="reader-meta-grid">
@@ -73,12 +87,12 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
             </p>
           </div>
           <div>
-            <span>翻译自</span>
+            <span>翻译模型</span>
             <strong>{article.data.translationModel}</strong>
           </div>
           <div>
-            <span>译于</span>
-            <strong>{dateFormatter.format(translatedDate)}</strong>
+            <span>原文语言</span>
+            <strong>{article.data.originalLanguage.toUpperCase()}</strong>
           </div>
           <a href={article.data.originalUrl} target="_blank" rel="noreferrer">
             查看原文 <span aria-hidden="true">↗</span>
@@ -96,6 +110,36 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
       <div class="reader-content prose">
         <Content />
       </div>
+
+      {relatedArticles.length > 0 && (
+        <section class="reader-related shell" aria-labelledby="reader-related-title">
+          <header class="reader-related-heading">
+            <div>
+              <p class="eyebrow">Read next · 延伸阅读</p>
+              <h2 id="reader-related-title">继续阅读</h2>
+            </div>
+            <a href={sitePath(`blogs/${blog.id}/`)}>查看全部文章 ↗</a>
+          </header>
+          <div class="reader-related-list">
+            {relatedArticles.map((relatedArticle, index) => {
+              const relatedDate = new Date(relatedArticle.data.publishedAt);
+              return (
+                <a href={sitePath(`articles/${relatedArticle.id}/`)}>
+                  <span class="reader-related-number">{String(index + 1).padStart(2, '0')}</span>
+                  <span class="reader-related-copy">
+                    <strong>{relatedArticle.data.translatedTitle}</strong>
+                    <small lang="en">{relatedArticle.data.originalTitle}</small>
+                  </span>
+                  <time datetime={relatedDate.toISOString()}>
+                    {compactDateFormatter.format(relatedDate)}
+                  </time>
+                  <i aria-hidden="true">↗</i>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <footer class="reader-end shell">
         <div>

@@ -8,7 +8,7 @@ interface Props {
   originalTitle: string;
   publishedAt: Date | string;
   categories: string[];
-  index?: number;
+  imageUrl?: string;
 }
 
 const {
@@ -17,19 +17,20 @@ const {
   originalTitle,
   publishedAt,
   categories,
-  index = 0,
+  imageUrl,
 } = Astro.props;
 const date = new Date(publishedAt);
-const formattedDate = new Intl.DateTimeFormat('zh-CN', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-}).format(date);
+const year = String(date.getFullYear());
+const month = String(date.getMonth() + 1).padStart(2, '0');
+const day = String(date.getDate()).padStart(2, '0');
 ---
 
-<article class="article-row">
+<article class:list={['article-row', { 'article-row--no-image': !imageUrl }]}>
   <a href={sitePath(`articles/${id}/`)} aria-label={`阅读：${translatedTitle}`}>
-    <span class="article-row-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+    <time datetime={date.toISOString()}>
+      <span>{year}</span>
+      <span>/{month}/{day}</span>
+    </time>
     <span class="article-row-main">
       <span class="article-row-title">{translatedTitle}</span>
       <span class="article-row-original" lang="en">{originalTitle}</span>
@@ -37,7 +38,10 @@ const formattedDate = new Intl.DateTimeFormat('zh-CN', {
         {categories.map((category) => <CategoryPill label={category} quiet />)}
       </span>
     </span>
-    <time datetime={date.toISOString()}>{formattedDate}</time>
-    <span class="article-row-arrow" aria-hidden="true">↗</span>
+    {imageUrl && (
+      <span class="article-row-image" aria-hidden="true">
+        <img src={imageUrl} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+      </span>
+    )}
   </a>
 </article>
