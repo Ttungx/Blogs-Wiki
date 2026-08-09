@@ -8,6 +8,7 @@
     "domain": "openai.com",
     "rss_url": "https://openai.com/news/rss.xml",
     "sitemap_url": "https://openai.com/sitemap.xml",
+    "update_mode": "active",
     "article_paths": [
       "/index",
       "/news"
@@ -21,6 +22,7 @@
     "blog_url": "https://www.anthropic.com/research",
     "domain": "anthropic.com",
     "sitemap_url": "https://www.anthropic.com/sitemap.xml",
+    "update_mode": "active",
     "article_paths": [
       "/research",
       "/engineering",
@@ -35,7 +37,8 @@
     "blog_url": "https://blog.cloudflare.com/",
     "domain": "blog.cloudflare.com",
     "rss_url": "https://blog.cloudflare.com/rss/",
-    "sitemap_url": "https://blog.cloudflare.com/sitemap.xml"
+    "sitemap_url": "https://blog.cloudflare.com/sitemap.xml",
+    "update_mode": "active"
   },
   {
     "id": "simon-willison",
@@ -45,7 +48,8 @@
     "blog_url": "https://simonwillison.net/",
     "domain": "simonwillison.net",
     "rss_url": "https://simonwillison.net/atom/everything/",
-    "sitemap_url": "https://simonwillison.net/sitemap.xml"
+    "sitemap_url": "https://simonwillison.net/sitemap.xml",
+    "update_mode": "active"
   },
   {
     "id": "lilian-weng",
@@ -55,6 +59,242 @@
     "blog_url": "https://lilianweng.github.io/",
     "domain": "lilianweng.github.io",
     "rss_url": "https://lilianweng.github.io/index.xml",
-    "sitemap_url": "https://lilianweng.github.io/sitemap.xml"
+    "sitemap_url": "https://lilianweng.github.io/sitemap.xml",
+    "update_mode": "active"
+  },
+  {
+    "id": "langchain",
+    "name": "LangChain Blog",
+    "type": "company",
+    "homepage_url": "https://www.langchain.com/",
+    "blog_url": "https://www.langchain.com/blog",
+    "domain": "langchain.com",
+    "rss_url": "https://www.langchain.com/blog/rss.xml",
+    "sitemap_url": "https://www.langchain.com/sitemap.xml",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/blog"
+    ]
+  },
+  {
+    "id": "cursor",
+    "name": "Cursor Blog",
+    "type": "company",
+    "homepage_url": "https://cursor.com/",
+    "blog_url": "https://cursor.com/blog",
+    "domain": "cursor.com",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/blog"
+    ],
+    "exclude_paths": [
+      "/blog/topic"
+    ]
+  },
+  {
+    "id": "hugging-face",
+    "name": "Hugging Face Blog",
+    "type": "company",
+    "homepage_url": "https://huggingface.co/",
+    "blog_url": "https://huggingface.co/blog",
+    "domain": "huggingface.co",
+    "rss_url": "https://huggingface.co/blog/feed.xml",
+    "sitemap_url": "https://huggingface.co/sitemap-blog.xml",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/blog"
+    ]
+  },
+  {
+    "id": "qwen",
+    "name": "Qwen Blog",
+    "type": "company",
+    "homepage_url": "https://qwenlm.github.io/",
+    "blog_url": "https://qwenlm.github.io/blog/",
+    "domain": "qwenlm.github.io",
+    "sitemap_url": "https://qwenlm.github.io/en/sitemap.xml",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/blog"
+    ]
+  },
+  {
+    "id": "google-deepmind",
+    "name": "Google DeepMind",
+    "type": "company",
+    "homepage_url": "https://deepmind.google/",
+    "blog_url": "https://deepmind.google/blog/",
+    "domain": "deepmind.google",
+    "rss_url": "https://deepmind.google/blog/rss.xml",
+    "sitemap_url": "https://deepmind.google/sitemap.xml",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/blog"
+    ]
+  },
+  {
+    "id": "microsoft-research",
+    "name": "Microsoft Research",
+    "type": "company",
+    "homepage_url": "https://www.microsoft.com/en-us/research/",
+    "blog_url": "https://www.microsoft.com/en-us/research/blog/",
+    "domain": "microsoft.com",
+    "rss_url": "https://www.microsoft.com/en-us/research/feed/",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/en-us/research/blog"
+    ]
+  },
+  {
+    "id": "google-research",
+    "name": "Google Research",
+    "type": "company",
+    "homepage_url": "https://research.google/",
+    "blog_url": "https://research.google/blog/",
+    "domain": "research.google",
+    "rss_url": "https://research.google/blog/rss/",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/blog"
+    ]
+  },
+  {
+    "id": "meta-ai",
+    "name": "Meta AI",
+    "type": "company",
+    "homepage_url": "https://ai.meta.com/",
+    "blog_url": "https://ai.meta.com/blog/",
+    "domain": "ai.meta.com",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/blog"
+    ]
+  },
+  {
+    "id": "eleuther-ai",
+    "name": "EleutherAI Blog",
+    "type": "company",
+    "homepage_url": "https://www.eleuther.ai/",
+    "blog_url": "https://blog.eleuther.ai/",
+    "domain": "blog.eleuther.ai",
+    "rss_url": "https://blog.eleuther.ai/index.xml",
+    "sitemap_url": "https://blog.eleuther.ai/sitemap.xml",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "mistral-ai",
+    "name": "Mistral AI",
+    "type": "company",
+    "homepage_url": "https://mistral.ai/",
+    "blog_url": "https://mistral.ai/news/",
+    "domain": "mistral.ai",
+    "rss_url": "https://mistral.ai/news/rss",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/news"
+    ]
+  },
+  {
+    "id": "amazon-science",
+    "name": "Amazon Science",
+    "type": "company",
+    "homepage_url": "https://www.amazon.science/",
+    "blog_url": "https://www.amazon.science/blog",
+    "domain": "amazon.science",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/blog"
+    ]
+  },
+  {
+    "id": "chip-huyen",
+    "name": "Chip Huyen",
+    "type": "personal",
+    "homepage_url": "https://huyenchip.com/",
+    "blog_url": "https://huyenchip.com/blog/",
+    "domain": "huyenchip.com",
+    "rss_url": "https://huyenchip.com/feed.xml",
+    "sitemap_url": "https://huyenchip.com/sitemap.xml",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "sebastian-raschka",
+    "name": "Ahead of AI",
+    "type": "personal",
+    "homepage_url": "https://sebastianraschka.com/",
+    "blog_url": "https://magazine.sebastianraschka.com/",
+    "domain": "magazine.sebastianraschka.com",
+    "rss_url": "https://magazine.sebastianraschka.com/feed",
+    "sitemap_url": "https://magazine.sebastianraschka.com/sitemap.xml",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/p"
+    ]
+  },
+  {
+    "id": "hamel-husain",
+    "name": "Hamel Husain",
+    "type": "personal",
+    "homepage_url": "https://hamel.dev/",
+    "blog_url": "https://hamel.dev/blog/",
+    "domain": "hamel.dev",
+    "rss_url": "https://hamel.dev/index.xml",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/blog"
+    ]
+  },
+  {
+    "id": "eugene-yan",
+    "name": "Eugene Yan",
+    "type": "personal",
+    "homepage_url": "https://eugeneyan.com/",
+    "blog_url": "https://eugeneyan.com/writing/",
+    "domain": "eugeneyan.com",
+    "rss_url": "https://eugeneyan.com/rss/",
+    "sitemap_url": "https://eugeneyan.com/sitemap.xml",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/writing"
+    ]
+  },
+  {
+    "id": "jay-alammar",
+    "name": "Jay Alammar",
+    "type": "personal",
+    "homepage_url": "https://jalammar.github.io/",
+    "blog_url": "https://newsletter.languagemodels.co/",
+    "domain": "newsletter.languagemodels.co",
+    "rss_url": "https://newsletter.languagemodels.co/feed",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/p"
+    ]
+  },
+  {
+    "id": "andrej-karpathy",
+    "name": "Andrej Karpathy",
+    "type": "personal",
+    "homepage_url": "https://karpathy.ai/",
+    "blog_url": "https://karpathy.github.io/",
+    "domain": "karpathy.github.io",
+    "rss_url": "https://karpathy.github.io/feed.xml",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "one-poem-suffices",
+    "name": "One Poem Suffices",
+    "type": "personal",
+    "homepage_url": "https://keli-wen.github.io/One-Poem-Suffices/",
+    "blog_url": "https://keli-wen.github.io/One-Poem-Suffices/",
+    "domain": "keli-wen.github.io",
+    "sitemap_url": "https://keli-wen.github.io/One-Poem-Suffices/sitemap.xml",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "/One-Poem-Suffices/one-poem-suffices",
+      "/One-Poem-Suffices/thinking-in-context",
+      "/One-Poem-Suffices/zen-of-harness-engineering",
+      "/One-Poem-Suffices/scaling-thoughts"
+    ]
   }
 ]
