@@ -4,28 +4,28 @@
 
 | ID                       | 适配状态 | 来源                                                                            | 方向                                          | 已验证发现入口     | 中文 / 本地化                  | 备注                                                               |
 | ------------------------ | -------- | ------------------------------------------------------------------------------- | --------------------------------------------- | ------------------ | ------------------------------ | ------------------------------------------------------------------ |
-| `openai`               | 已适配   | [OpenAI](https://openai.com/news/)                                               | LLM / Agent / Research                        | RSS + Sitemap      | 官方简体中文优先，否则模型翻译 | 需要补通用官方本地化解析                                           |
-| `anthropic`            | 已适配   | [Anthropic](https://www.anthropic.com/research)                                  | LLM / Agent / Safety                          | Sitemap            | 模型翻译                       | 已限制文章路径                                                     |
-| `cloudflare`           | 已适配   | [Cloudflare Blog](https://blog.cloudflare.com/)                                  | Engineering / Infrastructure                  | RSS + Sitemap      | 模型翻译                       | 当前非扩展重点                                                     |
+| `openai`               | 已适配   | [OpenAI](https://openai.com/news/)                                               | LLM / Agent / Research                        | Sitemap 分类白名单 | 官方简体中文优先，否则模型翻译 | 仅收录 research/engineering/safety/security 分类；hrefLang alternate 命中即直通中文原文 | https://openai.com/news/research/ https://openai.com/news/safety-alignment/ https://openai.com/news/engineering/ https://openai.com/news/security/ (中文: https://openai.com/zh-Hans-CN/news/research/)
+| `anthropic`            | 已适配   | [Anthropic](https://www.anthropic.com/research)                                  | LLM / Agent / Safety                          | Sitemap            | 模型翻译                       | 仅收录 /research 与 /engineering，排除 /news 公司公告 | https://www.anthropic.com/research https://www.anthropic.com/engineering
+| `cloudflare`           | 已适配   | [Cloudflare Blog](https://blog.cloudflare.com/)                                  | Engineering / Infrastructure                  | RSS + Sitemap      | 模型翻译                       | https://blog.cloudflare.com/ (仅英文，排除 20 个本地化前缀) |
 | `simon-willison`       | 已适配   | [Simon Willison&#39;s Weblog](https://simonwillison.net/)                        | LLM / AI Engineering                          | Atom + Sitemap     | 模型翻译                       | 已进入更新与展示链路                                               |
 | `lilian-weng`          | 已适配   | [Lil&#39;Log](https://lilianweng.github.io/)                                     | LLM / Agent / Research                        | RSS + Sitemap      | 模型翻译                       | 已进入更新与展示链路                                               |
-| `langchain`            | 正在适配 | [LangChain Blog](https://www.langchain.com/blog)                                 | Agent Framework / Evals / Observability       | RSS + Sitemap      | 无已知官方中文                 | `dry-run-only`；RSS 与页面日期可能不一致；完整适配最高优先级     |
-| `cursor`               | 正在适配 | [Cursor Blog](https://cursor.com/blog)                                           | Coding Agent / Model Training / Agent Harness | 列表页             | 有多语言路由，中文质量待核     | `dry-run-only`；RSS 已停更，Sitemap 日期无效；完整适配第二优先级 |
-| `hugging-face`         | 正在适配 | [Hugging Face Blog](https://huggingface.co/blog)                                 | 开源 LLM / 模型工具链                         | RSS + Sitemap      | 待逐站核验                     | `dry-run-only`；来源量大，需要增量限制和内容过滤                 |
-| `qwen`                 | 正在适配 | [Qwen Blog](https://qwenlm.github.io/blog/)                                      | LLM / 多模态 / Agent                          | Sitemap            | 部分文章有官方简体中文         | `dry-run-only`；官方中文优先，不重复翻译                         |
-| `google-deepmind`      | 正在适配 | [Google DeepMind](https://deepmind.google/blog/)                                 | 前沿模型 / AI Safety / Science                | RSS + Sitemap      | 待逐站核验                     | `dry-run-only`；与 Google Research 分开管理                      |
-| `microsoft-research`   | 正在适配 | [Microsoft Research](https://www.microsoft.com/en-us/research/blog/)             | LLM / Agent / Research                        | RSS                | 待逐站核验                     | `dry-run-only`；需过滤非 AI 研究文章                             |
-| `google-research`      | 正在适配 | [Google Research](https://research.google/blog/)                                 | AI / ML Research                              | RSS                | 待逐站核验                     | `dry-run-only`；Readability 当前会丢失正文图片                   |
-| `meta-ai`              | 正在适配 | [Meta AI](https://ai.meta.com/blog/)                                             | Llama / 生成式 AI / Research                  | 列表页             | 待逐站核验                     | `dry-run-only`；缺机器可读日期，完整适配阻塞                     |
-| `eleuther-ai`          | 正在适配 | [EleutherAI Blog](https://blog.eleuther.ai/)                                     | 开源 LLM / 可解释性 / Safety                  | RSS + Sitemap      | 无已知官方中文                 | `dry-run-only`；超长文章需要翻译分块与恢复机制                   |
-| `mistral-ai`           | 正在适配 | [Mistral AI News](https://mistral.ai/news/)                                      | 开源模型 / 模型研究                           | RSS                | 待逐站核验                     | `dry-run-only`；本地访问依赖代理                                 |
-| `amazon-science`       | 正在适配 | [Amazon Science Blog](https://www.amazon.science/blog)                           | AI Research                                   | 列表页             | 待逐站核验                     | `dry-run-only`；当前仅覆盖列表首页约 13 篇                       |
-| `chip-huyen`           | 正在适配 | [Chip Huyen](https://huyenchip.com/blog/)                                        | ML Systems / LLM Engineering                  | RSS + Sitemap      | 无已知官方中文                 | `dry-run-only`；更新频率较低，适合精选                           |
-| `sebastian-raschka`    | 正在适配 | [Ahead of AI](https://magazine.sebastianraschka.com/)                            | LLM 训练 / 微调 / Research                    | RSS + Sitemap      | 无已知官方中文                 | `dry-run-only`；Substack 页面较长                                |
-| `hamel-husain`         | 正在适配 | [Hamel Husain](https://hamel.dev/blog/)                                          | Agent / Evals / AI 产品                       | RSS                | 无已知官方中文                 | `dry-run-only`；与当前方向高度一致                               |
-| `eugene-yan`           | 正在适配 | [Eugene Yan](https://eugeneyan.com/)                                             | Applied ML / LLM / 产品实践                   | RSS + Sitemap      | 无已知官方中文                 | `dry-run-only`；必须限制 `/writing` 路径                       |
-| `jay-alammar`          | 正在适配 | [Jay Alammar / Language Models &amp; Co.](https://newsletter.languagemodels.co/) | LLM 可视化教育                                | RSS                | 无已知官方中文                 | `dry-run-only`；图片必须保留原链                                 |
-| `andrej-karpathy`      | 正在适配 | [Andrej Karpathy](https://karpathy.github.io/)                                   | LLM 教育 / 个人思考                           | RSS                | 无已知官方中文                 | `dry-run-only`；更新较低频，适合精选                             |
+| `langchain`            | 正在适配 | [LangChain Blog](https://www.langchain.com/blog)                                 | Agent Framework / Evals / Observability       | RSS + Sitemap      | 无已知官方中文                 | https://www.langchain.com/blog (排除 customers/newsletter) |
+| `cursor`               | 正在适配 | [Cursor Blog](https://cursor.com/blog)                                           | Coding Agent / Model Training / Agent Harness | 列表页             | 有多语言路由，中文质量待核     | https://cursor.com/blog (sitemap 补充) |
+| `hugging-face`         | 正在适配 | [Hugging Face Blog](https://huggingface.co/blog)                                 | 开源 LLM / 模型工具链                         | RSS + Sitemap      | 待逐站核验                     | https://huggingface.co/blog (仅官方 /blog/<slug>/，排除 org 投稿) |
+| `qwen`                 | 正在适配 | [Qwen Blog](https://qwenlm.github.io/blog/)                                      | LLM / 多模态 / Agent                          | Sitemap            | 部分文章有官方简体中文         | https://qwenlm.github.io/blog/ (中文 /zh/blog/ 近满) |
+| `google-deepmind`      | 正在适配 | [Google DeepMind](https://deepmind.google/blog/)                                 | 前沿模型 / AI Safety / Science                | RSS + Sitemap      | 待逐站核验                     | https://deepmind.google/blog/ (排除政企合作/资助公告) |
+| `microsoft-research`   | 正在适配 | [Microsoft Research](https://www.microsoft.com/en-us/research/blog/)             | LLM / Agent / Research                        | RSS                | 待逐站核验                     | https://www.microsoft.com/en-us/research/blog/ |
+| `google-research`      | 正在适配 | [Google Research](https://research.google/blog/)                                 | AI / ML Research                              | RSS                | 待逐站核验                     | https://research.google/blog/ |
+| `meta-ai`              | 正在适配 | [Meta AI](https://ai.meta.com/blog/)                                             | Llama / 生成式 AI / Research                  | 列表页             | 待逐站核验                     | https://ai.meta.com/blog/ |
+| `eleuther-ai`          | 正在适配 | [EleutherAI Blog](https://blog.eleuther.ai/)                                     | 开源 LLM / 可解释性 / Safety                  | RSS + Sitemap      | 无已知官方中文                 | https://blog.eleuther.ai/ (根 slug，排除 categories) |
+| `mistral-ai`           | 正在适配 | [Mistral AI News](https://mistral.ai/news/)                                      | 开源模型 / 模型研究                           | RSS                | 待逐站核验                     | https://mistral.ai/news/ (排除消费产品营销/公司新闻) |
+| `amazon-science`       | 正在适配 | [Amazon Science Blog](https://www.amazon.science/blog)                           | AI Research                                   | 列表页             | 待逐站核验                     | https://www.amazon.science/blog (排除非 AI 工程科普) |
+| `chip-huyen`           | 正在适配 | [Chip Huyen](https://huyenchip.com/blog/)                                        | ML Systems / LLM Engineering                  | RSS + Sitemap      | 无已知官方中文                 | https://huyenchip.com/ (日期路径文章 /YYYY/MM/DD/<slug>.html) |
+| `sebastian-raschka`    | 正在适配 | [Ahead of AI](https://magazine.sebastianraschka.com/)                            | LLM 训练 / 微调 / Research                    | RSS + Sitemap      | 无已知官方中文                 | https://magazine.sebastianraschka.com/ (/p/<slug>) |
+| `hamel-husain`         | 正在适配 | [Hamel Husain](https://hamel.dev/blog/)                                          | Agent / Evals / AI 产品                       | RSS                | 无已知官方中文                 | https://hamel.dev/blog/ |
+| `eugene-yan`           | 正在适配 | [Eugene Yan](https://eugeneyan.com/)                                             | Applied ML / LLM / 产品实践                   | RSS + Sitemap      | 无已知官方中文                 | https://eugeneyan.com/writing/ (排除站外跳转占位) |
+| `jay-alammar`          | 正在适配 | [Jay Alammar / Language Models &amp; Co.](https://newsletter.languagemodels.co/) | LLM 可视化教育                                | RSS                | 无已知官方中文                 | https://newsletter.languagemodels.co/ (/p/<slug>) |
+| `andrej-karpathy`      | 正在适配 | [Andrej Karpathy](https://karpathy.github.io/)                                   | LLM 教育 / 个人思考                           | RSS                | 无已知官方中文                 | https://karpathy.github.io/ (YYYY/MM/DD/<slug>/) |
 | `one-poem-suffices`    | 正在适配 | [One Poem Suffices](https://keli-wen.github.io/One-Poem-Suffices/)               | LLM / Agent / Context Engineering             | Sitemap            | 中文原文，en 双语              | `dry-run-only`；无 RSS；sitemap 无机器可读日期，完整适配阻塞   |
 | `github-engineering`   | 计划中   | [GitHub Engineering](https://github.blog/engineering/)                           | Developer Platform / Engineering              | RSS                | 待核验                         | 通用工程来源，后续收录                                             |
 | `trail-of-bits`        | 计划中   | [Trail of Bits](https://blog.trailofbits.com/)                                   | Security / Program Analysis                   | RSS 待复核         | 待核验                         | 安全方向，后续收录                                                 |
@@ -67,13 +67,11 @@
 
 ## 当前推进顺序
 
-1. 补齐官方中文 / 原生中文优先、图片原链、翻译与分类解耦等共性能力。
-2. LangChain 完整适配。
-3. Cursor 完整适配。
-4. Hugging Face 完整适配。
-5. Qwen 完整适配。
+1. 补齐共性能力：Readability 正文图片保留（google-research / amazon-science 前置）、可见文本日期解析（meta-ai / one-poem-suffices 前置）、zh 路径探测与 en/zh 去重（cursor / qwen 前置）、验证文件与站外跳转过滤（chip-huyen / eugene-yan 前置）、Hugging Face 增量限制。
+2. 共性能力就绪后，按序推进 Cursor、Qwen、Hugging Face 完整适配。
+3. 已适配来源持续运行增量更新并抽检质量。
 
-17 个正在适配来源的真实 dry-run 结果见 [`docs/sources/scaffold-validation-2026-08-09.md`](sources/scaffold-validation-2026-08-09.md)。
+2026-08-09 的 17 个正在适配来源 dry-run 结果见 [`docs/sources/scaffold-validation-2026-08-09.md`](sources/scaffold-validation-2026-08-09.md)；2026-08-10 逐站审计报告与逐源 URL 边界核验（`*-2026-08-10-urlcheck.md`）见 [`docs/sources/`](sources/)。当前 10 个已适配来源。
 发现、官方中文、图片和翻译分块的 V2 设计与启用门槛见 [`docs/update-pipeline-v2.md`](update-pipeline-v2.md)。
 
 ## 暂缓 / 不纳入
@@ -92,9 +90,14 @@
 
 ## 共性能力待办
 
-- 官方中文 / 原生中文优先，未命中才调用翻译模型。
-- 翻译与分类解耦，允许不翻译但仍分类。
-- 记录原文 URL、官方本地化 URL 和内容生成方式。
+- [已完成] 官方中文 / 原生中文优先：抓取层 alternate 探测（`fetchArticleWithLocalization`），兼容 `hreflang` 与 `hrefLang`（openai），命中即直通中文原文，不调用翻译模型。
+- [已完成] 翻译与分类解耦：V2 执行器独立分类调用；中文直通仅分类不翻译。
+- [已完成] 记录原文 URL、官方本地化 URL 与内容生成方式：frontmatter `original_url` / `original_zh_url` / `translation_status`。
+- [已完成] 来源 URL 边界治理：`article_paths` / `exclude_paths` 支持 `^` 正则；逐源核验技术内容 vs 公告/本地化/社区投稿（见 `*-2026-08-10-urlcheck.md`）。
+- 增加 zh 路径探测与 en/zh slug 去重（cursor / qwen 前置）。
+- 增加可见文本日期解析（meta-ai / one-poem-suffices 前置）。
+- 修复 Readability 正文图片丢失（google-research / amazon-science 前置）。
+- 为 Hugging Face 增加 org 投稿过滤落地（已配置，待管线实测）。
 - [脚手架完成] 处理 `src`、`srcset`、`data-src`、`data-lazy-src`、`data-original` 等图片地址并保留原链。
 - [脚手架完成] 翻译前保护链接和图片 URL，翻译后严格校验并原样恢复。
 - [已完成] 增加来源自动审计命令，输出各发现入口与三篇样本报告。

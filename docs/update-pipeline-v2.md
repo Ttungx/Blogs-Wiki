@@ -1,6 +1,6 @@
 # 博客发现与翻译管线 V2
 
-状态：脚手架阶段。默认生产翻译仍使用 V1；V2 只提供审计和纯函数规划，不写文章。
+状态：核心能力已接线。官方中文 / 原生中文直通、翻译与分类解耦已进入生产路径；V2 分块翻译执行器（`translate-v2.ts`）已实现并通过离线测试，默认仍走 V1，用 `TRANSLATION_PIPELINE=v2` 显式启用。
 
 ## 目标
 
@@ -10,8 +10,8 @@
 
 1. 配置校验：每个来源必须显式声明 `active` 或 `dry-run-only`，新增来源默认不能进入翻译和持久化。
 2. 多入口诊断：审计 RSS / Atom、Sitemap、列表页各自的命中数、耗时与错误；生产发现仍沿用首个成功入口。
-3. 官方中文优先：解析页面 `rel=alternate` + `hreflang`，优先级为 `zh-Hans-CN`、`zh-CN`、`zh-Hans`、`zh-SG`、`zh`。
-4. 原生中文直通：正文中文比例达到门槛时不调用翻译模型，但后续仍需独立分类。
+3. 官方中文优先：抓取层探测 `rel=alternate` + `hreflang` / `hrefLang`（openai 用驼峰拼写，优先级 `zh-Hans-CN`、`zh-CN`、`zh-Hans`、`zh-SG`、`zh`），命中则抓取中文页并标记 `contentSource: 'official-zh'`，跳过模型翻译。openai 实测已直通官方中文原文。
+4. 原生中文直通：`lang=zh` 或中文比例达门槛时直通，仅分类不翻译。
 5. 结构化翻译：Markdown AST 保护 URL、图片 URL、代码和 HTML，再按标题与顶层结构块分块。模型返回后严格核对并恢复占位符；保证语义与目标值不变，不承诺 Markdown 字节级格式不变。
 6. 图片只引用远程原链：解析 `src`、`srcset`、`data-src`、`data-lazy-src`、`data-original`，不下载图片。
 
@@ -23,8 +23,11 @@
 | `network.ts` | 更新与审计共用代理 / `NO_PROXY` 路由 | 是 |
 | `discovery.ts#diagnoseSourceDiscovery` | 跑完全部发现入口并输出诊断 | 否，仅审计 |
 | `audit.ts` | 只读来源审计与样本报告 | 否 |
-| `localization.ts` | 官方中文 alternate 解析与选择 | 否，纯函数 |
-| `translation-plan.ts` | AST 保护、分块、中文判断和翻译规划 | 否，纯函数 |
+| `fetch.ts#fetchArticleWithLocalization` | 官方中文 alternate 优先抓取（`prefer_official_zh`） | 是 |
+| `localization.ts` | 官方中文 alternate 解析与选择 | 是（经 fetch 调用） |
+| `translate-v2.ts` | V2 执行器：AST 分块翻译 + 分类解耦 | 是（`TRANSLATION_PIPELINE=v2`） |
+| `translation-plan.ts` | AST 保护、分块、中文判断和翻译规划 | 是（经 translate-v2） |
+| `persist.ts` | frontmatter 增加 `translation_status` / `original_zh_url` | 是 |
 
 ## 使用方式
 
@@ -40,6 +43,11 @@ npm run audit:source -- --source cursor --samples 3 --json
 ```
 
 审计通过不等于自动激活。必须人工检查三篇样本，确认日期、正文、代码块、表格、图片原链和中文策略，再把 `update_mode` 改为 `active`。
+
+```bash
+# 启用 V2 分块翻译执行器（默认仍为 V1）
+TRANSLATION_PIPELINE=v2 npm run update
+```
 
 ## 翻译质量与成本策略
 

@@ -29,7 +29,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 ## 路书（docs/，先读再动手）
 
 - `docs/blog-source-registry.md`：所有来源的适配状态登记表 + 当前推进顺序，唯一权威。改来源适配、审核候选来源前必读。
-- `docs/update-pipeline-v2.md`：V2 管线设计（官方中文优先、AST 保护翻译、审计门槛）。当前生产仍 V1，V2 仅审计与纯函数，不写文章。
+- `docs/update-pipeline-v2.md`：V2 管线设计（官方中文优先、AST 保护翻译、审计门槛）。官方中文/原生中文直通与分类解耦已接线；分块翻译执行器用 `TRANSLATION_PIPELINE=v2` 显式启用，默认仍 V1。
 - `docs/sources/`：逐站验证报告（如 `scaffold-validation-2026-08-09.md`）。
 
 ## 管线结构
