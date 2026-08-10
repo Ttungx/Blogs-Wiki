@@ -6,6 +6,7 @@ homepage_url: https://openai.com/
 blog_url: https://openai.com/news/
 domain: openai.com
 logo: https://learn.chatgpt.com/assets/OpenAI-black-monoblossom.svg
+logo_scale: 1.25
 rss_url: https://openai.com/news/rss.xml
 sitemap_url: https://openai.com/sitemap.xml
 categories:

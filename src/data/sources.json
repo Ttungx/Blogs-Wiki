@@ -6,12 +6,17 @@
     "homepage_url": "https://openai.com/",
     "blog_url": "https://openai.com/news/",
     "domain": "openai.com",
-    "rss_url": "https://openai.com/news/rss.xml",
     "sitemap_url": "https://openai.com/sitemap.xml",
     "update_mode": "active",
+    "prefer_official_zh": true,
+    "sitemap_include_paths": [
+      "/sitemap.xml/research/",
+      "/sitemap.xml/engineering/",
+      "/sitemap.xml/safety/",
+      "/sitemap.xml/security/"
+    ],
     "article_paths": [
-      "/index",
-      "/news"
+      "/index"
     ]
   },
   {
@@ -25,8 +30,7 @@
     "update_mode": "active",
     "article_paths": [
       "/research",
-      "/engineering",
-      "/news"
+      "/engineering"
     ]
   },
   {
@@ -38,7 +42,29 @@
     "domain": "blog.cloudflare.com",
     "rss_url": "https://blog.cloudflare.com/rss/",
     "sitemap_url": "https://blog.cloudflare.com/sitemap.xml",
-    "update_mode": "active"
+    "update_mode": "active",
+    "exclude_paths": [
+      "/zh-cn/",
+      "/ja-jp/",
+      "/fr-fr/",
+      "/de-de/",
+      "/ko-kr/",
+      "/es-es/",
+      "/zh-tw/",
+      "/pt-br/",
+      "/nl-nl/",
+      "/id-id/",
+      "/it-it/",
+      "/th-th/",
+      "/es-la/",
+      "/ru-ru/",
+      "/pl-pl/",
+      "/vi-vn/",
+      "/ar-ar/",
+      "/he-il/",
+      "/sv-se/",
+      "/tr-tr/"
+    ]
   },
   {
     "id": "simon-willison",
@@ -71,9 +97,14 @@
     "domain": "langchain.com",
     "rss_url": "https://www.langchain.com/blog/rss.xml",
     "sitemap_url": "https://www.langchain.com/sitemap.xml",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
-      "/blog"
+      "^/blog/[^/]+$"
+    ],
+    "exclude_paths": [
+      "^/blog/customers",
+      "^/blog/.*newsletter",
+      "^/blog/announcing-langsmith-is-now-a-transactable-offering"
     ]
   },
   {
@@ -89,7 +120,8 @@
     ],
     "exclude_paths": [
       "/blog/topic"
-    ]
+    ],
+    "sitemap_url": "https://cursor.com/sitemap.xml"
   },
   {
     "id": "hugging-face",
@@ -102,8 +134,9 @@
     "sitemap_url": "https://huggingface.co/sitemap-blog.xml",
     "update_mode": "dry-run-only",
     "article_paths": [
-      "/blog"
-    ]
+      "^/blog/[^/]+$"
+    ],
+    "exclude_paths": []
   },
   {
     "id": "qwen",
@@ -116,7 +149,8 @@
     "update_mode": "dry-run-only",
     "article_paths": [
       "/blog"
-    ]
+    ],
+    "prefer_official_zh": true
   },
   {
     "id": "google-deepmind",
@@ -127,9 +161,27 @@
     "domain": "deepmind.google",
     "rss_url": "https://deepmind.google/blog/rss.xml",
     "sitemap_url": "https://deepmind.google/sitemap.xml",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "/blog"
+    ],
+    "exclude_paths": [
+      "^/blog/.*bioresilience",
+      "^/blog/.*atl-saathi",
+      "^/blog/.*sierra-leone",
+      "^/blog/.*northern-ireland",
+      "^/blog/.*40m-commitment",
+      "^/blog/.*uk-ai-security",
+      "^/blog/.*uk-government",
+      "^/blog/.*department-of-energy",
+      "^/blog/.*republic-of-korea",
+      "^/blog/.*expanding-our-presence",
+      "^/blog/.*a24-announce",
+      "^/blog/.*accelerator-program",
+      "^/blog/.*multi-agent-ai-safety-research",
+      "^/blog/.*lyria-35",
+      "^/blog/.*partnering-with-industry-leaders",
+      "^/blog/.*singapores-ai-future"
     ]
   },
   {
@@ -140,7 +192,7 @@
     "blog_url": "https://www.microsoft.com/en-us/research/blog/",
     "domain": "microsoft.com",
     "rss_url": "https://www.microsoft.com/en-us/research/feed/",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "/en-us/research/blog"
     ]
@@ -168,7 +220,8 @@
     "update_mode": "dry-run-only",
     "article_paths": [
       "/blog"
-    ]
+    ],
+    "sitemap_url": "https://ai.meta.com/sitemap/ai_meta_com_sitemap.xml.gz"
   },
   {
     "id": "eleuther-ai",
@@ -179,7 +232,16 @@
     "domain": "blog.eleuther.ai",
     "rss_url": "https://blog.eleuther.ai/index.xml",
     "sitemap_url": "https://blog.eleuther.ai/sitemap.xml",
-    "update_mode": "dry-run-only"
+    "update_mode": "active",
+    "article_paths": [
+      "^/[^/]+$"
+    ],
+    "exclude_paths": [
+      "^/categories",
+      "^/$",
+      "^/nyt-yi-34b-response",
+      "^/contributor-spotlight-1"
+    ]
   },
   {
     "id": "mistral-ai",
@@ -189,9 +251,42 @@
     "blog_url": "https://mistral.ai/news/",
     "domain": "mistral.ai",
     "rss_url": "https://mistral.ai/news/rss",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "/news"
+    ],
+    "exclude_paths": [
+      "^/news/ai-now-summit-2026",
+      "^/news/mistral-ai-raises-1-7-b-to-accelerate-technological-progress-with-ai",
+      "^/news/vibe-agent",
+      "^/news/mistral-vibe-2-0",
+      "^/news/vibe-remote-agents-mistral-medium-3-5",
+      "^/news/accelerate-ai-native-industry",
+      "^/news/connectors",
+      "^/news/workflows",
+      "^/news/manage-prompts-and-skills-in-studio",
+      "^/news/more-control-over-connectors",
+      "^/news/ki-fur-deutschland",
+      "^/news/ai-studio",
+      "^/news/memory",
+      "^/news/le-chat-mcp-connectors-memories",
+      "^/news/le-chat-dives-deep",
+      "^/news/all-new-le-chat",
+      "^/news/le-chat-mistral",
+      "^/news/le-chat-enterprise",
+      "^/news/ai-for-citizens",
+      "^/news/mistral-afp",
+      "^/news/mistral-compute",
+      "^/news/mistral-code",
+      "^/news/customization",
+      "^/news/2024-ft-hackathon",
+      "^/news/mistral-ai-non-production-license-mnpl",
+      "^/news/build-tweak-repeat",
+      "^/news/about-mistral-ai",
+      "^/news/our-contribution-to-a-global-environmental-standard-for-ai",
+      "^/news/mistral-ai-and-nvidia-partner-to-accelerate-open-frontier-models",
+      "^/news/search-toolkit",
+      "^/news/forge"
     ]
   },
   {
@@ -204,6 +299,9 @@
     "update_mode": "dry-run-only",
     "article_paths": [
       "/blog"
+    ],
+    "exclude_paths": [
+      "/blog/the-fuel-of-the-future-is-already-here-why-triso-matters/"
     ]
   },
   {
@@ -215,7 +313,30 @@
     "domain": "huyenchip.com",
     "rss_url": "https://huyenchip.com/feed.xml",
     "sitemap_url": "https://huyenchip.com/sitemap.xml",
-    "update_mode": "dry-run-only"
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "^/\\d{4}/\\d{2}/\\d{2}/.+\\.html$"
+    ],
+    "exclude_paths": [
+      "^/stories",
+      "^/assets/",
+      "^/google40674044319d01f1\\.html$",
+      "^/mlops/?$",
+      "^/llama-",
+      "^/about/?$",
+      "^/archive/?$",
+      "^/blog/?$",
+      "^/books/?$",
+      "^/communication/?$",
+      "^/creators/?$",
+      "^/dotagents/?$",
+      "^/entanglements/?$",
+      "^/events/?$",
+      "^/list-100/?$",
+      "^/research/?$",
+      "^/start/?$",
+      "^/$"
+    ]
   },
   {
     "id": "sebastian-raschka",
@@ -226,7 +347,7 @@
     "domain": "magazine.sebastianraschka.com",
     "rss_url": "https://magazine.sebastianraschka.com/feed",
     "sitemap_url": "https://magazine.sebastianraschka.com/sitemap.xml",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "/p"
     ]
@@ -239,10 +360,11 @@
     "blog_url": "https://hamel.dev/blog/",
     "domain": "hamel.dev",
     "rss_url": "https://hamel.dev/index.xml",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "/blog"
-    ]
+    ],
+    "sitemap_url": "https://hamel.dev/sitemap.xml"
   },
   {
     "id": "eugene-yan",
@@ -256,6 +378,9 @@
     "update_mode": "dry-run-only",
     "article_paths": [
       "/writing"
+    ],
+    "exclude_paths": [
+      "/writing/secure-source-code"
     ]
   },
   {
@@ -266,9 +391,12 @@
     "blog_url": "https://newsletter.languagemodels.co/",
     "domain": "newsletter.languagemodels.co",
     "rss_url": "https://newsletter.languagemodels.co/feed",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "/p"
+    ],
+    "exclude_paths": [
+      "/p/coming-soon"
     ]
   },
   {
@@ -279,7 +407,14 @@
     "blog_url": "https://karpathy.github.io/",
     "domain": "karpathy.github.io",
     "rss_url": "https://karpathy.github.io/feed.xml",
-    "update_mode": "dry-run-only"
+    "update_mode": "active",
+    "exclude_paths": [
+      "/2020/06/11/biohacking-lite",
+      "/2021/06/21/blockchain",
+      "/2018/01/20/medium",
+      "/2021/03/27/forward-pass",
+      "/2015/11/14/ai"
+    ]
   },
   {
     "id": "one-poem-suffices",
