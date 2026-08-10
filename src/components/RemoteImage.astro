@@ -1,0 +1,13 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import { imagePath } from '../lib/urls';
+
+interface Props extends HTMLAttributes<'img'> {
+  src?: string;
+}
+
+const { src, ...attributes } = Astro.props;
+const resolvedSource = imagePath(src);
+---
+
+{resolvedSource && <img src={resolvedSource} {...attributes} />}

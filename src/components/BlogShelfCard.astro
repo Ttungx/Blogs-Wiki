@@ -10,12 +10,12 @@ interface Props {
 }
 
 const { blog, articleCount, index } = Astro.props;
-const { name, type, logo, avatar } = blog.data;
+const { name, type, logo, avatar, logoScale } = blog.data;
 ---
 
 <article class="shelf-card" style={`--shelf-index: ${index}`}>
   <a href={sitePath(`blogs/${blog.id}/`)} aria-label={`打开 ${name} 文章收集册`}>
-    <BlogMark {name} {type} {logo} {avatar} size="medium" />
+    <BlogMark {name} {type} {logo} {avatar} {logoScale} size="medium" />
     <span class="shelf-card-copy">
       <strong>{name}</strong>
       <span class:list={['shelf-card-kind', { 'shelf-card-kind--personal': type === 'personal' }]}>

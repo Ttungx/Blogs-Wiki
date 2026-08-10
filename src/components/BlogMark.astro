@@ -1,16 +1,21 @@
 ---
-import { assetPath } from '../lib/urls';
+import { assetPath, imagePath } from '../lib/urls';
 
 interface Props {
   name: string;
   logo?: string;
   avatar?: string;
+  logoScale?: number;
   type?: 'company' | 'personal';
   size?: 'small' | 'medium' | 'large';
 }
 
-const { name, logo, avatar, type = 'company', size = 'medium' } = Astro.props;
-const source = assetPath(type === 'personal' ? avatar ?? logo : logo ?? avatar);
+const { name, logo, avatar, logoScale, type = 'company', size = 'medium' } = Astro.props;
+const scaled = logoScale && logoScale > 0 && logoScale !== 1;
+const source = imagePath(
+  assetPath(type === 'personal' ? avatar ?? logo : logo ?? avatar),
+  size === 'large' ? 152 : size === 'medium' ? 116 : 72,
+);
 const initials = name
   .split(/[\s_-]+/)
   .filter(Boolean)
@@ -22,7 +27,19 @@ const initials = name
 
 <span class:list={['blog-mark', `blog-mark--${size}`, { 'blog-mark--portrait': type === 'personal' }] }>
   {source ? (
-    <img src={source} alt="" width="96" height="96" loading={size === 'large' ? 'eager' : 'lazy'} />
+    <>
+      <img
+        src={source}
+        alt=""
+        width="96"
+        height="96"
+        style={scaled ? { transform: `scale(${logoScale})` } : undefined}
+        loading={size === 'large' ? 'eager' : 'lazy'}
+        referrerpolicy="no-referrer"
+        onerror="this.style.display='none'; this.parentElement?.classList.add('blog-mark--broken')"
+      />
+      <span class="blog-mark-fallback" aria-hidden="true">{initials}</span>
+    </>
   ) : (
     <span aria-hidden="true">{initials}</span>
   )}

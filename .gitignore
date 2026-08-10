@@ -4,6 +4,7 @@ dist/
 .env
 .DS_Store
 *.log
+.zcode/
 
 # 文章正文与运行状态暂不入库（临时；恢复时删除以下两行）
 src/content/articles/

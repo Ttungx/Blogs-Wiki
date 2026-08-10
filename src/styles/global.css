@@ -45,8 +45,9 @@
 @layer base {
   :root {
     color-scheme: light;
-    --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong",
-      "SimSun", serif;
+    /* 标题与编辑性排版：中文统一改用无衬线（苹方/雅黑/思源黑体），避免宋体在小字与标题处发虚 */
+    --font-serif: "PingFang SC", "Microsoft YaHei", "Noto Sans SC",
+      "Source Han Sans SC", "Hiragino Sans GB", system-ui, sans-serif;
     --font-sans: Inter, "Noto Sans SC", "Source Han Sans SC", "PingFang SC",
       "Microsoft YaHei", system-ui, sans-serif;
     --text-primary: #1b1a18;
@@ -72,7 +73,7 @@
     --section-title-size: clamp(26px, 2.4vw, 34px);
     --subtitle-size: 16px;
     --source-name-size: 15px;
-    --source-meta-size: 10px;
+    --source-meta-size: 11px;
     --source-count-size: 12px;
     --shell: min(1370px, calc(100vw - 80px));
     --reader: min(760px, calc(100vw - 40px));
@@ -124,7 +125,7 @@
 
   .eyebrow {
     color: var(--text-tertiary);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.08em;
     line-height: 1.4;
@@ -268,6 +269,14 @@
     object-fit: cover;
   }
 
+  .blog-mark-fallback {
+    display: none;
+  }
+
+  .blog-mark--broken .blog-mark-fallback {
+    display: block;
+  }
+
   .category-pill {
     display: inline-flex;
     align-items: center;
@@ -276,7 +285,7 @@
     border: 1px solid var(--line-strong);
     border-radius: 999px;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1;
   }
 
@@ -312,7 +321,7 @@
 
   .section-heading > p {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .section-heading--compact h2 {
@@ -364,7 +373,7 @@
     font-family: var(--editorial);
     font-size: var(--hero-size);
     font-weight: 400;
-    letter-spacing: -0.035em;
+    letter-spacing: -0.02em;
     line-height: var(--hero-line-height);
     text-wrap: balance;
   }
@@ -524,7 +533,7 @@
     font-family: var(--editorial);
     font-size: var(--page-title-size);
     font-weight: 400;
-    letter-spacing: -0.035em;
+    letter-spacing: -0.02em;
     line-height: 1.05;
   }
 
@@ -548,7 +557,7 @@
     align-items: center;
     border-bottom: 1px solid var(--ink);
     color: var(--ink);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 550;
   }
 
@@ -583,11 +592,11 @@
   .collection-facts dt {
     margin-bottom: 8px;
     color: var(--faint);
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .collection-facts dd {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .fact-tags {
@@ -657,7 +666,7 @@
     margin-top: 18px;
     color: var(--muted);
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .featured-article-meta time {
@@ -690,7 +699,7 @@
     justify-content: space-between;
     padding-block: 20px 10px;
     color: var(--text-tertiary);
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
@@ -744,7 +753,7 @@
     padding-top: 5px;
     color: #8c8b87;
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.45;
   }
 
@@ -765,7 +774,7 @@
     margin-top: 6px;
     overflow: hidden;
     color: var(--text-tertiary);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.4;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -806,40 +815,31 @@
 
   .reader-source small {
     color: var(--faint);
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .reader-source strong {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 550;
   }
 
   .reader-source i {
     margin-left: 5px;
-    font-size: 12px;
+    font-size: 13px;
     font-style: normal;
   }
 
   .reader-title-block {
     max-width: 980px;
-    margin: 54px auto 0;
+    margin: 44px auto 0;
     text-align: center;
   }
 
-  .reader-kicker {
-    display: flex;
-    gap: 11px;
-    justify-content: center;
-    color: var(--muted);
-    font-size: 10px;
-  }
-
   .reader-title-block h1 {
-    margin-top: 22px;
     font-family: var(--editorial);
     font-size: var(--article-title-size);
     font-weight: 400;
-    letter-spacing: -0.035em;
+    letter-spacing: -0.02em;
     line-height: 1.12;
     text-wrap: balance;
   }
@@ -852,51 +852,30 @@
     line-height: 1.4;
   }
 
-  .reader-translation-note {
-    display: flex;
-    gap: 7px;
-    justify-content: center;
-    margin-top: 12px;
-    color: var(--text-tertiary);
-    font-size: 9px;
-    letter-spacing: 0.01em;
-  }
-
   .reader-meta-grid {
-    display: grid;
-    max-width: 980px;
-    grid-template-columns: 2fr 1fr 1fr auto;
-    margin: 44px auto 0;
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-  }
-
-  .reader-meta-grid > * {
-    min-height: 82px;
-    padding: 17px 20px;
-    border-right: 1px solid var(--line);
-  }
-
-  .reader-meta-grid > a {
     display: flex;
-    min-width: 135px;
-    gap: 14px;
-    align-items: center;
-    justify-content: space-between;
-    border-right: 0;
-    font-size: 11px;
-    font-weight: 550;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 16px 40px;
+    max-width: 980px;
+    margin: 40px auto 0;
+  }
+
+  .reader-meta-grid > div {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    text-align: center;
   }
 
   .reader-meta-grid > div > span {
-    display: block;
-    margin-bottom: 13px;
     color: var(--faint);
-    font-size: 8px;
+    font-size: 11px;
   }
 
   .reader-meta-grid strong {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 550;
   }
 
@@ -904,6 +883,19 @@
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
+    justify-content: center;
+  }
+
+  .reader-meta-grid .reader-meta-link {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    align-self: center;
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: 2px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 550;
   }
 
   .demo-notice {
@@ -920,7 +912,7 @@
 
   .demo-notice span {
     color: var(--accent);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -936,7 +928,7 @@
     font-family: var(--sans);
     font-size: clamp(17px, 1.3vw, 18px);
     letter-spacing: -0.006em;
-    line-height: 1.85;
+    line-height: 1.8;
   }
 
   .prose > * + * {
@@ -1099,6 +1091,23 @@
     border-top: 1px solid var(--line-strong);
   }
 
+  /* KaTeX 数学公式：与正文排版协调 */
+  .prose .katex {
+    font-size: 1.05em;
+  }
+
+  .prose .katex-display {
+    display: block;
+    margin-block: 1.8em;
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-align: center;
+  }
+
+  .prose .katex-display > .katex {
+    white-space: nowrap;
+  }
+
   .prose table {
     display: block;
     width: 100%;
@@ -1160,7 +1169,7 @@
   .reader-related-list time {
     color: var(--text-tertiary);
     font-family: var(--mono);
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .reader-related-copy {
@@ -1182,13 +1191,13 @@
   .reader-related-copy small {
     overflow: hidden;
     color: var(--text-tertiary);
-    font-size: 11px;
+    font-size: 12px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .reader-related-list i {
-    font-size: 11px;
+    font-size: 12px;
     font-style: normal;
   }
 
@@ -1233,21 +1242,21 @@
     font-family: var(--editorial);
     font-size: clamp(42px, 4.3vw, 60px);
     font-weight: 400;
-    letter-spacing: -0.035em;
+    letter-spacing: -0.02em;
     line-height: 1.08;
   }
 
   .search-hero > p:last-child {
     margin-top: 18px;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .search-form label {
     display: block;
     margin-bottom: 12px;
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .search-field {
@@ -1287,7 +1296,7 @@
     border-radius: 4px;
     color: var(--muted);
     font-family: var(--mono);
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .search-status {
@@ -1295,7 +1304,7 @@
     justify-content: space-between;
     padding-block: 18px;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .search-result {
@@ -1316,7 +1325,7 @@
     padding-top: 4px;
     color: var(--faint);
     font-family: var(--mono);
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .search-result-copy {
@@ -1328,7 +1337,7 @@
   .search-result-meta {
     margin-bottom: 6px;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .search-result-copy strong {
@@ -1342,7 +1351,7 @@
     margin-top: 5px;
     overflow: hidden;
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -1362,14 +1371,14 @@
     font-family: var(--editorial);
     font-size: clamp(40px, 4.2vw, 58px);
     font-weight: 400;
-    letter-spacing: -0.035em;
+    letter-spacing: -0.02em;
     line-height: 1.12;
   }
 
   .not-found > p:nth-of-type(2) {
     margin-top: 23px;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .not-found > a {
@@ -1398,27 +1407,21 @@
       column-gap: 0;
     }
 
-    .collection-facts,
-    .reader-meta-grid {
+    .collection-facts {
       grid-template-columns: 1fr 1fr;
     }
 
-    .collection-facts > div:nth-child(2),
-    .reader-meta-grid > :nth-child(2) {
+    .collection-facts > div:nth-child(2) {
       border-right: 0;
     }
 
     .collection-facts > div:last-child,
-    .reader-meta-grid > :nth-child(n + 3) {
+    .collection-facts > div:nth-child(n + 3) {
       border-top: 1px solid var(--line);
     }
 
     .collection-facts > div:last-child {
       grid-column: 1 / -1;
-    }
-
-    .reader-meta-grid > a {
-      border-right: 0;
     }
   }
 
@@ -1571,7 +1574,7 @@
     .article-index-heading {
       align-items: flex-start;
       gap: 16px;
-      font-size: 9px;
+      font-size: 11px;
     }
 
     .article-index-heading > span {
@@ -1606,16 +1609,11 @@
     }
 
     .reader-title-block {
-      margin-top: 38px;
+      margin-top: 32px;
     }
 
     .reader-title-block h1 {
       font-size: 38px;
-    }
-
-    .reader-meta-grid > * {
-      min-height: 70px;
-      padding: 14px 12px;
     }
 
     .reader-content {

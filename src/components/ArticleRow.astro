@@ -1,5 +1,6 @@
 ---
 import CategoryPill from './CategoryPill.astro';
+import RemoteImage from './RemoteImage.astro';
 import { sitePath } from '../lib/urls';
 
 interface Props {
@@ -40,7 +41,14 @@ const day = String(date.getDate()).padStart(2, '0');
     </span>
     {imageUrl && (
       <span class="article-row-image" aria-hidden="true">
-        <img src={imageUrl} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+        <RemoteImage
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerpolicy="no-referrer"
+          onerror="this.closest('.article-row-image')?.remove()"
+        />
       </span>
     )}
   </a>

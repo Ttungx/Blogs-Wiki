@@ -3,6 +3,7 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 import ArticleRow from '../../components/ArticleRow.astro';
 import BlogMark from '../../components/BlogMark.astro';
 import CategoryPill from '../../components/CategoryPill.astro';
+import RemoteImage from '../../components/RemoteImage.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { byOriginalPublicationDateDesc } from '../../lib/article-dates';
 import { sitePath } from '../../lib/urls';
@@ -53,7 +54,7 @@ const featuredDateText = featuredDate
   <main id="main-content" data-pagefind-body>
     <section class="collection-hero shell">
       <div class="collection-identity">
-        <BlogMark {name} {type} {logo} {avatar} size="large" />
+        <BlogMark {name} {type} {logo} {avatar} logoScale={blog.data.logoScale} size="large" />
         <div>
           <p class="eyebrow">{type === 'personal' ? 'Independent archive' : 'Publication archive'}</p>
           <h1 data-pagefind-meta="title">{name}</h1>
@@ -106,13 +107,14 @@ const featuredDateText = featuredDate
             </span>
             {featuredImage && (
               <span class="featured-article-image" aria-hidden="true">
-                <img
+                <RemoteImage
                   src={featuredImage}
                   alt=""
                   loading="eager"
                   decoding="async"
                   fetchpriority="high"
                   referrerpolicy="no-referrer"
+                  onerror="this.closest('.featured-article-image')?.remove()"
                 />
               </span>
             )}

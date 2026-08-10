@@ -2,6 +2,7 @@
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BlogMark from '../../components/BlogMark.astro';
 import CategoryPill from '../../components/CategoryPill.astro';
+import RemoteImage from '../../components/RemoteImage.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { byOriginalPublicationDateDesc } from '../../lib/article-dates';
 import { sitePath } from '../../lib/urls';
@@ -58,6 +59,7 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
             type={blog.data.type}
             logo={blog.data.logo}
             avatar={blog.data.avatar}
+            logoScale={blog.data.logoScale}
             size="small"
           />
           <span>
@@ -68,18 +70,23 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
         </a>
 
         <div class="reader-title-block">
-          <div class="reader-kicker">
-            <span>原文发表于</span>
-            <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
-          </div>
           <h1 data-pagefind-meta="title">{article.data.translatedTitle}</h1>
           <p class="reader-original-title" lang="en">{article.data.originalTitle}</p>
-          <p class="reader-translation-note">
-            译于 <time datetime={translatedDate.toISOString()}>{dateFormatter.format(translatedDate)}</time>
-          </p>
         </div>
 
         <div class="reader-meta-grid">
+          <div>
+            <span>原文发表于</span>
+            <strong>
+              <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
+            </strong>
+          </div>
+          <div>
+            <span>译于</span>
+            <strong>
+              <time datetime={translatedDate.toISOString()}>{dateFormatter.format(translatedDate)}</time>
+            </strong>
+          </div>
           <div>
             <span>分类</span>
             <p>
@@ -94,7 +101,7 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
             <span>原文语言</span>
             <strong>{article.data.originalLanguage.toUpperCase()}</strong>
           </div>
-          <a href={article.data.originalUrl} target="_blank" rel="noreferrer">
+          <a class="reader-meta-link" href={article.data.originalUrl} target="_blank" rel="noreferrer">
             查看原文 <span aria-hidden="true">↗</span>
           </a>
         </div>
@@ -108,7 +115,7 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
       )}
 
       <div class="reader-content prose">
-        <Content />
+        <Content components={{ img: RemoteImage }} />
       </div>
 
       {relatedArticles.length > 0 && (
