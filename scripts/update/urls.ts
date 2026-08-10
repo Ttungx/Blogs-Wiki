@@ -16,7 +16,10 @@ const NON_ARTICLE_PATHS = [
   /\/(?:tag|tags|category|categories|author|authors)(?:\/|$)/i,
   /\/(?:page|search)(?:\/|$)/i,
   /\/(?:careers?|jobs|about|about-us|company|team|contact|help|support)(?:\/|$)/i,
-  /\/(?:legal|privacy|terms|security|press|newsroom|media|pricing)(?:\/|$)/i,
+  // NOTE: `security` is intentionally excluded — it is a valid technical
+  // topic prefix for sources like OpenAI Security / Google Security Blog,
+  // not only a legal/contact page. Press/newsroom/media stay excluded.
+  /\/(?:legal|privacy|terms|press|newsroom|media|pricing)(?:\/|$)/i,
   /\/(?:index|default)\.html?$/i,
   /\.(?:xml|json|txt|jpg|jpeg|png|gif|webp|svg|pdf|zip)$/i,
 ];

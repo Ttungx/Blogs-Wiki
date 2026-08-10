@@ -94,6 +94,12 @@ function buildFrontmatter(
   lines.push('categories:');
   for (const category of translation.categories) lines.push(`  - ${yamlScalar(category)}`);
   lines.push(`translation_model: ${yamlScalar(translation.model)}`);
+  if (translation.translationStatus) {
+    lines.push(`translation_status: ${yamlScalar(translation.translationStatus)}`);
+  }
+  if (translation.originalZhUrl) {
+    lines.push(`original_zh_url: ${yamlScalar(translation.originalZhUrl)}`);
+  }
   lines.push(`translated_at: ${yamlDate(translatedAt)}`);
   if (article.author) lines.push(`author: ${yamlScalar(article.author)}`);
   lines.push(`source_domain: ${yamlScalar(blog.domain)}`);

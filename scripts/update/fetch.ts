@@ -4,6 +4,7 @@ import { JSDOM } from 'jsdom';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { proxyUrlFor } from './network';
+import { findOfficialChineseUrl } from './localization';
 import type { DiscoveredArticle, ExtractedArticle, FetchLike, SourceConfig } from './types';
 
 const execFileAsync = promisify(execFile);
@@ -109,6 +110,23 @@ function absoluteHttpUrl(value: string | undefined, baseUrl: string): string | u
   }
 }
 
+/**
+ * Page URLs sometimes omit the trailing slash (e.g. Jekyll permalinks like
+ * `/posts/2026-07-04-harness`). URL resolution against such a base treats the
+ * last path segment as a file name, so relative image/link paths lose the
+ * article directory. Normalize the base to a directory form when the last
+ * segment has no file extension.
+ */
+export function directoryBaseUrl(baseUrl: string): string {
+  const url = new URL(baseUrl);
+  const pathname = url.pathname;
+  const lastSegment = pathname.split('/').filter(Boolean).pop() ?? '';
+  if (!pathname.endsWith('/') && !/\.[a-z0-9]{1,8}$/i.test(lastSegment)) {
+    url.pathname = `${pathname}/`;
+  }
+  return url.toString();
+}
+
 function resolveHeadImage(document: Document, articleUrl: string): string | undefined {
   const value =
     metaContent(document, [
@@ -169,15 +187,21 @@ function resolveLanguage(document: Document): string {
 const NOISE_CLASS_PATTERN =
   /(^|[\s_-])(share|social|sharing|related|recommend(?:ed|ation)?|newsletter|subscribe|comment(?:s)?|author[-_]?(?:bio|box|signature)|signature|footer|sidebar|promo|advert)([\s_-]|$)/i;
 
-function removeNoiseBlocks(content: Element, title: string): void {
+export function removeNoiseBlocks(content: Element, title: string): void {
   for (const el of content.querySelectorAll(
     'footer, nav, [role="navigation"], [role="complementary"], [role="contentinfo"]',
   )) {
+    // A <footer> inside a <blockquote> is testimonial attribution (speaker
+    // name/title), not page chrome — keep it.
+    if (el.tagName === 'FOOTER' && el.closest('blockquote')) continue;
     el.remove();
   }
 
   const titleKeyword = title.trim().toLowerCase();
   for (const el of content.querySelectorAll('[class], [id]')) {
+    // Never strip quote/testimonial internals: class tokens like "footer"
+    // (e.g. .quote-footer) would otherwise delete speaker attribution.
+    if (el.closest('blockquote')) continue;
     const text = (el.textContent ?? '').trim();
     if (text.length > 1000) continue; // likely article content, not a widget
     const token = `${el.getAttribute('class') ?? ''} ${el.getAttribute('id') ?? ''}`;
@@ -191,6 +215,113 @@ function removeNoiseBlocks(content: Element, title: string): void {
     ) {
       el.remove(); // duplicated title banner / share headline
     }
+  }
+}
+
+/**
+ * Readability unconditionally strips every <footer> from the extracted article
+ * content (`_clean(articleContent, "footer")`), and its unlikely-candidate
+ * scan removes elements whose class/id contains noise tokens such as "footer"
+ * (e.g. `.quote-footer`). Both would destroy testimonial attribution
+ * (`footer > cite` inside a <blockquote>). Rename blockquote-internal footers
+ * to a neutral, attribute-free <span> before extraction so speaker names
+ * survive; page-level footers are still dropped as noise afterwards.
+ */
+function preserveBlockquoteFooters(document: Document): void {
+  for (const footer of document.querySelectorAll('blockquote footer')) {
+    const span = document.createElement('span');
+    while (footer.firstChild) span.appendChild(footer.firstChild);
+    footer.replaceWith(span);
+  }
+}
+
+const CAROUSEL_CONTAINER_PATTERN = /(^|[\s_-])carousel([\s_-]|$)/i;
+const CAROUSEL_ITEM_PATTERN = /(^|[\s_-])carousel[-_]?item([\s_-]|$)/i;
+const CAROUSEL_UI_PATTERN =
+  /(^|[\s_-])(pagination|dots?|indicators?|arrows?|prev|next|controls?|navigation|nav|counter|progress)([\s_-]|$)/i;
+const LOGO_ALT_PATTERN = /logo/i;
+const MAX_CAROUSEL_ITEMS = 3;
+
+function isCarouselItem(element: Element): boolean {
+  const token = `${element.getAttribute('class') ?? ''} ${element.getAttribute('id') ?? ''}`;
+  if (CAROUSEL_ITEM_PATTERN.test(token)) return true;
+  const image = element.querySelector('img');
+  return Boolean(
+    image && LOGO_ALT_PATTERN.test(image.getAttribute('alt') ?? '') && element.querySelector('blockquote'),
+  );
+}
+
+function findCarouselContainers(root: Element): Element[] {
+  const candidates: Element[] = [];
+  const scan = [root, ...root.querySelectorAll('*')];
+
+  // Heuristic: an element whose class/id mentions "carousel" ...
+  for (const element of scan) {
+    const token = `${element.getAttribute('class') ?? ''} ${element.getAttribute('id') ?? ''}`;
+    if (CAROUSEL_CONTAINER_PATTERN.test(token)) candidates.push(element);
+  }
+  // ... or a wrapper that directly carries at least 2 items shaped like
+  // "logo image + blockquote" (this is what survives Readability, which
+  // strips class names before Turndown ever runs).
+  for (const element of scan) {
+    let itemChildren = 0;
+    for (const child of element.children) {
+      if (isCarouselItem(child)) itemChildren += 1;
+    }
+    if (itemChildren >= 2) candidates.push(element);
+  }
+
+  const unique = [...new Set(candidates)];
+  // Only the outermost container of a nesting chain is collapsed, otherwise
+  // inner wrappers (e.g. a track) would be processed repeatedly.
+  return unique.filter(
+    (candidate) => !unique.some((other) => other !== candidate && other.contains(candidate)),
+  );
+}
+
+function findCarouselItems(container: Element): Element[] {
+  const matches = [...container.querySelectorAll('*')].filter((element) => isCarouselItem(element));
+  // A wrapper (e.g. the track) also matches the "logo + quote" shape, so keep
+  // only the deepest matches — an element that contains another match is a
+  // wrapper, not a slide.
+  return matches.filter((item) => !matches.some((other) => other !== item && item.contains(other)));
+}
+
+/**
+ * Collapse testimonial carousels before noise removal and Markdown conversion.
+ * Readability flattens the whole carousel DOM (e.g. 16 slides), which Turndown
+ * then renders as 16 standalone logo images plus un-attributed quotes. Keep
+ * only the first MAX_CAROUSEL_ITEMS slides (logo + quote + attribution), drop
+ * UI chrome (page counters, arrows, dots, navigation) and append a pointer to
+ * the original article. Non-carousel content is left untouched.
+ */
+export function collapseCarousels(root: Element, articleUrl: string): void {
+  const containers = findCarouselContainers(root);
+  if (!containers.length) return;
+
+  for (const container of containers) {
+    const items = findCarouselItems(container);
+    if (!items.length) continue;
+
+    const kept = items.slice(0, MAX_CAROUSEL_ITEMS);
+    const keptSet = new Set(kept);
+    for (const item of items.slice(MAX_CAROUSEL_ITEMS)) item.remove();
+
+    // Remove carousel chrome (counter, arrows, dots, nav) while preserving
+    // wrappers that contain kept items (e.g. the track element).
+    for (const ui of container.querySelectorAll('[class], [id]')) {
+      if (keptSet.has(ui)) continue;
+      if (kept.some((item) => item.contains(ui) || ui.contains(item))) continue;
+      const token = `${ui.getAttribute('class') ?? ''} ${ui.getAttribute('id') ?? ''}`;
+      if (CAROUSEL_UI_PATTERN.test(token)) ui.remove();
+    }
+
+    const note = container.ownerDocument.createElement('p');
+    const link = container.ownerDocument.createElement('a');
+    link.href = articleUrl;
+    link.textContent = '原文';
+    note.append('更多客户证言请见', link, '。');
+    container.appendChild(note);
   }
 }
 
@@ -233,15 +364,16 @@ export function resolveImageUrl(image: Element, baseUrl: string): string | undef
 }
 
 function absolutizeUrls(root: Element, baseUrl: string): void {
+  const base = directoryBaseUrl(baseUrl);
   for (const image of root.querySelectorAll('img')) {
-    const url = resolveImageUrl(image, baseUrl);
+    const url = resolveImageUrl(image, base);
     if (url) image.setAttribute('src', url);
   }
   for (const anchor of root.querySelectorAll('a[href]')) {
     const value = anchor.getAttribute('href');
     if (!value) continue;
     try {
-      anchor.setAttribute('href', new URL(value, baseUrl).toString());
+      anchor.setAttribute('href', new URL(value, base).toString());
     } catch {
       // Leave invalid values untouched.
     }
@@ -327,6 +459,11 @@ export async function fetchArticle(
   const publishedAt = resolvePublishedAt(document, discovered);
   const originalLanguage = resolveLanguage(document);
 
+  // Readability strips every <footer> (including testimonial attribution
+  // inside <blockquote>s) and deletes elements whose class/id matches noise
+  // tokens, so protect quote attribution before extraction.
+  preserveBlockquoteFooters(document);
+
   const parsed = new Readability(document).parse();
   if (!parsed?.content) {
     throw new Error(`${source.id} ${articleUrl}: Readability failed to extract article content`);
@@ -339,6 +476,7 @@ export async function fetchArticle(
 
   const contentNode = document.createElement('div');
   contentNode.innerHTML = parsed.content;
+  collapseCarousels(contentNode, articleUrl);
   removeNoiseBlocks(contentNode, title);
   absolutizeUrls(contentNode, articleUrl);
   const imageUrl =
@@ -365,4 +503,44 @@ export async function fetchArticle(
     originalLanguage,
     contentMarkdown,
   };
+}
+
+/**
+ * Fetch an article preferring the official Simplified Chinese alternate when
+ * one is advertised via `rel=alternate` + `hreflang` (or a matching zh link).
+ * When a Chinese page is found and extracted successfully, it is returned
+ * with `officialZhUrl` pointing at the original URL and `contentSource:
+ * 'official-zh'`; otherwise the original page is returned untouched.
+ */
+export async function fetchArticleWithLocalization(
+  source: SourceConfig,
+  discovered: DiscoveredArticle,
+  fetchImpl: FetchLike = fetch,
+): Promise<ExtractedArticle> {
+  const original = await fetchArticle(source, discovered, fetchImpl);
+  if (original.originalLanguage === 'zh') {
+    return { ...original, contentSource: 'native-zh' };
+  }
+  if (!source.prefer_official_zh) return original;
+
+  let officialZhUrl: string | undefined;
+  try {
+    const html = await fetchHtml(fetchImpl, original.url, source);
+    officialZhUrl = findOfficialChineseUrl(html, original.url);
+  } catch {
+    // Localization probing is best-effort; keep the original article.
+  }
+  if (!officialZhUrl || officialZhUrl === original.url) return original;
+
+  try {
+    const zhArticle = await fetchArticle(
+      source,
+      { url: officialZhUrl, title: original.title, publishedAt: original.publishedAt },
+      fetchImpl,
+    );
+    if (zhArticle.originalLanguage !== 'zh') return original;
+    return { ...zhArticle, officialZhUrl: original.url, contentSource: 'official-zh' };
+  } catch {
+    return original;
+  }
 }

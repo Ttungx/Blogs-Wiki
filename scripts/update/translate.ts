@@ -13,31 +13,37 @@ const DEFAULT_TIMEOUT_MS = 300_000;
 const RETRY_JSON_HINT =
   '\n\nYour previous response was not valid JSON. You MUST output only valid JSON matching the required shape, with no extra text.';
 
-interface ChatMessage {
+export interface ChatMessage {
   role: 'system' | 'user';
   content: string;
 }
 
-class ModelJsonError extends Error {
+export class ModelJsonError extends Error {
   constructor(content: string) {
     super(`model output is not valid JSON: ${truncate(content, 800)}`);
     this.name = 'ModelJsonError';
   }
 }
 
-function truncate(value: string, maxLength: number): string {
+export function truncate(value: string, maxLength: number): string {
   return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
 }
 
 function buildSystemPrompt(categories: readonly string[]): string {
   return [
-    'You are a professional technical translator and editor for a technology blog wiki.',
-    'Translate the article into Simplified Chinese. Preserve the author\'s original intent and meaning; do not rewrite or editorialize.',
+    'You are a professional translator and editor for a Chinese-language blog wiki covering AI, machine learning, philosophy, and personal growth.',
+    'Translate the article into fluent, natural Simplified Chinese. Preserve the author\'s original intent, tone, and meaning; do not rewrite or editorialize.',
     'Rules:',
     '- Translate the title and the full body text.',
     '- Preserve the original Markdown structure exactly: code blocks, inline code, links, images, blockquotes, tables, lists, and heading levels.',
     '- Keep URLs, image paths, code, and technical identifiers unchanged.',
     '- Do not add, remove, or summarize content.',
+    '- Terminology retention (critical for this wiki\'s audience of technical readers):',
+    '  • Keep domain terminology in English when it is the standard term of art: model and method names (chain-of-thought, in-context learning, reinforcement learning, retrieval-augmented generation, fine-tuning, RLHF, scaling laws), system and framework concepts (Harness, Context Engineering, agent, prompt, embedding, transformer).',
+    '  • Always keep in English: proper nouns, product names, model names, and acronyms (Claude Code, GPT-4, RSI, MCE, STOP, GEPA, MCP, LLM).',
+    '  • On first occurrence of an acronym you MAY add a Chinese gloss in parentheses, e.g. "递归自我改进（RSI）"; use the bare acronym thereafter.',
+    '  • Heading-level structural labels stay in English when the source uses them as labels: e.g. "Pattern 1", "Pattern 2", not "模式一".',
+    '  • Every sentence must read as complete, grammatical Chinese. Never leave English connective phrases untranslated mid-sentence (e.g. do NOT produce "…Harness工程 additionally include 工作流设计…"). Translate all connective, descriptive, and narrative prose to Chinese; only the technical terms themselves remain in English.',
     '',
     'After translating, classify the article and choose one or more categories from the allowed list.',
     categoryPrompt(categories),
@@ -59,7 +65,7 @@ function buildUserMessage(article: ExtractedArticle): string {
 }
 
 /** Extract the first balanced `{...}` block, skipping braces inside strings. */
-function extractFirstJsonBlock(content: string): string | null {
+export function extractFirstJsonBlock(content: string): string | null {
   const start = content.indexOf('{');
   if (start === -1) return null;
 
@@ -91,7 +97,7 @@ function extractFirstJsonBlock(content: string): string | null {
 }
 
 /** Parse model content as a JSON object: full parse, then first JSON block. */
-function parseModelJson(content: string): Record<string, unknown> {
+export function parseModelJson(content: string): Record<string, unknown> {
   try {
     const parsed: unknown = JSON.parse(content);
     if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -127,7 +133,7 @@ function extractMessageContent(envelope: unknown): unknown {
   return (message as Record<string, unknown>).content;
 }
 
-async function requestChatCompletion(
+export async function requestChatCompletion(
   fetchImpl: FetchLike,
   endpoint: string,
   apiKey: string,

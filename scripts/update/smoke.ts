@@ -5,13 +5,22 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
 import { normalizeCategories } from './classify';
-import { isCandidateArticle } from './discovery';
+import { discoverSource, isCandidateArticle } from './discovery';
 import { validateSourceConfigs } from './config';
-import { normalizeArticleMarkdown, resolveImageUrl } from './fetch';
+import {
+  collapseCarousels,
+  directoryBaseUrl,
+  fetchArticle,
+  normalizeArticleMarkdown,
+  removeNoiseBlocks,
+  resolveImageUrl,
+} from './fetch';
 import { parseArgs } from './index';
 import { extractLocalizedAlternates, selectOfficialChineseAlternate } from './localization';
 import { loadProxySettings, proxyUrlFor } from './network';
 import { createTranslateClient } from './translate';
+import { createTranslateV2Client } from './translate-v2';
+import { fetchArticleWithLocalization } from './fetch';
 import {
   chunkMarkdown,
   createTranslationPlan,
@@ -174,6 +183,48 @@ async function run() {
     assert.equal(isCandidateArticle('https://example.com/blog/topic/agents', filteredSource), false);
     assert.equal(isCandidateArticle('https://example.com/blog', filteredSource), false);
 
+    // discovery: sitemap_include_paths restricts child sitemaps to the
+    // allowed category prefixes (e.g. OpenAI research/engineering/safety/security)
+    const includeRoot =
+      '<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
+      '<sitemap><loc>https://example.com/sitemap.xml/research/</loc></sitemap>' +
+      '<sitemap><loc>https://example.com/sitemap.xml/product/</loc></sitemap>' +
+      '<sitemap><loc>https://example.com/sitemap.xml/security/</loc></sitemap>' +
+      '</sitemapindex>';
+    const childSitemap = (prefix: string): string =>
+      '<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
+      `<url><loc>https://example.com${prefix}/a-post</loc></url>` +
+      `<url><loc>https://example.com${prefix}/b-post</loc></url>` +
+      '</urlset>';
+    const includeSource: SourceConfig = {
+      ...blog,
+      id: 'include-blog',
+      blog_url: 'https://example.com/news/',
+      sitemap_url: 'https://example.com/sitemap.xml',
+      sitemap_include_paths: ['/sitemap.xml/research/', '/sitemap.xml/security/'],
+      article_paths: ['/research', '/security'],
+    };
+    const includeFetch: FetchLike = async (input) => {
+      const url = String(input);
+      if (url.endsWith('/sitemap.xml')) return new Response(includeRoot, { status: 200 });
+      if (url.includes('/sitemap.xml/research')) {
+        return new Response(childSitemap('/research'), { status: 200 });
+      }
+      if (url.includes('/sitemap.xml/security')) {
+        return new Response(childSitemap('/security'), { status: 200 });
+      }
+      if (url.includes('/sitemap.xml/product')) {
+        return new Response(childSitemap('/product'), { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    };
+    const included = await discoverSource(includeSource, includeFetch);
+    const includedUrls = included.map((item) => item.url);
+    assert.equal(included.length, 4);
+    assert.equal(includedUrls.some((url) => url.includes('/product/')), false);
+    assert.equal(includedUrls.some((url) => url.includes('/research/')), true);
+    assert.equal(includedUrls.some((url) => url.includes('/security/')), true);
+
     // image policy: prefer original/lazy remote source and absolutize it
     const imageDocument = new JSDOM(
       '<img src="data:image/gif;base64,AA" data-src="/media/full.png" srcset="/media/small.png 1x, /media/large.png 2x">',
@@ -184,11 +235,116 @@ async function run() {
       'https://example.com/media/full.png',
     );
 
+    // image policy: trailing-slash-less article URLs resolve relative images
+    // under the article directory, not the site root
+    assert.equal(
+      directoryBaseUrl('https://lilianweng.github.io/posts/2026-07-04-harness'),
+      'https://lilianweng.github.io/posts/2026-07-04-harness/',
+    );
+    assert.equal(
+      resolveImageUrl(
+        new JSDOM('<img src="openai-agent-loop.png">').window.document.querySelector('img')!,
+        directoryBaseUrl('https://lilianweng.github.io/posts/2026-07-04-harness'),
+      ),
+      'https://lilianweng.github.io/posts/2026-07-04-harness/openai-agent-loop.png',
+    );
+    assert.equal(directoryBaseUrl('https://example.com/assets/logo.png'), 'https://example.com/assets/logo.png');
+
     // extraction cleanup: carousel counters and source-site recommendations never enter articles
     const cleanedMarkdown = normalizeArticleMarkdown(
       '正文。\n\n![ logo](https://cdn.example.com/logo.svg)\n\n01 /\n\n16\n\n## Related content\n\n### Promo',
     );
     assert.equal(cleanedMarkdown, '正文。\n\n![logo](https://cdn.example.com/logo.svg)');
+
+    // carousel collapse (raw fragment, no Readability): keeps the first 3
+    // logo+quote items, preserves blockquote attribution, drops the 4th item,
+    // carousel chrome and page-level footers, and appends an original-article
+    // pointer at the end of the block
+    const carouselFragment = new JSDOM(
+      '<div id="root"><div class="carousel"><div class="carousel-track">' +
+        [1, 2, 3, 4]
+          .map(
+            (n) =>
+              `<div class="carousel-item"><div class="logo-container"><img alt=" logo" src="https://cdn.example.com/logos/logo-${n}.svg"></div>` +
+              '<blockquote class="quote-content"><p class="quote-text">' +
+              `Testimonial number ${n} text.</p>` +
+              '<footer class="quote-footer"><cite class="speaker-info">' +
+              `<span class="speaker-name">Name ${n}</span><span class="speaker-title">Title ${n}</span>` +
+              '</cite></footer></blockquote></div>',
+          )
+          .join('') +
+        '</div><div class="carousel-pagination"><span class="carousel-counter">01 /16</span>' +
+        '<button class="carousel-arrow carousel-prev">‹</button>' +
+        '<button class="carousel-arrow carousel-next">›</button></div></div>' +
+        '<footer class="site-footer">© 2026 Example Inc. All rights reserved.</footer></div>',
+    ).window.document.getElementById('root')!;
+    collapseCarousels(carouselFragment, 'https://example.com/blog/carousel/');
+    removeNoiseBlocks(carouselFragment, 'Smoke Article');
+    const keptLogos = [...carouselFragment.querySelectorAll('img')].filter((image) =>
+      /logo/i.test(image.getAttribute('alt') ?? ''),
+    );
+    assert.equal(keptLogos.length, 3);
+    assert.equal(carouselFragment.querySelectorAll('.carousel-item').length, 3);
+    assert.equal(carouselFragment.querySelector('.carousel-pagination, .carousel-counter, .carousel-arrow'), null);
+    const keptAttribution = carouselFragment.querySelector('blockquote footer.quote-footer');
+    assert.ok(keptAttribution, 'footer inside blockquote must be preserved');
+    assert.match(keptAttribution!.textContent ?? '', /Name 1/);
+    assert.equal(carouselFragment.querySelector('footer.site-footer'), null);
+    assert.match(carouselFragment.textContent ?? '', /更多客户证言请见/);
+    assert.ok(
+      carouselFragment.querySelector('a[href="https://example.com/blog/carousel/"]'),
+      'carousel note links back to the original article',
+    );
+    assert.doesNotMatch(carouselFragment.textContent ?? '', /Name 4/);
+
+    // fetchArticle end-to-end: the full pipeline folds a 16-slide testimonial
+    // carousel into exactly 3 logo images, keeps speaker names/titles from
+    // footer>cite inside blockquotes, drops the 4th slide and page footer
+    const slides = [1, 2, 3, 4]
+      .map((n) => {
+        const names = ['Alice Acme', 'Bob Byte', 'Carol Code', 'Dana Demo'];
+        const titles = ['CEO, Acme', 'CTO, Byte', 'VP, Code', 'CMO, Demo'];
+        return (
+          `<div class="carousel-item"><div class="logo-container"><img alt=" logo" src="https://cdn.example.com/logos/logo-${n}.svg"></div>` +
+          '<blockquote class="quote-content"><p class="quote-text">' +
+          `Testimonial number ${n}: this customer loves the product for their team and would recommend it broadly.</p>` +
+          '<footer class="quote-footer"><cite class="speaker-info">' +
+          `<span class="speaker-name">${names[n - 1]}</span><span class="speaker-title">${titles[n - 1]}</span>` +
+          '</cite></footer></blockquote></div>'
+        );
+      })
+      .join('');
+    const carouselPage =
+      '<!DOCTYPE html><html lang="en"><head><title>Claude for Nonprofits</title>' +
+      '<meta property="og:title" content="Claude for Nonprofits">' +
+      '<meta property="article:published_time" content="2025-06-01"></head><body><article>' +
+      '<h1>Claude for Nonprofits</h1>' +
+      '<p>Intro paragraph that gives the article enough real editorial body text to pass Readability scoring and the minimum content length gate used by the pipeline.</p>' +
+      '<div class="carousel" aria-label="Customer testimonials"><div class="carousel-track">' +
+      slides +
+      '</div><div class="carousel-pagination"><span class="carousel-counter">01 /16</span>' +
+      '<button class="carousel-arrow carousel-prev" aria-label="Previous">‹</button>' +
+      '<button class="carousel-arrow carousel-next" aria-label="Next">›</button></div></div>' +
+      '<p>Closing paragraph with enough text to keep the extraction happy and to show that ordinary paragraphs after the carousel are retained in full.</p>' +
+      '<footer class="site-footer">© 2026 Example Inc. All rights reserved.</footer></article></body></html>';
+    const carouselArticle = await fetchArticle(
+      blog,
+      { url: 'https://example.com/blog/carousel/', publishedAt: '2025-06-01' },
+      async () =>
+        new Response(carouselPage, { status: 200, headers: { 'content-type': 'text/html' } }),
+    );
+    const carouselMarkdown = carouselArticle.contentMarkdown;
+    assert.equal((carouselMarkdown.match(/!\[logo\]/g) ?? []).length, 3);
+    assert.match(carouselMarkdown, /Alice Acme/);
+    assert.match(carouselMarkdown, /CEO, Acme/);
+    assert.doesNotMatch(carouselMarkdown, /Dana Demo/);
+    assert.doesNotMatch(carouselMarkdown, /logo-4\.svg/);
+    assert.doesNotMatch(carouselMarkdown, /Testimonial number 4/);
+    assert.match(
+      carouselMarkdown,
+      /更多客户证言请见\[原文\]\(https:\/\/example\.com\/blog\/carousel\/\)。/,
+    );
+    assert.doesNotMatch(carouselMarkdown, /All rights reserved/);
 
     // localization: exact preferred official Chinese alternate wins
     const alternates = extractLocalizedAlternates(
@@ -196,6 +352,12 @@ async function run() {
       'https://example.com/en/post',
     );
     assert.equal(selectOfficialChineseAlternate(alternates)?.url, 'https://example.com/cn/post');
+    // OpenAI-style camelCase hrefLang attribute must also be detected
+    const camelAlternates = extractLocalizedAlternates(
+      '<link rel="alternate" hrefLang="zh-Hans-CN" href="/zh-cn/post"><link rel="alternate" hrefLang="en-US" href="/en/post">',
+      'https://example.com/en/post',
+    );
+    assert.equal(selectOfficialChineseAlternate(camelAlternates)?.url, 'https://example.com/zh-cn/post');
     assert.equal(
       selectOfficialChineseAlternate([{ language: 'zh-Hant', url: 'https://example.com/hant/post' }]),
       undefined,
@@ -242,6 +404,128 @@ async function run() {
     assert.equal(createTranslationPlan({ markdown: '这是原生中文内容。' }).mode, 'native-zh');
     assert.equal(createTranslationPlan({ markdown: 'English article.', officialZh: '/zh/article' }).mode, 'official-zh');
     assert.equal(createTranslationPlan({ markdown: 'English article.' }).mode, 'translate');
+
+    // translation V2 executor: mock model call keeps protected URLs and
+    // restores them strictly; classification is decoupled.
+    const v2Calls: Array<{ model: string; messages: Array<{ role: string; content: string }> }> = [];
+    const v2Fetch: FetchLike = async (input, init) => {
+      const body = JSON.parse(String((init as RequestInit).body)) as {
+        model: string;
+        messages: Array<{ role: string; content: string }>;
+      };
+      v2Calls.push(body);
+      const isClassify = body.messages[0].content.includes('content categorizer');
+      return jsonResponse(
+        isClassify
+          ? JSON.stringify({ categories: ['ai', 'agent'] })
+          : JSON.stringify({ content_markdown: '## 你好\n\n这是译文。' }),
+      );
+    };
+    const v2Client = createTranslateV2Client({
+      apiKey: 'test-key',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'test-model',
+      fetchImpl: v2Fetch,
+    });
+    const v2Result = await v2Client(article, CATEGORIES);
+    assert.deepEqual(v2Result.categories, ['AI', 'Agent']);
+    assert.equal(v2Result.translationStatus, 'model');
+    assert.equal(v2Calls.length >= 2, true, 'translation + classification calls must be decoupled');
+
+    // translation V2 executor: official-zh/native-zh passthrough never calls
+    // the translation model; only classification runs, provenance preserved.
+    const passthroughCalls: string[] = [];
+    const zhFetch: FetchLike = async (input, init) => {
+      const body = JSON.parse(String((init as RequestInit).body)) as {
+        model: string;
+        messages: Array<{ role: string; content: string }>;
+      };
+      passthroughCalls.push(body.messages[0].content.includes('content categorizer') ? 'classify' : 'translate');
+      return jsonResponse(
+        body.messages[0].content.includes('content categorizer')
+          ? JSON.stringify({ categories: ['ai'] })
+          : JSON.stringify({ content_markdown: '不应被调用' }),
+      );
+    };
+    const zhClient = createTranslateV2Client({
+      apiKey: 'test-key',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'test-model',
+      fetchImpl: zhFetch,
+    });
+    const zhResult = await zhClient(
+      { ...article, contentMarkdown: '这是原生中文。', originalLanguage: 'zh', contentSource: 'native-zh' },
+      CATEGORIES,
+    );
+    assert.equal(zhResult.translatedTitle, article.title);
+    assert.equal(zhResult.contentMarkdown, '这是原生中文。');
+    assert.equal(zhResult.translationStatus, 'native-zh');
+    assert.deepEqual(passthroughCalls, ['classify']);
+
+    // persist: provenance fields survive into frontmatter
+    const provenanceDir = await mkdtemp(path.join(os.tmpdir(), 'blogs-wiki-provenance-'));
+    try {
+      const provenanceArticle: ExtractedArticle = {
+        ...article,
+        officialZhUrl: 'https://example.com/zh/hello-world/',
+        contentSource: 'official-zh',
+      };
+      const provenanceTranslation: TranslationResult = {
+        ...translation,
+        translationStatus: 'official-zh',
+        originalZhUrl: provenanceArticle.officialZhUrl,
+      };
+      const written = await writeArticle(provenanceDir, blog, provenanceArticle, provenanceTranslation);
+      const content = await readFile(written.file, 'utf8');
+      assert.match(content, /translation_status: "official-zh"/);
+      assert.match(content, /original_zh_url: "https:\/\/example\.com\/zh\/hello-world\/"/);
+    } finally {
+      await rm(provenanceDir, { recursive: true, force: true });
+    }
+
+    // localization fetch: prefers official Simplified Chinese alternate
+    const localizedBlog: SourceConfig = { ...blog, prefer_official_zh: true };
+    const localizedFetch: FetchLike = async (input) => {
+      const url = String(input);
+      if (url.includes('/zh/hello-world')) {
+        return new Response(
+          '<html lang="zh-CN"><head><title>你好世界</title></head><body><article><p>这是中文正文内容，足够长以通过最小长度检查。这段内容继续扩展，确保整个正文提取后的字符数明显超过两百字符的下限，从而让本地化抓取测试能够稳定通过。</p><p>我们再补充一些句子，保证即使 Readability 去掉部分噪声，剩余的正文仍然足以满足管线对最低内容长度的要求，测试不会因为内容过短而失败。继续追加若干说明性的过渡语句，把中文正文的总长度进一步抬高，使其在 Readability 提取、去噪以及其余处理步骤之后仍能稳稳越过两百字符的最低内容门槛，避免本地化抓取测试因为正文过短而被管线判定为无效文章。</p></article></body></html>',
+          { status: 200, headers: { 'content-type': 'text/html' } },
+        );
+      }
+      return new Response(
+        '<html lang="en"><head><title>Hello World</title><link rel="alternate" hreflang="zh-CN" href="/zh/hello-world/"></head><body><article>This is an English article body. We keep adding more sentences so that the extracted text length clearly exceeds the minimum content threshold of two hundred characters before Readability runs. These additional paragraphs are purely fixture content and carry no semantic meaning, but they make the local extraction test robust against the parser removing minor fragments during the readability pass.</article></body></html>',
+        { status: 200, headers: { 'content-type': 'text/html' } },
+      );
+    };
+    const localizedArticle = await fetchArticleWithLocalization(
+      localizedBlog,
+      { url: 'https://example.com/blog/hello-world/' },
+      localizedFetch,
+    );
+    assert.equal(localizedArticle.originalLanguage, 'zh');
+    assert.equal(localizedArticle.contentSource, 'official-zh');
+    assert.equal(localizedArticle.officialZhUrl, 'https://example.com/blog/hello-world/');
+
+    // localization fetch: without a zh alternate the original page is used
+    const plainBlog: SourceConfig = { ...blog, prefer_official_zh: true };
+    const noAlternateFetch: FetchLike = async (input) => {
+      const url = String(input);
+      if (url.includes('/zh/hello-world')) {
+        return new Response('', { status: 404 });
+      }
+      return new Response(
+        '<html lang="en"><head><title>Hello World</title></head><body><article>This is an English article body. We keep adding more sentences so that the extracted text length clearly exceeds the minimum content threshold of two hundred characters before Readability runs. These additional paragraphs are purely fixture content and carry no semantic meaning, but they make the local extraction test robust against the parser removing minor fragments during the readability pass.</article></body></html>',
+        { status: 200, headers: { 'content-type': 'text/html' } },
+      );
+    };
+    const plainArticle = await fetchArticleWithLocalization(
+      plainBlog,
+      { url: 'https://example.com/blog/hello-world/' },
+      noAlternateFetch,
+    );
+    assert.equal(plainArticle.originalLanguage, 'en');
+    assert.equal(plainArticle.contentSource, undefined);
 
     // CLI: invalid or missing limits must never degrade into unlimited mode
     assert.deepEqual(parseArgs(['--limit', '0']), { dryRun: false, limit: 0 });

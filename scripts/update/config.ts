@@ -89,11 +89,27 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
       }
     }
 
-    for (const key of ['article_paths', 'exclude_paths'] as const) {
+    for (const key of ['article_paths', 'exclude_paths', 'sitemap_include_paths'] as const) {
       const paths = value[key];
       if (paths === undefined) continue;
-      if (!Array.isArray(paths) || paths.some((entry) => typeof entry !== 'string' || !entry.startsWith('/'))) {
-        issues.push({ path: `[${index}].${key}`, message: 'must contain pathname prefixes beginning with /' });
+      if (!Array.isArray(paths) || paths.some((entry) => {
+        if (typeof entry !== 'string' || !entry) return true;
+        // `^`-prefixed entries are regex patterns; others must be absolute
+        // pathname prefixes so they stay usable as prefixes.
+        if (entry.startsWith('^')) {
+          try {
+            new RegExp(entry);
+            return false;
+          } catch {
+            return true;
+          }
+        }
+        return !entry.startsWith('/');
+      })) {
+        issues.push({
+          path: `[${index}].${key}`,
+          message: 'must contain absolute path prefixes or ^-prefixed regex patterns',
+        });
       }
     }
 

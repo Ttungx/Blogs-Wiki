@@ -45,12 +45,26 @@ export function isCandidateArticle(url: string, source: SourceConfig): boolean {
   if (!isLikelyArticleUrl(url, source.domain)) return false;
   const pathname = new URL(url).pathname.replace(/\/+$/, '');
   const excluded = source.exclude_paths?.some((prefix) => {
+    if (prefix.startsWith('^')) {
+      try {
+        return new RegExp(prefix).test(pathname);
+      } catch {
+        return false;
+      }
+    }
     const normalized = prefix.replace(/\/+$/, '');
     return pathname === normalized || pathname.startsWith(`${normalized}/`);
   });
   if (excluded) return false;
   if (!source.article_paths?.length) return true;
   return source.article_paths.some((prefix) => {
+    if (prefix.startsWith('^')) {
+      try {
+        return new RegExp(prefix).test(pathname);
+      } catch {
+        return false;
+      }
+    }
     const normalized = prefix.replace(/\/+$/, '');
     // The article must live under the prefix; the bare prefix itself (e.g.
     // the /news listing page) is not an article.
@@ -137,7 +151,19 @@ async function collectSitemapEntries(source: SourceConfig, fetchImpl: FetchLike)
   const sitemapUrl = source.sitemap_url as string;
   const rootXml = await fetchText(fetchImpl, sitemapUrl, `${source.id} sitemap`);
   const rootEntries = parseSitemap(rootXml, sitemapUrl);
-  const childSitemaps = rootEntries.filter((item) => item.childSitemap).slice(0, 10);
+  const includePaths = source.sitemap_include_paths?.map((prefix) => prefix.replace(/\/+$/, '')) ?? null;
+  const childSitemaps = rootEntries
+    .filter((item) => item.childSitemap)
+    .filter((item) => {
+      if (!includePaths) return true;
+      try {
+        const pathname = new URL(item.url).pathname.replace(/\/+$/, '');
+        return includePaths.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+      } catch {
+        return false;
+      }
+    })
+    .slice(0, 10);
 
   if (!childSitemaps.length) {
     return { entries: rootEntries, rawCount: rootEntries.length };

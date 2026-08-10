@@ -20,6 +20,7 @@ const blogs = defineCollection({
       sitemap_url: webUrl.optional(),
       logo: z.string().optional(),
       avatar: z.string().optional(),
+      logo_scale: z.number().positive().optional(),
       categories: z.array(category).min(1),
       demo: z.boolean().default(false),
     })
@@ -29,6 +30,7 @@ const blogs = defineCollection({
       blogUrl: blog.blog_url,
       rssUrl: blog.rss_url,
       sitemapUrl: blog.sitemap_url,
+      logoScale: blog.logo_scale,
     })),
 });
 
@@ -44,6 +46,8 @@ const articles = defineCollection({
       published_at: z.coerce.date(),
       categories: z.array(category).min(1),
       translation_model: z.string().min(1),
+      translation_status: z.enum(['official-zh', 'native-zh', 'model']).optional(),
+      original_zh_url: webUrl.optional(),
       translated_at: z.coerce.date(),
       author: z.string().min(1).optional(),
       source_domain: z.string().min(1),

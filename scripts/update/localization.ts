@@ -16,8 +16,11 @@ export function extractLocalizedAlternates(html: string, pageUrl: string): Local
   const seen = new Set<string>();
   const alternates: LocalizedAlternate[] = [];
 
-  for (const element of document.querySelectorAll('link[rel~="alternate"][hreflang][href], a[rel~="alternate"][hreflang][href]')) {
-    const language = normalizeLanguage(element.getAttribute('hreflang') ?? '');
+  for (const element of document.querySelectorAll('link[rel~="alternate"], a[rel~="alternate"]')) {
+    // Some sites emit the attribute as `hreflang`, others as `hrefLang`
+    // (e.g. OpenAI). HTML attribute names are case-insensitive, so read
+    // both spellings explicitly to be robust across page implementations.
+    const language = normalizeLanguage(element.getAttribute('hreflang') ?? element.getAttribute('hrefLang') ?? '');
     const href = element.getAttribute('href');
     if (!language || !href) continue;
     try {

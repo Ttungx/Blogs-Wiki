@@ -2,8 +2,9 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverSource } from './discovery';
-import { fetchArticle } from './fetch';
+import { fetchArticle, fetchArticleWithLocalization } from './fetch';
 import { createTranslateClient } from './translate';
+import { createTranslateV2Client } from './translate-v2';
 import { selectSourcesForRun } from './source-policy';
 import { loadSources } from './config';
 import { createFetchImpl } from './network';
@@ -182,12 +183,16 @@ async function run() {
   let stateChanged = reconciled > 0;
   const limit = options.limit === undefined ? DEFAULT_LIMIT_PER_SOURCE : options.limit;
   const fetchImpl = createFetchImpl(logger);
+  const pipeline = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase();
   const translate = options.dryRun
     ? undefined
-    : createTranslateClient({ apiKey, baseUrl, model, fetchImpl });
+    : pipeline === 'v2'
+      ? createTranslateV2Client({ apiKey, baseUrl, model, fetchImpl })
+      : createTranslateClient({ apiKey, baseUrl, model, fetchImpl });
 
   logger.info(`Blogs Wiki update: ${options.dryRun ? 'dry run (discover + fetch only)' : 'full run'}`);
   logger.info(`Sources: ${sources.map((s) => s.id).join(', ') || '(none)'} | limit per source: ${limit === 0 ? 'unlimited' : limit}`);
+  if (!options.dryRun) logger.info(`Translation pipeline: ${pipeline}`);
   logger.info('');
 
   const summary: UpdateSummary = { sources: [], discovered: 0, pending: 0, processed: 0, failed: 0 };
@@ -223,7 +228,9 @@ async function run() {
 
       for (const item of candidates) {
         try {
-          const article: ExtractedArticle = await fetchArticle(source, item, fetchImpl);
+          const article: ExtractedArticle = source.prefer_official_zh
+            ? await fetchArticleWithLocalization(source, item, fetchImpl)
+            : await fetchArticle(source, item, fetchImpl);
           if (!translate) {
             logger.info(
               source.update_mode === 'dry-run-only'

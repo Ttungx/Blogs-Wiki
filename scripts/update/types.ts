@@ -10,10 +10,18 @@ export interface SourceConfig {
   domain: string;
   rss_url?: string;
   sitemap_url?: string;
+  /** Optional pathname filters for child sitemaps: when set, only child
+   *  sitemap URLs whose pathname starts with one of these prefixes are
+   *  fetched (e.g. OpenAI's category sitemaps under /sitemap.xml/research/).
+   *  The root sitemap itself is always parsed for these child URLs. */
+  sitemap_include_paths?: string[];
   logo?: string;
   avatar?: string;
   /** `dry-run-only` sources can be discovered and fetched, but never translated or persisted. */
   update_mode?: SourceUpdateMode;
+  /** When true, fetch prefers an official Simplified Chinese alternate and
+   *  marks the article as `official-zh` (skipping model translation). */
+  prefer_official_zh?: boolean;
   /** Optional pathname prefixes; when set, only URLs under one of these paths are treated as articles. */
   article_paths?: string[];
   /** Optional pathname prefixes to reject regardless of `article_paths`. */
@@ -40,6 +48,10 @@ export interface ExtractedArticle {
   publishedAt: string;
   originalLanguage: string;
   contentMarkdown: string;
+  /** Official Simplified Chinese URL when one was preferred and fetched. */
+  officialZhUrl?: string;
+  /** How the content reached this state: `official-zh`, `native-zh`, or `model`. */
+  contentSource?: 'official-zh' | 'native-zh' | 'model';
 }
 
 export interface TranslationResult {
@@ -47,6 +59,10 @@ export interface TranslationResult {
   categories: string[];
   contentMarkdown: string;
   model: string;
+  /** Persisted provenance for display: `official-zh` | `native-zh` | `model`. */
+  translationStatus?: 'official-zh' | 'native-zh' | 'model';
+  /** Official Simplified Chinese URL when model/official content has one. */
+  originalZhUrl?: string;
 }
 
 export interface UpdateOptions {
