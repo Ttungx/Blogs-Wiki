@@ -9,7 +9,6 @@ import {
   createUpdateRepositories,
   toDomainArticle,
   toDomainSource,
-  toDomainTranslation,
 } from './repository-factory';
 import type { UpdateRepositories } from './repository-factory';
 import type {
@@ -222,21 +221,29 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
             );
             continue;
           }
-          const translation = await translate(article, CATEGORIES);
+          // 1. 保存原文版本（立即持久化——翻译失败也不丢失）
           const saved = await repositories.articles.save({
             source: toDomainSource(source),
             article: toDomainArticle(source, article),
-            translation: toDomainTranslation(translation),
+          });
+          // 2. 翻译 + 分类
+          const translation = await translate(article, CATEGORIES);
+          // 3. 保存翻译版本
+          await repositories.articles.saveVersion({
+            articleId: saved.id,
+            language: 'zh-cn',
+            title: translation.translatedTitle,
+            contentMarkdown: translation.contentMarkdown,
+            provenance: translation.translationStatus ?? 'model',
+            translationModel: translation.model,
+            ...(translation.originalZhUrl ? { originalAltUrl: translation.originalZhUrl } : {}),
+            categories: translation.categories,
           });
           await repositories.sourceState.markProcessed(source.id, article.url);
           seenBySource.get(source.id)?.add(article.url);
-          if (saved.created) {
-            result.processed += 1;
-            summary.processed += 1;
-            logger.info(`  + ${saved.id} (${translation.translatedTitle})`);
-          } else {
-            logger.info(`  = already present: ${item.url}`);
-          }
+          result.processed += 1;
+          summary.processed += 1;
+          logger.info(`  + ${saved.id} (${translation.translatedTitle})`);
         } catch (error) {
           result.failed += 1;
           summary.failed += 1;

@@ -4,16 +4,13 @@ import { createWorkerRepositories } from '../../worker/runtime/repositories';
 import type { ArticleRepository } from '../../worker/repositories/article-repository';
 import type { SourceStateRepository } from '../../worker/repositories/source-state-repository';
 import type { D1Database } from '@cloudflare/workers-types';
-import type {
-  SourceConfig as DomainSourceConfig,
-  RawArticle,
-  TranslationResult as DomainTranslationResult,
-} from '../../worker/domain/types';
-import type {
-  ExtractedArticle,
-  SourceConfig,
-  TranslationResult,
-} from './types';
+
+// mappers 已提取到共享纯模块，这里 re-export 保持调用方（runner.ts）不破坏。
+export {
+  toDomainSource,
+  toDomainArticle,
+  toDomainTranslation,
+} from '../../worker/domain/mappers';
 
 export type StorageBackend = 'file' | 'd1';
 
@@ -54,61 +51,4 @@ export function createUpdateRepositories(options: RepositoryFactoryOptions): Upd
   }
 
   throw new Error(`Unsupported STORAGE_BACKEND "${backend}"; expected "file" or "d1"`);
-}
-
-/** snake_case 管线来源配置 → camelCase 领域来源配置。 */
-export function toDomainSource(source: SourceConfig): DomainSourceConfig {
-  return {
-    id: source.id,
-    name: source.name,
-    type: source.type,
-    homepageUrl: source.homepage_url,
-    blogUrl: source.blog_url,
-    domain: source.domain,
-    ...(source.rss_url ? { rssUrl: source.rss_url } : {}),
-    ...(source.sitemap_url ? { sitemapUrl: source.sitemap_url } : {}),
-    ...(source.sitemap_include_paths ? { sitemapIncludePaths: source.sitemap_include_paths } : {}),
-    ...(source.logo ? { logo: source.logo } : {}),
-    ...(source.avatar ? { avatar: source.avatar } : {}),
-    ...(source.update_mode ? { updateMode: source.update_mode } : {}),
-    ...(source.prefer_official_zh !== undefined
-      ? { preferOfficialZh: source.prefer_official_zh }
-      : {}),
-    ...(source.article_paths ? { articlePaths: source.article_paths } : {}),
-    ...(source.exclude_paths ? { excludePaths: source.exclude_paths } : {}),
-  };
-}
-
-/** 旧抓取模型 → camelCase 领域文章模型。 */
-export function toDomainArticle(source: SourceConfig, article: ExtractedArticle): RawArticle {
-  return {
-    sourceId: source.id,
-    url: article.url,
-    title: article.title,
-    ...(article.author ? { author: article.author } : {}),
-    ...(article.imageUrl ? { imageUrl: article.imageUrl } : {}),
-    publishedAt: article.publishedAt,
-    originalLanguage: article.originalLanguage,
-    contentMarkdown: article.contentMarkdown,
-    ...(article.officialZhUrl ? { officialZhUrl: article.officialZhUrl } : {}),
-    ...(article.contentSource ? { contentSource: article.contentSource } : {}),
-  };
-}
-
-/** 旧翻译模型 → camelCase 领域翻译模型。 */
-export function toDomainTranslation(
-  translation: TranslationResult,
-): DomainTranslationResult {
-  return {
-    translatedTitle: translation.translatedTitle,
-    categories: translation.categories,
-    contentMarkdown: translation.contentMarkdown,
-    model: translation.model,
-    ...(translation.translationStatus
-      ? { translationStatus: translation.translationStatus }
-      : {}),
-    ...(translation.originalZhUrl
-      ? { originalZhUrl: translation.originalZhUrl }
-      : {}),
-  };
 }

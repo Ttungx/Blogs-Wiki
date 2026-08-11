@@ -22,7 +22,7 @@ describe('Worker HTTP runtime handler', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
       status: 'ok',
-      worker: 'blogs-wiki-extractor-poc',
+      worker: 'blogs-wiki',
     });
   });
 

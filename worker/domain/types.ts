@@ -96,6 +96,9 @@ export type TranslationStatus = 'official-zh' | 'native-zh' | 'model';
 /** 内容到达当前状态的方式（抓取层产出）。 */
 export type ContentSource = 'official-zh' | 'native-zh' | 'model';
 
+/** 文章版本的内容来源标记。'original' = 原文直存；其余 = 翻译来源。 */
+export type Provenance = 'original' | 'official-zh' | 'native-zh' | 'model';
+
 /**
  * 来源配置（领域层 camelCase 视图）。
  *
@@ -165,40 +168,56 @@ export interface TranslationResult {
 }
 
 /**
- * 已持久化的完整文章记录（读模型）。
+ * 文章身份记录（读模型）—— 只含身份字段，不含内容。
  *
- * Phase 8 Astro SSR 将消费此类型——从 Repository 读取后直接渲染，
- * 不再依赖 getCollection 与文件系统。
+ * 文章的具体内容（标题、正文、摘要）按语言存在 ArticleVersionRecord 中。
+ * Phase 8 Astro SSR 从 Repository 读取后，需额外调 getVersion 获取内容。
  */
 export interface ArticleRecord {
-  /** 文章 id（slug），对应文件名 `<id>.md` / D1 主键。 */
+  /** 文章 id（blogId/slug），对应 D1 主键 / 文件路径。 */
   id: string;
   sourceId: string;
   originalUrl: string;
-  originalTitle: string;
-  translatedTitle: string;
-  /** ISO 8601 字符串，保留与原文一致发布日期。 */
-  publishedAt: string;
-  translatedAt: string;
   originalLanguage: string;
-  translationModel: string;
-  translationStatus?: TranslationStatus;
-  originalZhUrl?: string;
-  contentMarkdown: string;
-  excerpt?: string;
+  /** ISO 8601 字符串，保留与原文一致的发布日期。 */
+  publishedAt: string;
   imageUrl?: string;
   author?: string;
   sourceDomain: string;
   categories: string[];
 }
 
-/** save() 的输入。 */
+/** 文章的某个语言版本（内容层）。 */
+export interface ArticleVersionRecord {
+  articleId: string;
+  language: string;
+  title: string;
+  contentMarkdown: string;
+  excerpt?: string;
+  provenance: Provenance;
+  translationModel?: string;
+  /** 官方中文替代 URL（provenance='official-zh' 时有值）。 */
+  originalAltUrl?: string;
+  updatedAt: string;
+}
+
+/** save() 的输入 —— 创建文章身份 + 原文版本。 */
 export interface SaveArticleInput {
   source: SourceConfig;
   article: RawArticle;
-  translation: TranslationResult;
-  /** 翻译完成时间，默认 new Date()。 */
-  translatedAt?: Date;
+}
+
+/** saveVersion() 的输入 —— 为已有文章添加/更新语言版本。 */
+export interface SaveVersionInput {
+  articleId: string;
+  language: string;
+  title: string;
+  contentMarkdown: string;
+  provenance: Provenance;
+  translationModel?: string;
+  originalAltUrl?: string;
+  /** 翻译带来的分类（更新文章身份的 categories）。 */
+  categories?: string[];
 }
 
 /** save() 的返回。 */

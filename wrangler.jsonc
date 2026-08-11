@@ -11,8 +11,15 @@
     {
       "binding": "DB",
       "database_name": "blogs-wiki",
-      "database_id": "local",
+      "database_id": "6dd813ef-7d75-45ba-9a01-af3958b69725",
       "migrations_dir": "worker/migrations"
+    }
+  ],
+  "workflows": [
+    {
+      "binding": "UPDATE_WORKFLOW",
+      "name": "update-workflow",
+      "class_name": "UpdateWorkflow"
     }
   ]
 }

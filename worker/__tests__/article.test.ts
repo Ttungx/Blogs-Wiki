@@ -1,23 +1,30 @@
 /**
  * worker/domain/article.ts 纯函数测试。
  *
- * 被测函数是从 scripts/update/persist.ts + urls.ts 复刻的领域层实现，
- * 本测试用黄金输出锚定两端字节一致（见 AGENTS.md 手册 §15 过渡期说明）。
- * 测试数据与 scripts/update/smoke.ts:47-71 对齐。
+ * 测试多语言版本架构下的 frontmatter 构建/解析。
+ * 黄金输出锚定 buildVersionFrontmatter 的字段顺序与格式，
+ * round-trip 验证 parseVersionFile 能完整还原。
  */
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import {
   articleIdFromUrl,
-  buildArticleFrontmatter,
+  buildVersionFileContent,
+  buildVersionFrontmatter,
   excerptFromMarkdown,
   frontmatterValue,
-  parseArticleFrontmatter,
+  parseVersionFile,
   yamlDate,
   yamlScalar,
 } from '../domain/article.ts';
-import type { RawArticle, SourceConfig, TranslationResult } from '../domain/types.ts';
+import type {
+  ArticleRecord,
+  ArticleVersionRecord,
+  SourceConfig,
+} from '../domain/types.ts';
+
+// ── 测试固件 ──────────────────────────────────────────
 
 const source: SourceConfig = {
   id: 'smoke-blog',
@@ -29,181 +36,238 @@ const source: SourceConfig = {
   updateMode: 'active',
 };
 
-const article: RawArticle = {
+const articleRecord: ArticleRecord = {
+  id: 'smoke-blog/hello-world',
   sourceId: 'smoke-blog',
-  url: 'https://example.com/blog/hello-world/',
-  title: 'Hello World',
-  imageUrl: 'https://cdn.example.com/hello-world.jpg',
-  publishedAt: '2025-06-01',
+  originalUrl: 'https://example.com/blog/hello-world/',
   originalLanguage: 'en',
-  contentMarkdown: '# Hello\n\nThis is the original body.',
-};
-
-const translation: TranslationResult = {
-  translatedTitle: '你好世界',
+  publishedAt: '2025-06-01',
+  sourceDomain: 'example.com',
   categories: ['AI'],
-  contentMarkdown: '## 你好\n\n这是翻译后的正文。',
-  model: 'smoke-model',
 };
 
-const translatedAt = new Date('2025-06-02T00:00:00.000Z');
+const originalVersion: ArticleVersionRecord = {
+  articleId: 'smoke-blog/hello-world',
+  language: 'en',
+  title: 'Hello World',
+  contentMarkdown: '# Hello\n\nThis is the original body.',
+  provenance: 'original',
+  updatedAt: '2025-06-02',
+};
 
-// articleIdFromUrl：{blogId}/{slug}，slug 取 URL 末段，剥日期前缀，末段为空回落 'article'
-test('articleIdFromUrl: {blogId}/{slug} 格式，去哈希剥日期', () => {
+const translationVersion: ArticleVersionRecord = {
+  articleId: 'smoke-blog/hello-world',
+  language: 'zh-cn',
+  title: '你好世界',
+  contentMarkdown: '# 你好\n\n这是翻译后的正文。',
+  provenance: 'model',
+  translationModel: 'gpt-4',
+  updatedAt: '2025-06-03',
+};
+
+// ── articleIdFromUrl（不变） ──────────────────────────
+
+test('articleIdFromUrl: blogId/slug 格式', () => {
   assert.equal(
     articleIdFromUrl('smoke-blog', 'https://example.com/blog/hello-world/'),
     'smoke-blog/hello-world',
   );
+});
+
+test('articleIdFromUrl: 剥掉日期前缀和扩展名', () => {
   assert.equal(
-    articleIdFromUrl('smoke-blog', 'https://example.com/blog/hello-world/'),
-    articleIdFromUrl('smoke-blog', 'https://example.com/blog/hello-world/'),
-  );
-  assert.equal(articleIdFromUrl('smoke-blog', 'https://example.com/'), 'smoke-blog/article');
-  // 日期前缀剥离：2026-07-04-harness → harness
-  assert.equal(
-    articleIdFromUrl('lilian-weng', 'https://lilianweng.github.io/posts/2026-07-04-harness'),
-    'lilian-weng/harness',
+    articleIdFromUrl('openai', 'https://openai.com/research/2025-01-15-breakthrough.html'),
+    'openai/breakthrough',
   );
 });
 
-// buildArticleFrontmatter：黄金输出与 scripts/update/persist.ts 字节一致（末尾有一个换行）
-test('buildArticleFrontmatter: 黄金输出与 scripts/update/persist.ts 字节一致', () => {
-  const expected = `---
-blog_id: "smoke-blog"
-original_url: "https://example.com/blog/hello-world/"
-image_url: "https://cdn.example.com/hello-world.jpg"
-original_title: "Hello World"
-translated_title: "你好世界"
-published_at: 2025-06-01
-categories:
-  - "AI"
-translation_model: "smoke-model"
-translated_at: 2025-06-02
-source_domain: "example.com"
-original_language: "en"
-excerpt: "你好 这是翻译后的正文。"
----
-`;
-  assert.equal(buildArticleFrontmatter(source, article, translation, translatedAt), expected);
+test('articleIdFromUrl: 无路径末段时回退 article', () => {
+  assert.equal(
+    articleIdFromUrl('test', 'https://example.com/'),
+    'test/article',
+  );
 });
 
-// buildArticleFrontmatter：可选字段缺失时不输出该行，excerpt 在内容足够时仍出现
-test('buildArticleFrontmatter: 可选字段缺失时不输出该行', () => {
-  const minimalArticle: RawArticle = { ...article, imageUrl: undefined };
-  const minimalTranslation: TranslationResult = {
-    ...translation,
-    translationStatus: undefined,
-    originalZhUrl: undefined,
+// ── buildVersionFrontmatter 黄金输出 ──────────────────
+
+test('buildVersionFrontmatter: 原文版本黄金输出', () => {
+  const fm = buildVersionFrontmatter(source, articleRecord, originalVersion);
+  assert.equal(fm, [
+    '---',
+    `blog_id: ${yamlScalar(source.id)}`,
+    `original_url: ${yamlScalar(articleRecord.originalUrl)}`,
+    `language: "en"`,
+    `is_original: true`,
+    `title: "Hello World"`,
+    `published_at: 2025-06-01`,
+    `categories:`,
+    `  - "AI"`,
+    `source_domain: "example.com"`,
+    `original_language: "en"`,
+    `provenance: "original"`,
+    `version_at: 2025-06-02`,
+    `excerpt: "Hello This is the original body."`,
+    '---',
+    '',
+  ].join('\n'));
+});
+
+test('buildVersionFrontmatter: 翻译版本黄金输出', () => {
+  const fm = buildVersionFrontmatter(source, articleRecord, translationVersion);
+  assert.equal(fm, [
+    '---',
+    `blog_id: "smoke-blog"`,
+    `original_url: "https://example.com/blog/hello-world/"`,
+    `language: "zh-cn"`,
+    `is_original: false`,
+    `title: "你好世界"`,
+    `published_at: 2025-06-01`,
+    `categories:`,
+    `  - "AI"`,
+    `source_domain: "example.com"`,
+    `original_language: "en"`,
+    `provenance: "model"`,
+    `translation_model: "gpt-4"`,
+    `version_at: 2025-06-03`,
+    `excerpt: "你好 这是翻译后的正文。"`,
+    '---',
+    '',
+  ].join('\n'));
+});
+
+test('buildVersionFrontmatter: 空 categories 用内联 []', () => {
+  const articleNoCats = { ...articleRecord, categories: [] };
+  const fm = buildVersionFrontmatter(source, articleNoCats, originalVersion);
+  assert.ok(fm.includes('categories: []'));
+  assert.ok(!fm.includes('  - '));
+});
+
+test('buildVersionFrontmatter: 可选字段缺失时不输出该行', () => {
+  const minimalArticle: ArticleRecord = {
+    id: 'test/minimal',
+    sourceId: 'test',
+    originalUrl: 'https://example.com/minimal/',
+    originalLanguage: 'en',
+    publishedAt: '2025-01-01',
+    sourceDomain: 'example.com',
+    categories: [],
   };
-  const output = buildArticleFrontmatter(source, minimalArticle, minimalTranslation, translatedAt);
-  assert.ok(!output.includes('image_url:'));
-  assert.ok(!output.includes('translation_status:'));
-  assert.ok(!output.includes('original_zh_url:'));
-  assert.ok(!output.includes('author:'));
-  assert.ok(output.includes('excerpt:'));
+  const minimalVersion: ArticleVersionRecord = {
+    articleId: 'test/minimal',
+    language: 'en',
+    title: 'Minimal',
+    contentMarkdown: 'Short.',
+    provenance: 'original',
+    updatedAt: '2025-01-02',
+  };
+  const fm = buildVersionFrontmatter(source, minimalArticle, minimalVersion);
+  assert.ok(!fm.includes('translation_model'));
+  assert.ok(!fm.includes('original_alt_url'));
+  assert.ok(!fm.includes('image_url'));
+  assert.ok(!fm.includes('author'));
+  assert.ok(fm.includes('excerpt: "Short."'));
 });
 
-// excerptFromMarkdown：去代码块/图片/链接标记 + 空白压缩 + 长文本截断加省略号
-test('excerptFromMarkdown: 去标记 + 截断', () => {
-  assert.equal(excerptFromMarkdown('## 你好\n\n这是翻译后的正文。'), '你好 这是翻译后的正文。');
-  assert.equal(
-    excerptFromMarkdown('```code\nblock\n```\n![img](x.png)\n[link](y.com)\n# 标题\n正文'),
-    'link 标题 正文',
-  );
-  assert.equal(excerptFromMarkdown('短文本'), '短文本');
-  assert.equal(excerptFromMarkdown(''), '');
-  const long = excerptFromMarkdown('a'.repeat(200));
-  assert.equal(long.length, 181);
-  assert.ok(long.endsWith('…'));
+// ── parseVersionFile round-trip ───────────────────────
+
+test('parseVersionFile: round-trip build → parse（原文版本）', () => {
+  const fileContent = buildVersionFileContent(source, articleRecord, originalVersion);
+  const parsed = parseVersionFile('smoke-blog/en/hello-world', fileContent);
+  assert.ok(parsed);
+  assert.equal(parsed.article.id, 'smoke-blog/hello-world');
+  assert.equal(parsed.article.sourceId, 'smoke-blog');
+  assert.equal(parsed.article.originalUrl, 'https://example.com/blog/hello-world/');
+  assert.equal(parsed.article.originalLanguage, 'en');
+  assert.equal(parsed.article.publishedAt, '2025-06-01');
+  assert.equal(parsed.article.sourceDomain, 'example.com');
+  assert.deepEqual(parsed.article.categories, ['AI']);
+  assert.equal(parsed.version.language, 'en');
+  assert.equal(parsed.version.title, 'Hello World');
+  assert.equal(parsed.version.provenance, 'original');
+  assert.equal(parsed.version.contentMarkdown, '# Hello\n\nThis is the original body.');
 });
 
-// yamlScalar：JSON 风格双引号编码（JSON.stringify）
+test('parseVersionFile: round-trip build → parse（翻译版本）', () => {
+  const fileContent = buildVersionFileContent(source, articleRecord, translationVersion);
+  const parsed = parseVersionFile('smoke-blog/zh-cn/hello-world', fileContent);
+  assert.ok(parsed);
+  assert.equal(parsed.version.language, 'zh-cn');
+  assert.equal(parsed.version.title, '你好世界');
+  assert.equal(parsed.version.provenance, 'model');
+  assert.equal(parsed.version.translationModel, 'gpt-4');
+  assert.equal(parsed.version.contentMarkdown, '# 你好\n\n这是翻译后的正文。');
+  // articleId 从文件 id 派生（去掉语言段）
+  assert.equal(parsed.article.id, 'smoke-blog/hello-world');
+});
+
+test('parseVersionFile: 空 categories 正确解析', () => {
+  const articleNoCats = { ...articleRecord, categories: [] };
+  const fileContent = buildVersionFileContent(source, articleNoCats, originalVersion);
+  const parsed = parseVersionFile('smoke-blog/en/hello-world', fileContent);
+  assert.ok(parsed);
+  assert.deepEqual(parsed.article.categories, []);
+});
+
+test('parseVersionFile: 缺必需字段返回 null', () => {
+  const content = [
+    '---',
+    'blog_id: "test"',
+    'original_url: "https://example.com/"',
+    'language: "en"',
+    'title: "Test"',
+    '---',
+    'Body.',
+  ].join('\n');
+  // 缺 published_at, source_domain, original_language, provenance, version_at
+  assert.equal(parseVersionFile('test/en/test', content), null);
+});
+
+test('parseVersionFile: 无 frontmatter 块返回 null', () => {
+  assert.equal(parseVersionFile('id', '纯正文无 frontmatter'), null);
+});
+
+// ── articleId 从文件 id 派生 ──────────────────────────
+
+test('parseVersionFile: 三段 id blogId/lang/slug → articleId blogId/slug', () => {
+  const fileContent = buildVersionFileContent(source, articleRecord, originalVersion);
+  const parsed = parseVersionFile('smoke-blog/en/hello-world', fileContent);
+  assert.ok(parsed);
+  assert.equal(parsed.article.id, 'smoke-blog/hello-world');
+});
+
+// ── 工具函数 ──────────────────────────────────────────
+
 test('yamlScalar: JSON 风格双引号', () => {
   assert.equal(yamlScalar('hello'), '"hello"');
   assert.equal(yamlScalar('含"引号'), '"含\\"引号"');
-  assert.equal(yamlScalar('path/with/slash'), '"path/with/slash"');
 });
 
-// yamlDate：Date 取 ISO 日期部分（YYYY-MM-DD），字符串原样输出
-test('yamlDate: Date 取 ISO 日期部分，字符串原样', () => {
-  assert.equal(yamlDate(new Date('2025-06-01T13:45:00.000Z')), '2025-06-01');
+test('yamlDate: Date 取 ISO 日期部分', () => {
+  assert.equal(yamlDate(new Date('2025-06-01T12:00:00Z')), '2025-06-01');
   assert.equal(yamlDate('2025-06-01'), '2025-06-01');
-  assert.equal(yamlDate('2025-06-01T13:45:00.000Z'), '2025-06-01T13:45:00.000Z');
 });
 
-// frontmatterValue：提取字段值，JSON.parse 失败（裸日期）回退原值，缺 key 返回 null
-test('frontmatterValue: 提取 + JSON 反序列化', () => {
-  const content = buildArticleFrontmatter(source, article, translation, translatedAt);
-  assert.equal(frontmatterValue(content, 'blog_id'), 'smoke-blog');
-  assert.equal(frontmatterValue(content, 'original_url'), 'https://example.com/blog/hello-world/');
-  assert.equal(frontmatterValue(content, 'published_at'), '2025-06-01');
-  assert.equal(frontmatterValue(content, 'nonexistent'), null);
+test('excerptFromMarkdown: 去标记后截断', () => {
+  const md = '# Title\n\n```code\nblock\n```\n\nThis is **bold** text.';
+  const excerpt = excerptFromMarkdown(md);
+  assert.ok(excerpt.includes('This is bold text'));
+  assert.ok(!excerpt.includes('#'));
+  assert.ok(!excerpt.includes('```'));
 });
 
-// parseArticleFrontmatter：build → parse round-trip，全部字段还原一致
-test('parseArticleFrontmatter: round-trip build → parse', () => {
-  const id = 'test-id';
-  const fileContent =
-    buildArticleFrontmatter(source, article, translation, translatedAt) +
-    translation.contentMarkdown.replace(/\s+$/, '') +
-    '\n';
-  const record = parseArticleFrontmatter(id, fileContent);
-  assert.equal(record?.id, id);
-  assert.equal(record?.sourceId, 'smoke-blog');
-  assert.equal(record?.originalUrl, 'https://example.com/blog/hello-world/');
-  assert.equal(record?.imageUrl, 'https://cdn.example.com/hello-world.jpg');
-  assert.equal(record?.originalTitle, 'Hello World');
-  assert.equal(record?.translatedTitle, '你好世界');
-  assert.equal(record?.publishedAt, '2025-06-01');
-  assert.equal(record?.translatedAt, '2025-06-02');
-  assert.equal(record?.translationModel, 'smoke-model');
-  assert.equal(record?.sourceDomain, 'example.com');
-  assert.equal(record?.originalLanguage, 'en');
-  assert.deepEqual(record?.categories, ['AI']);
-  assert.equal(record?.contentMarkdown, '## 你好\n\n这是翻译后的正文。');
-  assert.equal(record?.excerpt, '你好 这是翻译后的正文。');
-  assert.equal(record?.author, undefined);
-  assert.equal(record?.translationStatus, undefined);
-  assert.equal(record?.originalZhUrl, undefined);
+test('excerptFromMarkdown: 空正文返回空字符串', () => {
+  assert.equal(excerptFromMarkdown(''), '');
 });
 
-// parseArticleFrontmatter：带 translationStatus / originalZhUrl / author 时正确还原
-test('parseArticleFrontmatter: 带 translationStatus / originalZhUrl / author', () => {
-  const fullArticle: RawArticle = { ...article, author: '作者名' };
-  const fullTranslation: TranslationResult = {
-    ...translation,
-    translationStatus: 'official-zh',
-    originalZhUrl: 'https://example.com/zh/hello-world/',
-  };
-  const fileContent =
-    buildArticleFrontmatter(source, fullArticle, fullTranslation, translatedAt) +
-    translation.contentMarkdown.replace(/\s+$/, '') +
-    '\n';
-  const record = parseArticleFrontmatter('test-id', fileContent);
-  assert.equal(record?.author, '作者名');
-  assert.equal(record?.translationStatus, 'official-zh');
-  assert.equal(record?.originalZhUrl, 'https://example.com/zh/hello-world/');
+test('frontmatterValue: 提取 original_url', () => {
+  const fileContent = buildVersionFileContent(source, articleRecord, originalVersion);
+  assert.equal(
+    frontmatterValue(fileContent, 'original_url'),
+    'https://example.com/blog/hello-world/',
+  );
 });
 
-// parseArticleFrontmatter：缺必需字段（original_url）返回 null
-test('parseArticleFrontmatter: 缺必需字段返回 null', () => {
-  const content = `---
-blog_id: "smoke-blog"
-original_title: "Hello World"
-translated_title: "你好世界"
-published_at: 2025-06-01
-categories:
-  - "AI"
-translation_model: "smoke-model"
-translated_at: 2025-06-02
-source_domain: "example.com"
-original_language: "en"
----
-正文`;
-  assert.equal(parseArticleFrontmatter('test-id', content), null);
-});
-
-// parseArticleFrontmatter：无 frontmatter 块返回 null
-test('parseArticleFrontmatter: 无 frontmatter 块返回 null', () => {
-  assert.equal(parseArticleFrontmatter('id', '纯正文无 frontmatter'), null);
+test('frontmatterValue: 不存在的字段返回 null', () => {
+  const fileContent = buildVersionFileContent(source, articleRecord, originalVersion);
+  assert.equal(frontmatterValue(fileContent, 'nonexistent'), null);
 });

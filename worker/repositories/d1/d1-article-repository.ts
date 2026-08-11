@@ -1,66 +1,98 @@
 /**
- * D1ArticleRepository —— D1 后端的 ArticleRepository 实现。
+ * D1ArticleRepository —— D1 后端的 ArticleRepository 实现（多语言架构）。
  *
- * 所有操作用 D1 prepared statements。幂等语义由 D1 schema 的
- * UNIQUE(source_id, original_url) 保证，用 upsert 实现。
+ * 一篇文章拆为两层：
+ * - articles：身份行（id、url、发布日期、作者等），UNIQUE(source_id, original_url)。
+ * - article_versions：语言版本行（标题、正文、provenance），PK(article_id, language)。
  *
- * 与 FileArticleRepository 实现同一个接口（ArticleRepository），
- * 调用方无需感知底层差异。
+ * save() 写身份 + 原文版本（原文无分类）；saveVersion() 为已有文章追加/更新语言版本。
+ * 幂等语义由 schema 的 UNIQUE/PK + ON CONFLICT upsert 保证。
+ *
+ * 与 FileArticleRepository 实现同一个接口（ArticleRepository），调用方无需感知底层差异。
  */
 
 import { articleIdFromUrl, excerptFromMarkdown } from '../../domain/article';
 import type { D1Database } from '@cloudflare/workers-types';
 import type {
   ArticleRecord,
+  ArticleVersionRecord,
+  ContentSource,
+  Provenance,
   SaveArticleInput,
   SaveResult,
+  SaveVersionInput,
 } from '../../domain/types';
 import type { ArticleRepository } from '../article-repository';
 
-/** D1 数据库的行结构（snake_case）。 */
+/** articles 行结构（snake_case，仅身份字段）。 */
 interface ArticleRow {
   id: string;
   source_id: string;
   original_url: string;
-  original_title: string;
-  translated_title: string;
-  published_at: string;
-  translated_at: string;
   original_language: string;
-  translation_model: string;
-  translation_status: string | null;
-  original_zh_url: string | null;
-  content_markdown: string;
-  excerpt: string | null;
+  published_at: string;
   image_url: string | null;
   author: string | null;
   source_domain: string;
 }
 
-/** D1 prepared statement 的 bind 参数顺序与 INSERT 列顺序一致。 */
-const ARTICLE_INSERT_SQL = `
+/** article_versions 行结构（snake_case）。 */
+interface VersionRow {
+  article_id: string;
+  language: string;
+  title: string;
+  content_markdown: string;
+  excerpt: string | null;
+  provenance: string;
+  translation_model: string | null;
+  original_alt_url: string | null;
+  updated_at: string;
+}
+
+/** 文章身份 upsert：ON CONFLICT(source_id, original_url) 刷新身份字段。 */
+const ARTICLE_UPSERT_SQL = `
   INSERT INTO articles (
-    id, source_id, original_url, original_title, translated_title,
-    published_at, translated_at, original_language, translation_model,
-    translation_status, original_zh_url, content_markdown, excerpt,
+    id, source_id, original_url, original_language, published_at,
     image_url, author, source_domain
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(source_id, original_url) DO UPDATE SET
     id = excluded.id,
-    original_title = excluded.original_title,
-    translated_title = excluded.translated_title,
-    translated_at = excluded.translated_at,
-    translation_model = excluded.translation_model,
-    translation_status = excluded.translation_status,
-    original_zh_url = excluded.original_zh_url,
-    content_markdown = excluded.content_markdown,
-    excerpt = excluded.excerpt,
+    original_language = excluded.original_language,
+    published_at = excluded.published_at,
     image_url = excluded.image_url,
     author = excluded.author,
     updated_at = datetime('now')
 `;
 
-/** 保存文章前同步来源注册表，确保 articles/source_items 的外键可独立成立。 */
+/** 原文版本 upsert（save() 写入，无 translation_model / original_alt_url）。 */
+const ARTICLE_VERSION_ORIGINAL_SQL = `
+  INSERT INTO article_versions (article_id, language, title, content_markdown, excerpt, provenance)
+  VALUES (?, ?, ?, ?, ?, ?)
+  ON CONFLICT(article_id, language) DO UPDATE SET
+    title = excluded.title,
+    content_markdown = excluded.content_markdown,
+    excerpt = excluded.excerpt,
+    provenance = excluded.provenance,
+    updated_at = datetime('now')
+`;
+
+/** 语言版本 upsert（saveVersion() 写入，含 translation_model / original_alt_url）。 */
+const ARTICLE_VERSION_UPSERT_SQL = `
+  INSERT INTO article_versions (
+    article_id, language, title, content_markdown, excerpt, provenance,
+    translation_model, original_alt_url
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(article_id, language) DO UPDATE SET
+    title = excluded.title,
+    content_markdown = excluded.content_markdown,
+    excerpt = excluded.excerpt,
+    provenance = excluded.provenance,
+    translation_model = excluded.translation_model,
+    original_alt_url = excluded.original_alt_url,
+    updated_at = datetime('now')
+`;
+
+/** 保存文章前同步来源注册表，确保 articles 的外键可独立成立。 */
 const SOURCE_UPSERT_SQL = `
   INSERT INTO sources (
     id, name, type, homepage_url, blog_url, domain, rss_url, sitemap_url,
@@ -80,20 +112,30 @@ const SOURCE_UPSERT_SQL = `
     updated_at = datetime('now')
 `;
 
+/**
+ * 从抓取层的内容来源标记推导原文版本的 provenance。
+ * 官方/原生中文直存保留对应标记；其余（含模型翻译与未声明）一律按原文 ('original')。
+ */
+function provenanceFromContentSource(contentSource: ContentSource | undefined): Provenance {
+  if (contentSource === 'official-zh') return 'official-zh';
+  if (contentSource === 'native-zh') return 'native-zh';
+  return 'original';
+}
+
 export class D1ArticleRepository implements ArticleRepository {
   constructor(private readonly db: D1Database) {}
 
   async save(input: SaveArticleInput): Promise<SaveResult> {
-    const { source, article, translation } = input;
+    const { source, article } = input;
     if (!article.publishedAt) {
       throw new Error(
         `cannot persist ${article.url}: no published date available (page metadata and discovery both missing)`,
       );
     }
 
-    const translatedAt = input.translatedAt ?? new Date();
     const id = articleIdFromUrl(source.id, article.url);
-    const excerpt = excerptFromMarkdown(translation.contentMarkdown);
+    const excerpt = excerptFromMarkdown(article.contentMarkdown);
+    const provenance = provenanceFromContentSource(article.contentSource);
 
     // 幂等检查：同 (source_id, original_url) 已存在？
     const existing = await this.db
@@ -125,36 +167,67 @@ export class D1ArticleRepository implements ArticleRepository {
           sourceConfig,
         ),
       this.db
-      .prepare(ARTICLE_INSERT_SQL)
-      .bind(
-        id,
-        source.id,
-        article.url,
-        article.title,
-        translation.translatedTitle,
-        article.publishedAt,
-        translatedAt instanceof Date ? translatedAt.toISOString() : String(translatedAt),
-        article.originalLanguage,
-        translation.model,
-        translation.translationStatus ?? null,
-        translation.originalZhUrl ?? null,
-        translation.contentMarkdown,
-        excerpt || null,
-        article.imageUrl ?? null,
-        article.author ?? null,
-        source.domain,
-      ),
-      // 与文章 upsert 同一 batch：分类写入失败时整批回滚，不留下半篇文章。
+        .prepare(ARTICLE_UPSERT_SQL)
+        .bind(
+          id,
+          source.id,
+          article.url,
+          article.originalLanguage,
+          article.publishedAt,
+          article.imageUrl ?? null,
+          article.author ?? null,
+          source.domain,
+        ),
+      this.db
+        .prepare(ARTICLE_VERSION_ORIGINAL_SQL)
+        .bind(
+          id,
+          article.originalLanguage,
+          article.title,
+          article.contentMarkdown,
+          excerpt || null,
+          provenance,
+        ),
+      // 原文无分类；DELETE 清掉可能存在的旧分类（如重新保存），与文章 upsert 同 batch 保证原子。
       this.db.prepare('DELETE FROM article_categories WHERE article_id = ?').bind(id),
-      ...translation.categories.map((category) =>
-        this.db
-          .prepare('INSERT INTO article_categories (article_id, category_name) VALUES (?, ?)')
-          .bind(id, category),
-      ),
     ];
     await this.db.batch(statements);
 
     return { id, created: !existing };
+  }
+
+  async saveVersion(input: SaveVersionInput): Promise<SaveResult> {
+    // 前置：文章身份必须存在（saveVersion 不创建文章）。
+    const article = await this.db
+      .prepare('SELECT id FROM articles WHERE id = ?')
+      .bind(input.articleId)
+      .first<{ id: string }>();
+    if (!article) {
+      throw new Error(`cannot save version: article ${input.articleId} does not exist`);
+    }
+
+    // 幂等：(article_id, language) 已存在则 created:false。
+    const existingVersion = await this.db
+      .prepare('SELECT 1 FROM article_versions WHERE article_id = ? AND language = ?')
+      .bind(input.articleId, input.language)
+      .first();
+
+    const excerpt = excerptFromMarkdown(input.contentMarkdown);
+    await this.db
+      .prepare(ARTICLE_VERSION_UPSERT_SQL)
+      .bind(
+        input.articleId,
+        input.language,
+        input.title,
+        input.contentMarkdown,
+        excerpt || null,
+        input.provenance,
+        input.translationModel ?? null,
+        input.originalAltUrl ?? null,
+      )
+      .run();
+
+    return { id: input.articleId, created: !existingVersion };
   }
 
   async exists(sourceId: string, originalUrl: string): Promise<boolean> {
@@ -183,6 +256,23 @@ export class D1ArticleRepository implements ArticleRepository {
     if (!row) return null;
     const categories = await this.getCategories([row.id]);
     return rowToRecord(row, categories[row.id] ?? []);
+  }
+
+  async getVersion(articleId: string, language: string): Promise<ArticleVersionRecord | null> {
+    const row = await this.db
+      .prepare('SELECT * FROM article_versions WHERE article_id = ? AND language = ? LIMIT 1')
+      .bind(articleId, language)
+      .first<VersionRow>();
+    if (!row) return null;
+    return rowToVersion(row);
+  }
+
+  async listVersions(articleId: string): Promise<ArticleVersionRecord[]> {
+    const { results } = await this.db
+      .prepare('SELECT * FROM article_versions WHERE article_id = ? ORDER BY language')
+      .bind(articleId)
+      .all<VersionRow>();
+    return results.map(rowToVersion);
   }
 
   async listBySource(sourceId: string): Promise<ArticleRecord[]> {
@@ -224,25 +314,32 @@ export class D1ArticleRepository implements ArticleRepository {
   }
 }
 
-/** D1 行（snake_case）→ 领域模型（camelCase）。 */
+/** articles 行（snake_case）→ 领域模型 ArticleRecord（camelCase）。 */
 function rowToRecord(row: ArticleRow, categories: string[]): ArticleRecord {
   return {
     id: row.id,
     sourceId: row.source_id,
     originalUrl: row.original_url,
-    originalTitle: row.original_title,
-    translatedTitle: row.translated_title,
-    publishedAt: row.published_at,
-    translatedAt: row.translated_at,
     originalLanguage: row.original_language,
-    translationModel: row.translation_model,
-    ...(row.translation_status ? { translationStatus: row.translation_status as ArticleRecord['translationStatus'] } : {}),
-    ...(row.original_zh_url ? { originalZhUrl: row.original_zh_url } : {}),
-    contentMarkdown: row.content_markdown,
-    ...(row.excerpt ? { excerpt: row.excerpt } : {}),
+    publishedAt: row.published_at,
     ...(row.image_url ? { imageUrl: row.image_url } : {}),
     ...(row.author ? { author: row.author } : {}),
     sourceDomain: row.source_domain,
     categories,
+  };
+}
+
+/** article_versions 行（snake_case）→ 领域模型 ArticleVersionRecord（camelCase）。 */
+function rowToVersion(row: VersionRow): ArticleVersionRecord {
+  return {
+    articleId: row.article_id,
+    language: row.language,
+    title: row.title,
+    contentMarkdown: row.content_markdown,
+    ...(row.excerpt ? { excerpt: row.excerpt } : {}),
+    provenance: row.provenance as Provenance,
+    ...(row.translation_model ? { translationModel: row.translation_model } : {}),
+    ...(row.original_alt_url ? { originalAltUrl: row.original_alt_url } : {}),
+    updatedAt: row.updated_at,
   };
 }

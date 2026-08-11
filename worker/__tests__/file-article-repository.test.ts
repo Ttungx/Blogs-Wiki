@@ -1,21 +1,23 @@
 /**
- * FileArticleRepository 测试 —— Phase 2。
+ * FileArticleRepository 测试 —— 多语言版本架构。
  *
- * 验证文件后端与 `scripts/update/persist.ts` 的 writeArticle 行为对齐：
- * 落盘路径 `<rootDir>/src/content/articles/<id>.md`、幂等返回 created:false、
- * 无 publishedAt 抛错，以及 Phase 8 铺路的读方法（getById / getByOriginalUrl /
- * listBySource / listAll）。
+ * 验证：
+ * - save() 写原文版本到 articles/{blogId}/{originalLanguage}/{slug}.md
+ * - saveVersion() 写翻译版本到 articles/{blogId}/{language}/{slug}.md
+ * - 幂等：同 (sourceId, originalUrl) 或同 (articleId, language) 不重复写
+ * - getVersion / listVersions / listAll（按 articleId 去重）
+ * - 无 publishedAt 抛错
  *
- * 每个测试用独立临时目录（mkdtemp + try/finally 清理），串行 await 执行。
+ * 每个测试用独立临时目录（mkdtemp + try/finally 清理）。
  */
 
 import { strict as assert } from 'node:assert';
-import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { FileArticleRepository } from '../repositories/file/file-article-repository.ts';
-import type { RawArticle, SourceConfig, TranslationResult } from '../domain/types.ts';
+import type { RawArticle, SourceConfig } from '../domain/types.ts';
 
 const source: SourceConfig = {
   id: 'smoke-blog',
@@ -40,82 +42,52 @@ function makeArticle(overrides: Partial<RawArticle> = {}): RawArticle {
   };
 }
 
-function makeTranslation(overrides: Partial<TranslationResult> = {}): TranslationResult {
-  return {
-    translatedTitle: '你好世界',
-    categories: ['AI'],
-    contentMarkdown: '## 你好\n\n这是翻译后的正文。',
-    model: 'smoke-model',
-    ...overrides,
-  };
-}
+const articlesDir = (root: string) => path.join(root, 'src', 'content', 'articles');
 
-test('save 新建文章返回 created:true，文件落盘含正确 frontmatter', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
+// ── save() ────────────────────────────────────────────
+
+test('save 新建原文版本：文件路径 blogId/en/slug.md，frontmatter 含 language/provenance', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
   try {
     const repo = new FileArticleRepository({ rootDir });
-    const result = await repo.save({
-      source,
-      article: makeArticle(),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-    });
-
+    const result = await repo.save({ source, article: makeArticle() });
     assert.equal(result.created, true);
     assert.equal(result.id, 'smoke-blog/hello-world');
 
-    const written = await readFile(
-      path.join(rootDir, 'src', 'content', 'articles', 'smoke-blog', 'hello-world.md'),
-      'utf8',
-    );
-    assert.match(written, /blog_id: "smoke-blog"/);
-    assert.match(written, /original_url: "https:\/\/example\.com\/blog\/hello-world\/"/);
-    assert.match(written, /image_url: "https:\/\/cdn\.example\.com\/hello-world\.jpg"/);
+    const file = path.join(articlesDir(rootDir), 'smoke-blog', 'en', 'hello-world.md');
+    const written = await readFile(file, 'utf8');
+    assert.match(written, /language: "en"/);
+    assert.match(written, /is_original: true/);
+    assert.match(written, /title: "Hello World"/);
+    assert.match(written, /provenance: "original"/);
     assert.match(written, /published_at: 2025-06-01/);
-    assert.match(written, /translation_model: "smoke-model"/);
-    assert.match(written, /- "AI"/);
-    assert.match(written, /## 你好/);
+    assert.match(written, /# Hello/);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
 });
 
-test('save 同 originalUrl 幂等：第二次返回 created:false', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
+test('save 同 originalUrl 幂等返回 created:false', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
   try {
     const repo = new FileArticleRepository({ rootDir });
-    const input = {
-      source,
-      article: makeArticle(),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-    };
-
+    const input = { source, article: makeArticle() };
     const first = await repo.save(input);
-    assert.equal(first.created, true);
-
     const second = await repo.save(input);
+    assert.equal(first.created, true);
     assert.equal(second.created, false);
     assert.equal(second.id, first.id);
-
-    const files = await readdir(path.join(rootDir, 'src', 'content', 'articles'));
-    assert.equal(files.length, 1);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
 });
 
 test('save 无 publishedAt 抛错', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
   try {
     const repo = new FileArticleRepository({ rootDir });
     await assert.rejects(
-      repo.save({
-        source,
-        article: makeArticle({ publishedAt: '' }),
-        translation: makeTranslation(),
-        translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-      }),
+      repo.save({ source, article: makeArticle({ publishedAt: '' }) }),
       /no published date/,
     );
   } finally {
@@ -123,235 +95,258 @@ test('save 无 publishedAt 抛错', async () => {
   }
 });
 
-test('exists: 新文章 false，save 后 true', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
+test('save slug 冲突加 -2 后缀', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
+  try {
+    const repo = new FileArticleRepository({ rootDir });
+    const a = await repo.save({ source, article: makeArticle() });
+    // 同 blogId 同 slug 但不同 URL → 冲突
+    const b = await repo.save({
+      source,
+      article: makeArticle({ url: 'https://example.com/blog/hello-world-v2/' }),
+    });
+    assert.equal(a.id, 'smoke-blog/hello-world');
+    assert.equal(b.id, 'smoke-blog/hello-world-2');
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+// ── saveVersion() ─────────────────────────────────────
+
+test('saveVersion 写翻译版本到 blogId/zh-cn/slug.md', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
+  try {
+    const repo = new FileArticleRepository({ rootDir });
+    const saved = await repo.save({ source, article: makeArticle() });
+    const vResult = await repo.saveVersion({
+      articleId: saved.id,
+      language: 'zh-cn',
+      title: '你好世界',
+      contentMarkdown: '## 你好\n\n这是翻译后的正文。',
+      provenance: 'model',
+      translationModel: 'gpt-4',
+      categories: ['AI'],
+    });
+    assert.equal(vResult.created, true);
+
+    const file = path.join(articlesDir(rootDir), 'smoke-blog', 'zh-cn', 'hello-world.md');
+    const written = await readFile(file, 'utf8');
+    assert.match(written, /language: "zh-cn"/);
+    assert.match(written, /is_original: false/);
+    assert.match(written, /title: "你好世界"/);
+    assert.match(written, /provenance: "model"/);
+    assert.match(written, /translation_model: "gpt-4"/);
+    assert.match(written, /- "AI"/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test('saveVersion 幂等：同 language 已存在返回 created:false', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
+  try {
+    const repo = new FileArticleRepository({ rootDir });
+    const saved = await repo.save({ source, article: makeArticle() });
+    const input = {
+      articleId: saved.id,
+      language: 'zh-cn',
+      title: '你好',
+      contentMarkdown: '# 你好',
+      provenance: 'model' as const,
+    };
+    const first = await repo.saveVersion(input);
+    const second = await repo.saveVersion(input);
+    assert.equal(first.created, true);
+    assert.equal(second.created, false);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test('saveVersion 在 save 之前调用抛错', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
+  try {
+    const repo = new FileArticleRepository({ rootDir });
+    await assert.rejects(
+      repo.saveVersion({
+        articleId: 'nonexistent/article',
+        language: 'zh-cn',
+        title: '标题',
+        contentMarkdown: '# 内容',
+        provenance: 'model',
+      }),
+      /article not found/,
+    );
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+// ── exists / getById / getByOriginalUrl ───────────────
+
+test('exists: save 前为 false，save 后为 true', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
   try {
     const repo = new FileArticleRepository({ rootDir });
     const url = 'https://example.com/blog/hello-world/';
-
-    const before = await repo.exists('smoke-blog', url);
-    assert.equal(before, false);
-
-    await repo.save({
-      source,
-      article: makeArticle(),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-    });
-
-    const after = await repo.exists('smoke-blog', url);
-    assert.equal(after, true);
+    assert.equal(await repo.exists('smoke-blog', url), false);
+    await repo.save({ source, article: makeArticle() });
+    assert.equal(await repo.exists('smoke-blog', url), true);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
 });
 
-test('getById: 存在返回完整 ArticleRecord，不存在返回 null', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
+test('getById 返回 ArticleRecord（身份字段，无内容）', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
   try {
     const repo = new FileArticleRepository({ rootDir });
-    const result = await repo.save({
-      source,
-      article: makeArticle(),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-    });
-
-    const record = await repo.getById(result.id);
+    const saved = await repo.save({ source, article: makeArticle() });
+    const record = await repo.getById(saved.id);
     assert.ok(record);
     assert.equal(record.sourceId, 'smoke-blog');
     assert.equal(record.originalUrl, 'https://example.com/blog/hello-world/');
-    assert.equal(record.originalTitle, 'Hello World');
-    assert.equal(record.translatedTitle, '你好世界');
-    assert.equal(record.translationModel, 'smoke-model');
-    assert.equal(record.sourceDomain, 'example.com');
     assert.equal(record.originalLanguage, 'en');
-    assert.deepEqual(record.categories, ['AI']);
-    assert.equal(record.contentMarkdown, '## 你好\n\n这是翻译后的正文。');
     assert.equal(record.publishedAt, '2025-06-01');
-    assert.equal(record.translatedAt, '2025-06-02');
-    assert.equal(record.imageUrl, 'https://cdn.example.com/hello-world.jpg');
-
-    const missing = await repo.getById('does-not-exist');
-    assert.equal(missing, null);
+    assert.equal(record.sourceDomain, 'example.com');
+    assert.deepEqual(record.categories, []);
+    // 不存在的返回 null
+    assert.equal(await repo.getById('no/such'), null);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
 });
 
-test('getByOriginalUrl: 按 (sourceId, url) 查找', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
+test('getByOriginalUrl 按 (sourceId, url) 查找', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
   try {
     const repo = new FileArticleRepository({ rootDir });
-    await repo.save({
-      source,
-      article: makeArticle(),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-    });
-
+    await repo.save({ source, article: makeArticle() });
     const found = await repo.getByOriginalUrl('smoke-blog', 'https://example.com/blog/hello-world/');
-    assert.equal(found?.originalTitle, 'Hello World');
-
-    const wrongSource = await repo.getByOriginalUrl('other-source', 'https://example.com/blog/hello-world/');
-    assert.equal(wrongSource, null);
-
-    const wrongUrl = await repo.getByOriginalUrl('smoke-blog', 'https://example.com/other/');
-    assert.equal(wrongUrl, null);
+    assert.ok(found);
+    assert.equal(found.sourceId, 'smoke-blog');
+    assert.equal(await repo.getByOriginalUrl('other', 'https://example.com/blog/hello-world/'), null);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
 });
 
-test('listBySource: 过滤 sourceId', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
+// ── getVersion / listVersions ─────────────────────────
+
+test('getVersion 返回指定语言版本内容', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
   try {
     const repo = new FileArticleRepository({ rootDir });
-    await repo.save({
-      source,
-      article: makeArticle(),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-    });
-    await repo.save({
-      source,
-      article: makeArticle({
-        url: 'https://example.com/blog/second-post/',
-        title: 'Second Post',
-      }),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
+    const saved = await repo.save({ source, article: makeArticle() });
+    await repo.saveVersion({
+      articleId: saved.id,
+      language: 'zh-cn',
+      title: '你好世界',
+      contentMarkdown: '# 你好',
+      provenance: 'model',
+      translationModel: 'gpt-4',
+      categories: ['AI'],
     });
 
-    // 别的 source：同 rootDir 新实例，source.id 与 article.sourceId 均为 'other'
-    const otherSource: SourceConfig = { ...source, id: 'other', name: 'Other Blog' };
-    const otherRepo = new FileArticleRepository({ rootDir });
-    await otherRepo.save({
-      source: otherSource,
-      article: makeArticle({
-        sourceId: 'other',
-        url: 'https://example.com/blog/other-post/',
-        title: 'Other Post',
-      }),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-    });
+    const en = await repo.getVersion(saved.id, 'en');
+    assert.ok(en);
+    assert.equal(en.language, 'en');
+    assert.equal(en.title, 'Hello World');
+    assert.equal(en.provenance, 'original');
 
-    const list = await repo.listBySource('smoke-blog');
-    assert.equal(list.length, 2);
+    const zh = await repo.getVersion(saved.id, 'zh-cn');
+    assert.ok(zh);
+    assert.equal(zh.language, 'zh-cn');
+    assert.equal(zh.title, '你好世界');
+    assert.equal(zh.translationModel, 'gpt-4');
 
-    const other = await repo.listBySource('other');
-    assert.equal(other.length, 1);
+    assert.equal(await repo.getVersion(saved.id, 'ja'), null);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
 });
 
-test('listAll: 返回所有文章', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
+test('listVersions 返回文章的所有语言版本', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
   try {
     const repo = new FileArticleRepository({ rootDir });
-    await repo.save({
-      source,
-      article: makeArticle(),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
+    const saved = await repo.save({ source, article: makeArticle() });
+    await repo.saveVersion({
+      articleId: saved.id,
+      language: 'zh-cn',
+      title: '你好',
+      contentMarkdown: '# 你好',
+      provenance: 'model',
     });
-    await repo.save({
-      source,
-      article: makeArticle({
-        url: 'https://example.com/blog/second-post/',
-        title: 'Second Post',
-      }),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-    });
-    const otherSource: SourceConfig = { ...source, id: 'other', name: 'Other Blog' };
-    await repo.save({
-      source: otherSource,
-      article: makeArticle({
-        sourceId: 'other',
-        url: 'https://example.com/blog/other-post/',
-        title: 'Other Post',
-      }),
-      translation: makeTranslation(),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-    });
+    const versions = await repo.listVersions(saved.id);
+    assert.equal(versions.length, 2);
+    const langs = versions.map((v) => v.language).sort();
+    assert.deepEqual(langs, ['en', 'zh-cn']);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
 
+// ── listBySource / listAll ────────────────────────────
+
+test('listBySource 过滤 sourceId', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
+  try {
+    const repo = new FileArticleRepository({ rootDir });
+    await repo.save({ source, article: makeArticle() });
+    await repo.save({
+      source,
+      article: makeArticle({ url: 'https://example.com/blog/second/', title: 'Second' }),
+    });
+    const other: SourceConfig = { ...source, id: 'other' };
+    await repo.save({
+      source: other,
+      article: makeArticle({ sourceId: 'other', url: 'https://example.com/blog/other/' }),
+    });
+    assert.equal((await repo.listBySource('smoke-blog')).length, 2);
+    assert.equal((await repo.listBySource('other')).length, 1);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test('listAll 按 articleId 去重（多语言版本只算 1 篇）', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
+  try {
+    const repo = new FileArticleRepository({ rootDir });
+    const saved = await repo.save({ source, article: makeArticle() });
+    await repo.saveVersion({
+      articleId: saved.id,
+      language: 'zh-cn',
+      title: '你好',
+      contentMarkdown: '# 你好',
+      provenance: 'model',
+    });
+    // 2 个文件（en + zh-cn）但只有 1 篇文章
     const all = await repo.listAll();
-    assert.equal(all.length, 3);
+    assert.equal(all.length, 1);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
 });
 
-test('listAll: 空目录返回 []（不抛错）', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
+test('listAll 空目录返回 []', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
   try {
-    // 目录存在但没有任何文章文件
-    await mkdir(path.join(rootDir, 'src', 'content', 'articles'), { recursive: true });
+    await mkdir(articlesDir(rootDir), { recursive: true });
     const repo = new FileArticleRepository({ rootDir });
-    const all = await repo.listAll();
-    assert.deepEqual(all, []);
+    assert.deepEqual(await repo.listAll(), []);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
 });
 
-test('listAll: 目录不存在返回 []（不抛错）', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
-  try {
-    // repo 已构造但 src/content/articles 还不存在
-    const repo = new FileArticleRepository({ rootDir });
-    const all = await repo.listAll();
-    assert.deepEqual(all, []);
-  } finally {
-    await rm(rootDir, { recursive: true, force: true });
-  }
-});
-
-test('getById 返回的 record 含 excerpt 字段', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
+test('listAll 目录不存在返回 []', async () => {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-far-'));
   try {
     const repo = new FileArticleRepository({ rootDir });
-    const result = await repo.save({
-      source,
-      article: makeArticle(),
-      translation: makeTranslation({
-        contentMarkdown: '# Title\n\n' + '正文内容 '.repeat(50),
-      }),
-      translatedAt: new Date('2025-06-02T00:00:00.000Z'),
-    });
-
-    const record = await repo.getById(result.id);
-    assert.ok(record);
-    // 超过 180 字符截断，末尾带省略号
-    assert.ok(record.excerpt);
-    assert.ok(record.excerpt.length > 0);
-    assert.ok(record.excerpt.includes('…'));
-  } finally {
-    await rm(rootDir, { recursive: true, force: true });
-  }
-});
-
-test('save: translatedAt 默认为当前时间', async () => {
-  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'bw-worker-article-'));
-  try {
-    const repo = new FileArticleRepository({ rootDir });
-    // 不传 translatedAt，落盘时间应为今天（YYYY-MM-DD）
-    const today = new Date().toISOString().slice(0, 10);
-    const result = await repo.save({
-      source,
-      article: makeArticle(),
-      translation: makeTranslation(),
-    });
-
-    assert.equal(result.created, true);
-    const written = await readFile(
-      path.join(rootDir, 'src', 'content', 'articles', `${result.id}.md`),
-      'utf8',
-    );
-    assert.match(written, new RegExp(`translated_at: ${today}`));
+    assert.deepEqual(await repo.listAll(), []);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }

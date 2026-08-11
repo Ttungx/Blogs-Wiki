@@ -6,6 +6,7 @@
 import type {
   RawArticle,
   SaveArticleInput,
+  SaveVersionInput,
   SourceConfig,
   TranslationResult,
 } from "../../domain/types.ts";
@@ -73,11 +74,27 @@ export function makeTranslation(overrides: Partial<TranslationResult> = {}): Tra
 
 export function makeSaveInput(overrides: {
   article?: Partial<RawArticle>;
-  translation?: Partial<TranslationResult>;
 } = {}): SaveArticleInput {
   return {
     source,
     article: makeArticle(overrides.article),
-    translation: makeTranslation(overrides.translation),
+  };
+}
+
+/** 构造 saveVersion 测试输入（zh-cn 翻译版本）。 */
+export function makeSaveVersionInput(
+  articleId = 'smoke-blog/hello-world',
+  overrides: Partial<SaveVersionInput> = {},
+): SaveVersionInput {
+  const translation = makeTranslation();
+  return {
+    articleId,
+    language: 'zh-cn',
+    title: translation.translatedTitle,
+    contentMarkdown: translation.contentMarkdown,
+    provenance: 'model',
+    translationModel: translation.model,
+    categories: translation.categories,
+    ...overrides,
   };
 }

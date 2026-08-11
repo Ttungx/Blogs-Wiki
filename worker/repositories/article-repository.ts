@@ -16,22 +16,36 @@
 
 import type {
   ArticleRecord,
+  ArticleVersionRecord,
   SaveArticleInput,
   SaveResult,
+  SaveVersionInput,
 } from '../domain/types';
 
 /** 文章仓库接口。 */
 export interface ArticleRepository {
-  /** 按文章 id（slug）读取；不存在返回 null。 */
+  /**
+   * 保存文章身份 + 原文版本。
+   * 同 (sourceId, originalUrl) 已存在时幂等返回 created:false。
+   */
+  save(input: SaveArticleInput): Promise<SaveResult>;
+  /**
+   * 为已有文章添加/更新语言版本。
+   * 同 (articleId, language) 已存在时幂等返回 created:false。
+   */
+  saveVersion(input: SaveVersionInput): Promise<SaveResult>;
+  /** 判断 (sourceId, originalUrl) 是否已处理过。 */
+  exists(sourceId: string, originalUrl: string): Promise<boolean>;
+  /** 按文章 id 读取身份信息；不存在返回 null。 */
   getById(id: string): Promise<ArticleRecord | null>;
   /** 按来源 + 原始 URL 读取；不存在返回 null。 */
   getByOriginalUrl(sourceId: string, originalUrl: string): Promise<ArticleRecord | null>;
+  /** 读取文章的某个语言版本；不存在返回 null。 */
+  getVersion(articleId: string, language: string): Promise<ArticleVersionRecord | null>;
+  /** 列出文章的所有语言版本。 */
+  listVersions(articleId: string): Promise<ArticleVersionRecord[]>;
   /** 列出某来源的全部文章。 */
   listBySource(sourceId: string): Promise<ArticleRecord[]>;
   /** 列出全部文章。 */
   listAll(): Promise<ArticleRecord[]>;
-  /** 保存文章；同 (sourceId, originalUrl) 已存在时幂等返回 created:false。 */
-  save(input: SaveArticleInput): Promise<SaveResult>;
-  /** 判断 (sourceId, originalUrl) 是否已处理过。 */
-  exists(sourceId: string, originalUrl: string): Promise<boolean>;
 }
