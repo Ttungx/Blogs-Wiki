@@ -10,13 +10,13 @@
 | `simon-willison` | 已适配 | [Simon Willison's Weblog](https://simonwillison.net/) | https://simonwillison.net/ | LLM / AI Engineering | Atom + Sitemap | 模型翻译 | https://simonwillison.net/ | 已进入更新与展示链路 |
 | `lilian-weng` | 已适配 | [Lil'Log](https://lilianweng.github.io/) | https://lilianweng.github.io/ | LLM / Agent / Research | RSS + Sitemap | 模型翻译 | https://lilianweng.github.io/ | 已进入更新与展示链路 |
 | `langchain` | 已适配 | [LangChain Blog](https://www.langchain.com/blog) | https://www.langchain.com/blog | Agent Framework / Evals / Observability | RSS + Sitemap | 无已知官方中文 | https://www.langchain.com/blog (排除 customers/newsletter) | https://www.langchain.com/blog (排除 customers/newsletter) |
-| `cursor` | 正在适配 | [Cursor Blog](https://cursor.com/blog) | https://cursor.com/blog | Coding Agent / Model Training / Agent Harness | 列表页 | 有多语言路由，中文质量待核 | https://cursor.com/blog | https://cursor.com/blog (sitemap 补充) |
-| `hugging-face` | 正在适配 | [Hugging Face Blog](https://huggingface.co/blog) | https://huggingface.co/blog | 开源 LLM / 模型工具链 | RSS + Sitemap | 待逐站核验 | https://huggingface.co/blog (仅官方，排除 org 投稿) | https://huggingface.co/blog (仅官方 /blog/<slug>/，排除 org 投稿) |
-| `qwen` | 正在适配 | [Qwen Blog](https://qwenlm.github.io/blog/) | https://qwenlm.github.io/blog/ | LLM / 多模态 / Agent | Sitemap | 部分文章有官方简体中文 | https://qwenlm.github.io/blog/ (中文 /zh/ 近满) | https://qwenlm.github.io/blog/ (中文 /zh/blog/ 近满) |
+| `cursor` | 已适配 | [Cursor Blog](https://cursor.com/blog) | https://cursor.com/blog | Coding Agent / Model Training / Agent Harness | Sitemap + 列表页 | 官方中文 `/cn/blog/` 直通（hreflang + zh_path_map 双通道） | https://cursor.com/blog | https://cursor.com/blog (sitemap 补充；中文路由 /cn/blog/) |
+| `hugging-face` | 已适配 | [Hugging Face Blog](https://huggingface.co/blog) | https://huggingface.co/blog | 开源 LLM / 模型工具链 | RSS + Sitemap | 无官方中文，模型翻译 | https://huggingface.co/blog (仅官方，排除 org 投稿) | https://huggingface.co/blog (仅官方 /blog/<slug>/，排除 org 投稿) |
+| `qwen` | 已适配 | [Qwen Blog](https://qwenlm.github.io/blog/) | https://qwenlm.github.io/blog/ | LLM / 多模态 / Agent | Sitemap | 官方简体中文 `/zh/blog/` 直通（zh_path_map 探测） | https://qwenlm.github.io/blog/ | https://qwenlm.github.io/blog/ (中文 /zh/blog/ 近满) |
 | `google-deepmind` | 已适配 | [Google DeepMind](https://deepmind.google/blog/) | https://deepmind.google/blog/ | 前沿模型 / AI Safety / Science | RSS + Sitemap | 待逐站核验 | https://deepmind.google/blog/ (排除政企公告) | https://deepmind.google/blog/ (排除政企合作/资助公告) |
 | `microsoft-research` | 已适配 | [Microsoft Research](https://www.microsoft.com/en-us/research/blog/) | https://www.microsoft.com/en-us/research/blog/ | LLM / Agent / Research | RSS | 待逐站核验 | https://www.microsoft.com/en-us/research/blog/ | https://www.microsoft.com/en-us/research/blog/ |
-| `google-research` | 正在适配 | [Google Research](https://research.google/blog/) | https://research.google/blog/ | AI / ML Research | RSS | 待逐站核验 | https://research.google/blog/ | https://research.google/blog/ |
-| `meta-ai` | 正在适配 | [Meta AI](https://ai.meta.com/blog/) | https://ai.meta.com/blog/ | Llama / 生成式 AI / Research | 列表页 | 待逐站核验 | https://ai.meta.com/blog/ | https://ai.meta.com/blog/ |
+| `google-research` | 已适配 | [Google Research](https://research.google/blog/) | https://research.google/blog/ | AI / ML Research | RSS | 无官方中文，模型翻译 | https://research.google/blog/ | https://research.google/blog/ |
+| `meta-ai` | 已适配 | [Meta AI](https://ai.meta.com/blog/) | https://ai.meta.com/blog/ | Llama / 生成式 AI / Research | 列表页 | 无官方中文，模型翻译 | https://ai.meta.com/blog/ | https://ai.meta.com/blog/ |
 | `eleuther-ai` | 已适配 | [EleutherAI Blog](https://blog.eleuther.ai/) | https://blog.eleuther.ai/ | 开源 LLM / 可解释性 / Safety | RSS + Sitemap | 无已知官方中文 | https://blog.eleuther.ai/ (根 slug) | https://blog.eleuther.ai/ (根 slug，排除 categories) |
 | `mistral-ai` | 已适配 | [Mistral AI](https://mistral.ai/news/) | https://mistral.ai/news/ | 开源模型 / 模型研究 | RSS | 待逐站核验 | https://mistral.ai/news/ (排除营销) | https://mistral.ai/news/ (排除消费产品营销/公司新闻) |
 | `amazon-science` | 正在适配 | [Amazon Science](https://www.amazon.science/blog) | https://www.amazon.science/blog | AI Research | 列表页 | 待逐站核验 | https://www.amazon.science/blog | https://www.amazon.science/blog (排除非 AI 工程科普) |
@@ -26,13 +26,16 @@
 | `eugene-yan` | 正在适配 | [Eugene Yan](https://eugeneyan.com/writing/) | https://eugeneyan.com/writing/ | Applied ML / LLM / 产品实践 | RSS + Sitemap | 无已知官方中文 | https://eugeneyan.com/writing/ | https://eugeneyan.com/writing/ (排除站外跳转占位) |
 | `jay-alammar` | 已适配 | [Jay Alammar](https://newsletter.languagemodels.co/) | https://newsletter.languagemodels.co/ | LLM 可视化教育 | RSS | 无已知官方中文 | https://newsletter.languagemodels.co/ (/p/) | https://newsletter.languagemodels.co/ (/p/<slug>) |
 | `andrej-karpathy` | 已适配 | [Andrej Karpathy](https://karpathy.github.io/) | https://karpathy.github.io/ | LLM 教育 / 个人思考 | RSS | 无已知官方中文 | https://karpathy.github.io/ (日期路径) | https://karpathy.github.io/ (YYYY/MM/DD/<slug>/) |
-| `one-poem-suffices` | 正在适配 | [One Poem Suffices](https://keli-wen.github.io/One-Poem-Suffices/) | https://keli-wen.github.io/One-Poem-Suffices/ | LLM / Agent / Context Engineering | Sitemap | 中文原文，en 双语 | https://keli-wen.github.io/One-Poem-Suffices/ | `dry-run-only`；无 RSS；sitemap 无机器可读日期，完整适配阻塞 |
-| `github-engineering` | 计划中 | [GitHub Engineering](https://github.blog/engineering/) | https://github.blog/engineering/ | Developer Platform / Engineering | RSS | 待核验 | https://github.blog/engineering/ | 通用工程来源，后续收录 |
+| `one-poem-suffices` | 已适配 | [One Poem Suffices](https://keli-wen.github.io/One-Poem-Suffices/) | https://keli-wen.github.io/One-Poem-Suffices/ | LLM / Agent / Context Engineering | Sitemap | 中文原文，en 双语 | https://keli-wen.github.io/One-Poem-Suffices/ | 无 RSS；sitemap 无日期，用 GitHub 提交历史兜底（git_date） |
+| `kimi` | 已适配 | [Kimi Blog](https://www.kimi.com/blog/) | https://www.kimi.com/blog/ | LLM 模型 / Agent / Benchmark | Sitemap | 无官方中文，模型翻译 | https://www.kimi.com/blog/ | sitemap-ug-blog.xml 带 lastmod；9 篇全技术内容 |
+| `glm` | 正在适配 | [Zhipu AI 新闻中心](https://www.zhipuai.cn/zh/news) | https://www.zhipuai.cn/zh/news | LLM 模型 / Agent / 公司动态 | 列表页 | 官方简体中文原生 | https://www.zhipuai.cn/zh/news | 正文在 Next.js RSC 流（Payload CMS richText），需专门提取器；排除公司/财经公告 |
+| `github-engineering` | 已适配 | [GitHub Engineering](https://github.blog/engineering/) | https://github.blog/engineering/ | Developer Platform / Engineering | RSS + Sitemap | 无官方中文，模型翻译 | https://github.blog/engineering/ | /engineering/feed/ + post-sitemap；排除 changelog/news-insights/author/category |
 | `trail-of-bits` | 计划中 | [Trail of Bits](https://blog.trailofbits.com/) | https://blog.trailofbits.com/ | Security / Program Analysis | RSS 待复核 | 待核验 | https://blog.trailofbits.com/ | 安全方向，后续收录 |
 | `tailscale` | 计划中 | [Tailscale Blog](https://tailscale.com/blog/) | https://tailscale.com/blog/ | Networking / Zero Trust | RSS | 待核验 | https://tailscale.com/blog/ | 通用工程来源，后续收录 |
 | `fly-io` | 计划中 | [Fly.io Blog](https://fly.io/blog/) | https://fly.io/blog/ | Distributed Systems / Infrastructure | Feed 待复核 | 待核验 | https://fly.io/blog/ | 通用工程来源，后续收录 |
-| `meta-engineering` | 计划中 | [Meta Engineering](https://engineering.fb.com/) | https://engineering.fb.com/ | Large-scale Engineering | RSS | 待核验 | https://engineering.fb.com/ | 通用工程来源，后续收录 |
-| `google-security` | 计划中 | [Google Security Blog](https://blog.google/security/) | https://blog.google/security/ | Security | RSS | 待核验 | https://blog.google/security/ | 安全方向，后续收录 |
+| `meta-engineering` | 已适配 | [Meta Engineering](https://engineering.fb.com/) | https://engineering.fb.com/ | Large-scale Engineering | RSS + Sitemap | 无官方中文，模型翻译 | https://engineering.fb.com/ | sitemap_index 仅取 post-sitemap；排除 meta-tech-podcast |
+| `google-security` | 已适配 | [Google Security Blog](https://blog.google/security/) | https://blog.google/security/ | Security | RSS + Sitemap | 无官方中文，模型翻译 | https://blog.google/security/ | en-us sitemap /security/ 58 条；勿用全站 /rss/ |
+| `tencent-cloud` | 正在适配 | [腾讯云开发者社区](https://cloud.tencent.com/developer/) | https://cloud.tencent.com/developer/ | AI / LLM / 云工程（UGC） | 列表页 | 官方简体中文原生 | https://cloud.tencent.com/developer/ | 正文在 `__NEXT_DATA__` JSON 需提取适配；日期为 Unix 时间戳；限定技术工程专栏/混元专区子入口 |
 | `mozilla-hacks` | 计划中 | [Mozilla Hacks](https://hacks.mozilla.org/) | https://hacks.mozilla.org/ | Web Platform | RSS | 待核验 | https://hacks.mozilla.org/ | 可能存在 WAF 抓取障碍 |
 | `datadog-engineering` | 计划中 | [Datadog Engineering](https://www.datadoghq.com/blog/engineering/) | https://www.datadoghq.com/blog/engineering/ | Observability / Infrastructure | RSS | 待核验 | https://www.datadoghq.com/blog/engineering/ | 通用工程来源，后续收录 |
 | `shopify-engineering` | 计划中 | [Shopify Engineering](https://shopify.engineering/) | https://shopify.engineering/ | Backend / Commerce Infrastructure | Feed 待复核 | 待核验 | https://shopify.engineering/ | 通用工程来源，后续收录 |
@@ -66,11 +69,12 @@
 
 ## 当前推进顺序
 
-1. 补齐共性能力：Readability 正文图片保留（google-research / amazon-science 前置）、可见文本日期解析（meta-ai / one-poem-suffices 前置）、zh 路径探测与 en/zh 去重（cursor / qwen 前置）、验证文件与站外跳转过滤（chip-huyen / eugene-yan 前置）、Hugging Face 增量限制。
-2. 共性能力就绪后，按序推进 Cursor、Qwen、Hugging Face 完整适配。
-3. 已适配来源持续运行增量更新并抽检质量。
+1. 已完成共性能力：Defuddle 抓取引擎切换（worker backend，图片保留 + fbsbx 误判修复）、可见文本日期解析、zh 路径探测（zh_path_map）、GitHub 提交历史日期兜底（git_date）、发现层 curl 回退、腾讯追踪参数清理。
+2. 2026-08-11 已完成适配：cursor、qwen、google-research、meta-ai、hugging-face、one-poem-suffices、kimi、google-security、meta-engineering、github-engineering（10 个，转 active）。
+3. 正在适配（有正文提取阻碍，保持 dry-run-only）：glm（Next.js RSC 流正文）、tencent-cloud（`__NEXT_DATA__` JSON 正文 + Unix 时间戳日期）。
+4. 已适配来源持续运行增量更新并抽检质量。
 
-2026-08-09 的 17 个正在适配来源 dry-run 结果见 [`docs/sources/scaffold-validation-2026-08-09.md`](sources/scaffold-validation-2026-08-09.md)；2026-08-10 逐站审计与 URL 边界核验报告见 [`docs/sources/`](sources/)。当前 10 个已适配来源。
+2026-08-09 的 17 个正在适配来源 dry-run 结果见 [`docs/sources/scaffold-validation-2026-08-09.md`](sources/scaffold-validation-2026-08-09.md)；2026-08-10 逐站审计与 URL 边界核验报告见 [`docs/sources/`](sources/)；2026-08-11 新源探索报告：GLM/Kimi、腾讯/阿里、Google Security/Meta Engineering/GitHub Engineering。当前 18 个已适配来源。
 发现、官方中文、图片和翻译分块的 V2 设计与启用门槛见 [`docs/update-pipeline-v2.md`](update-pipeline-v2.md)。
 
 ## 暂缓 / 不纳入
@@ -93,10 +97,15 @@
 - [已完成] 翻译与分类解耦：V2 执行器独立分类调用；中文直通仅分类不翻译。
 - [已完成] 记录原文 URL、官方本地化 URL 与内容生成方式：frontmatter `original_url` / `original_zh_url` / `translation_status`。
 - [已完成] 来源 URL 边界治理：`article_paths` / `exclude_paths` 支持 `^` 正则；逐源核验技术内容 vs 公告/本地化/社区投稿（见 `*-2026-08-10-urlcheck.md`）。
-- 增加 zh 路径探测与 en/zh slug 去重（cursor / qwen 前置）。
-- 增加可见文本日期解析（meta-ai / one-poem-suffices 前置）。
-- 修复 Readability 正文图片丢失（google-research / amazon-science 前置）。
-- 为 Hugging Face 增加 org 投稿过滤落地（已配置，待管线实测）。
+- [已完成] 增加 zh 路径探测与 en/zh 去重（`zh_path_map`，cursor / qwen 落地）。
+- [已完成] 增加可见文本日期解析（meta-ai / one-poem-suffices 落地）。
+- [已完成] 修复正文图片丢失（Defuddle 引擎 + fbsbx.com 误判修复；google-research / meta-ai 落地）。
+- [已完成] Defuddle 抓取引擎替换 Readability（`FETCH_BACKEND=worker`，worker/fetch/extractor.ts）。
+- [已完成] 无日期博客 GitHub 提交历史兜底（`git_date`，one-poem-suffices 落地）。
+- [已完成] 发现层 curl 回退（openai.com TLS 指纹拦截）。
+- 为 Hugging Face 增加 org 投稿过滤落地（已配置 `^/blog/[^/]+$` 单段过滤，待抽检质量）。
+- [脚手架完成] 腾讯云正文 `__NEXT_DATA__` JSON 提取适配。
+- [脚手架完成] GLM Next.js RSC 流正文提取适配。
 - [脚手架完成] 处理 `src`、`srcset`、`data-src`、`data-lazy-src`、`data-original` 等图片地址并保留原链。
 - [脚手架完成] 翻译前保护链接和图片 URL，翻译后严格校验并原样恢复。
 - [已完成] 增加来源自动审计命令，输出各发现入口与三篇样本报告。
