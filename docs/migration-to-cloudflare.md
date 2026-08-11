@@ -14,13 +14,25 @@
 | 1. domain types + repository interfaces | ✅ 完成 | `worker/domain/`、`worker/repositories/` 接口定义 |
 | 2. FileRepository（与旧行为字节对齐） | ✅ 完成 | `worker/repositories/file/`，46 个 Node 测试全绿 |
 | 3. D1 schema + migrations | ✅ 完成 | `worker/migrations/0001_initial_schema.sql` + `0002_seed_categories.sql`，本地数据库当前无待应用迁移 |
-| 4. D1Repository | ✅ 完成 | `D1ArticleRepository` / `D1SourceStateRepository`，真实 Miniflare D1 binding 测试 18/18 通过 |
+| 4. D1Repository | ✅ 完成 | `D1ArticleRepository` / `D1SourceStateRepository`，真实 Miniflare D1 binding 测试 26/26 通过 |
 | 5. 管线接 repository interface | 🟨 Node File + Worker D1 注入已接线，Workflow 编排待补 | `runUpdate()` 已从 CLI 参数解析中抽出并支持依赖注入；File/D1 后端保持可替换；更新 Workflow 仍属 Phase 7 |
-| 6. Worker-compatible fetch path | 🟨 本地 Worker runtime 已验证，真实来源对照待补 | `FETCH_BACKEND=node|worker` 已接入 Node 管线；Miniflare D1 测试覆盖 `/extract`、`/storage/health`、健康检查和 404；仍需独立 `wrangler dev` 与 Tier A Node/Worker A/B 证据 |
-| 7. Workflow 运行时 | ⬜ | Cloudflare Workflow 编排 + Cron Trigger |
+| 6. Worker-compatible fetch path | 🟨 独立本地 runtime 已验证，真实来源对照待补 | `FETCH_BACKEND=node|worker` 已接入 Node 管线；Miniflare D1 测试与独立 `wrangler dev --local` 均覆盖 `/extract`、`/storage/health`、健康检查和 404；仍需 Tier A Node/Worker A/B 证据 |
+| 7. Workflow 运行时 | 🟨 状态机与运行记录基础完成，Workflow/Cron 待补 | `source_items` 状态转换、失败重试计数、`source_runs` 创建/更新已抽为接口和 D1 实现；尚未实现 Workflow steps 与 Cron Trigger |
 | 8. Astro 切 D1 | ⬜ | getCollection → ArticleRepository，SSR |
 | 9. 搜索切 FTS5 | ⬜ | Pagefind → D1 FTS5 |
 | 10. 删除旧文件 backend | ⬜ | 移除 FileRepository / persist.ts / Pagefind |
+
+## 当前验证证据
+
+- `npm run check:worker`：通过。
+- `npm run test:d1`：5 个测试文件、26 个测试通过。
+- 独立 `npx.cmd wrangler dev --local --port 8788`：`GET /`、`GET /storage/health` 返回 200；`GET /extract`（缺 URL）返回 400；未知路由返回 404。
+- `npm run test:worker`：46/46 通过。
+- `npm run test:update`：更新编排集成测试与旧 smoke 通过。
+- `npm run check`：0 errors；现有 deprecation/hint 仍存在。
+- `npm run build`：44 页面构建，Pagefind 索引 41 页。
+
+上述 `wrangler dev --local` 证据只证明本地 Worker runtime + 本地 D1，不代表远程 Cloudflare 资源或真实 Workflow invocation。
 
 ---
 
@@ -28,8 +40,8 @@
 
 按以下门禁推进，不跨层并行修改：
 
-1. **先收口 Phase 6**：本地 Worker runtime smoke 已纳入 D1 测试；剩余门禁是在 `wrangler dev` 下验证 `/extract` 与 `/storage/health`，对 Tier A 来源做 Node / Worker A/B 抓取对照，并记录正文、元数据、公式和耗时证据。
-2. **再做 Phase 7**：先解决远程 D1 `database_id` 与 Cloudflare Secrets 注入方案，再补 `source_items` 状态机与 `source_runs` 运行记录；随后实现 discover → fetch → translate → persist 的 Workflow steps，最后接 Cron，保留手动触发和 Node 回滚路径。
+1. **收口 Phase 6**：独立 `wrangler dev --local` 已通过；下一道门禁是对 Tier A 来源做 Node / Worker A/B 抓取对照，并记录正文、元数据、公式和耗时证据。
+2. **完成 Phase 7**：先解决远程 D1 `database_id` 与 Cloudflare Secrets 注入方案；状态机与运行记录基础已完成，下一步实现 discover → fetch → translate → persist 的 Workflow steps，最后接 Cron，保留手动触发和 Node 回滚路径。
 3. **然后做 Phase 8**：Cloudflare adapter + hybrid/SSR，只迁移文章列表、来源页、阅读页和计数；先保持静态资源与旧构建链路可回滚。
 4. **最后做 Phase 9/10**：D1 FTS5 查询稳定后再移除 Pagefind；确认 D1 唯一真相、Workflow 可恢复、SSR 可读、搜索实时后，才删除 File backend 和文件状态产物。
 
@@ -175,13 +187,22 @@
 
 ---
 
-### Phase 7：Workflow 运行时 ⬜
+### Phase 7：Workflow 运行时 🟨
 
 **目标**：业务逻辑可以脱离 Cloudflare 单独测试；Workflow 只负责编排/重试/超时/恢复（手册 §8）。
 
 **产出**：
 - `worker/workflows/update-workflow.ts` —— Cloudflare Workflow，步骤化调用 discover → fetch → translate → persist（这些是纯业务函数，已在 Phase 5/6 解耦）。
 - Cron Trigger（替代已删除的 `.github/workflows/pages.yml` 的 `02:17 UTC`）。
+
+**已完成的基础层（本轮）**：
+- `worker/domain/types.ts`：补齐 `SourceItemStatus`、`SourceItemRecord`、`SourceRunRecord` 及创建/更新输入。
+- `worker/domain/source-state.ts`：集中定义 source item 合法状态转换。
+- `worker/repositories/source-item-repository.ts` / `source-run-repository.ts`：为 Workflow 业务层建立接口防火墙。
+- `worker/repositories/d1/d1-source-item-repository.ts`：发现幂等、状态转换、失败记录与 `attempt_count` 递增。
+- `worker/repositories/d1/d1-source-run-repository.ts`：运行创建、统计更新、完成/部分失败记录。
+- `worker/runtime/repositories.ts`：Worker runtime 注入 `sourceItems` 与 `sourceRuns`。
+- D1 集成测试覆盖终态保护、非法转换、失败重试和运行统计。
 
 **关键纪律**：禁止在 `step.do("translate", ...)` 里塞 300 行业务逻辑（手册 §8）。Workflow 是执行器，不是业务容器。
 
@@ -191,7 +212,7 @@
 
 **涉及文件**：`worker/workflows/`、`wrangler.toml` cron triggers。
 
-**完成标准**：`wrangler dev` + 真实 Workflow invocation 验证；source_runs 表能回答手册 §20 的 observability 问题。
+**完成标准**：`wrangler dev` + 真实 Workflow invocation 验证；source_runs 表能回答手册 §20 的 observability 问题。当前仅完成状态机/运行记录基础，Workflow invocation 仍未验证。
 
 **回滚**：Cron 关闭，手动触发 Node 管线（Phase 5 路径仍可用）。
 

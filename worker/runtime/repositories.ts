@@ -1,8 +1,12 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import { D1ArticleRepository } from '../repositories/d1/d1-article-repository';
 import { D1SourceStateRepository } from '../repositories/d1/d1-source-state-repository';
+import { D1SourceItemRepository } from '../repositories/d1/d1-source-item-repository';
+import { D1SourceRunRepository } from '../repositories/d1/d1-source-run-repository';
 import type { ArticleRepository } from '../repositories/article-repository';
 import type { SourceStateRepository } from '../repositories/source-state-repository';
+import type { SourceItemRepository } from '../repositories/source-item-repository';
+import type { SourceRunRepository } from '../repositories/source-run-repository';
 
 export interface WorkerEnv {
   DB: D1Database;
@@ -11,6 +15,8 @@ export interface WorkerEnv {
 export interface WorkerRepositories {
   articles: ArticleRepository;
   sourceState: SourceStateRepository;
+  sourceItems: SourceItemRepository;
+  sourceRuns: SourceRunRepository;
 }
 
 /**
@@ -27,5 +33,7 @@ export function createWorkerRepositories(env: WorkerEnv): WorkerRepositories {
   return {
     articles: new D1ArticleRepository(env.DB),
     sourceState: new D1SourceStateRepository(env.DB),
+    sourceItems: new D1SourceItemRepository(env.DB),
+    sourceRuns: new D1SourceRunRepository(env.DB),
   };
 }

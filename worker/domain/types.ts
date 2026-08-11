@@ -18,6 +18,78 @@ export type SourceType = 'company' | 'personal';
 /** 来源更新模式：`active` 进完整更新；`dry-run-only` 只参与 dry-run（配置门禁）。 */
 export type SourceUpdateMode = 'active' | 'dry-run-only';
 
+/** source_items 的生命周期状态。 */
+export type SourceItemStatus =
+  | 'discovered'
+  | 'fetching'
+  | 'fetched'
+  | 'translating'
+  | 'published'
+  | 'skipped'
+  | 'failed';
+
+/** source_items 的领域视图。 */
+export interface SourceItemRecord {
+  id: number;
+  sourceId: string;
+  originalUrl: string;
+  title?: string;
+  publishedAt?: string;
+  status: SourceItemStatus;
+  attemptCount: number;
+  lastError?: string;
+  articleId?: string;
+  discoveredAt: string;
+  updatedAt: string;
+}
+
+/** 发现阶段写入 source_items 的输入。 */
+export interface DiscoverSourceItemInput {
+  sourceId: string;
+  originalUrl: string;
+  title?: string;
+  publishedAt?: string;
+}
+
+/** source_runs 的生命周期状态。 */
+export type SourceRunStatus = 'running' | 'completed' | 'failed' | 'partial';
+
+/** 触发更新运行的入口。 */
+export type SourceRunTrigger = 'manual' | 'cron' | 'retry';
+
+/** source_runs 的领域视图。 */
+export interface SourceRunRecord {
+  id: number;
+  sourceId: string;
+  startedAt: string;
+  finishedAt?: string;
+  status: SourceRunStatus;
+  discovered: number;
+  pending: number;
+  processed: number;
+  failed: number;
+  errors?: string;
+  trigger?: SourceRunTrigger;
+}
+
+/** 创建 source_runs 的输入。 */
+export interface CreateSourceRunInput {
+  sourceId: string;
+  trigger?: SourceRunTrigger;
+  startedAt?: string;
+}
+
+/** 更新 source_runs 统计与状态的输入。 */
+export interface UpdateSourceRunInput {
+  status?: SourceRunStatus;
+  finishedAt?: string;
+  discovered?: number;
+  pending?: number;
+  processed?: number;
+  failed?: number;
+  errors?: string;
+}
+
 /** 翻译来源标记，用于展示溯源。 */
 export type TranslationStatus = 'official-zh' | 'native-zh' | 'model';
 
