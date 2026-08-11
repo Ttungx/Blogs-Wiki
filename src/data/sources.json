@@ -424,8 +424,8 @@
     ]
   },
   {
-    "id": "one-poem-suffices",
-    "name": "One Poem Suffices",
+    "id": "keli-wen",
+    "name": "keli-wen",
     "type": "personal",
     "homepage_url": "https://keli-wen.github.io/One-Poem-Suffices/",
     "blog_url": "https://keli-wen.github.io/One-Poem-Suffices/",
@@ -446,8 +446,8 @@
     ]
   },
   {
-    "id": "kimi",
-    "name": "Kimi Blog",
+    "id": "moonshot",
+    "name": "Moonshot",
     "type": "company",
     "homepage_url": "https://www.kimi.com/",
     "blog_url": "https://www.kimi.com/blog/",
@@ -462,15 +462,15 @@
     ]
   },
   {
-    "id": "glm",
-    "name": "GLM / Zhipu AI",
+    "id": "z-ai",
+    "name": "z.ai",
     "type": "company",
-    "homepage_url": "https://www.zhipuai.cn/",
-    "blog_url": "https://www.zhipuai.cn/zh/news",
-    "domain": "zhipuai.cn",
+    "homepage_url": "https://z.ai/",
+    "blog_url": "https://z.ai/blog",
+    "domain": "z.ai",
     "update_mode": "dry-run-only",
     "article_paths": [
-      "^/zh/news/\\d+$"
+      "^/blog/[a-z0-9-]+$"
     ]
   },
   {

@@ -1,11 +1,11 @@
 ---
 name: z.ai
 type: company
-author: Zhipu AI
-description: 智谱 AI 新闻中心，GLM 模型、Agent 与公司动态。
-homepage_url: https://www.zhipuai.cn/
-blog_url: https://www.zhipuai.cn/zh/news
-domain: zhipuai.cn
+author: z.ai
+description: z.ai 的 GLM 模型、Agent、长上下文与 AI Coding 技术文章。
+homepage_url: https://z.ai/
+blog_url: https://z.ai/blog
+domain: z.ai
 logo: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.94.0/icons/zhipu-color.svg
 logo_scale: 0.9
 categories:

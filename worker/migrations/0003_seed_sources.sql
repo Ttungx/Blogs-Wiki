@@ -91,5 +91,5 @@ VALUES ('andrej-karpathy', 'Andrej Karpathy', 'personal', 'https://karpathy.ai/'
 ON CONFLICT(id) DO UPDATE SET name=excluded.name, updated_at=datetime('now');
 
 INSERT INTO sources (id, name, type, homepage_url, blog_url, domain, rss_url, sitemap_url, logo, avatar)
-VALUES ('one-poem-suffices', 'One Poem Suffices', 'personal', 'https://keli-wen.github.io/One-Poem-Suffices/', 'https://keli-wen.github.io/One-Poem-Suffices/', 'keli-wen.github.io', NULL, 'https://keli-wen.github.io/One-Poem-Suffices/sitemap.xml', NULL, NULL)
+VALUES ('keli-wen', 'keli-wen', 'personal', 'https://keli-wen.github.io/One-Poem-Suffices/', 'https://keli-wen.github.io/One-Poem-Suffices/', 'keli-wen.github.io', NULL, 'https://keli-wen.github.io/One-Poem-Suffices/sitemap.xml', NULL, NULL)
 ON CONFLICT(id) DO UPDATE SET name=excluded.name, updated_at=datetime('now');
