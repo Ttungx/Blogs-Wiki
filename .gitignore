@@ -6,6 +6,12 @@ dist/
 *.log
 .zcode/
 
+# Wrangler 本地状态（D1 本地副本、临时文件）
+.wrangler/
+
+# 临时 SSR 构建检查产物（astro build --outDir）
+.tmp-ssr-check/
+
 # 文章正文与运行状态暂不入库（临时；恢复时删除以下两行）
 src/content/articles/
 src/data/processed-urls.json

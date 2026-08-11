@@ -52,3 +52,32 @@ export function selectOfficialChineseAlternate(
 export function findOfficialChineseUrl(html: string, pageUrl: string): string | undefined {
   return selectOfficialChineseAlternate(extractLocalizedAlternates(html, pageUrl))?.url;
 }
+
+/**
+ * Some sites (cursor, qwen) expose official Simplified Chinese translations
+ * at a deterministic path prefix (e.g. `/blog/<slug>` -> `/zh/blog/<slug>`)
+ * without advertising `hreflang` alternates. Probe the mapped URL when the
+ * page declares no alternate; the caller must verify the response is actually
+ * Chinese before using it.
+ */
+export function mapToOfficialZhPath(
+  pageUrl: string,
+  pathMap: Record<string, string> | undefined,
+): string | undefined {
+  if (!pathMap) return undefined;
+  try {
+    const url = new URL(pageUrl);
+    const pathname = url.pathname.replace(/\/+$/, '');
+    for (const [from, to] of Object.entries(pathMap)) {
+      const fromPath = from.replace(/\/+$/, '');
+      if (pathname === fromPath || pathname.startsWith(`${fromPath}/`)) {
+        const suffix = pathname.slice(fromPath.length);
+        url.pathname = `${to.replace(/\/+$/, '')}${suffix}/`;
+        return url.toString();
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}

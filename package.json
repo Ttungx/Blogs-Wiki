@@ -5,27 +5,38 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && pagefind --site dist",
+    "build": "astro build && node scripts/inject-worker-entry.js",
     "preview": "astro preview",
+    "deploy": "npm run build && wrangler deploy --config wrangler.deploy.jsonc",
+    "preview:worker": "npm run build && wrangler dev --config wrangler.deploy.jsonc",
     "check": "astro check",
-    "test:update": "tsx scripts/update/smoke.ts",
+    "check:worker": "tsc --noEmit -p worker/tsconfig.json",
+    "test:update": "tsx --test scripts/update/runner.test.ts && tsx scripts/update/smoke.ts",
+    "test:worker": "tsx --test worker/__tests__/*.test.ts",
+    "test:d1": "vitest run",
     "audit:source": "tsx --env-file-if-exists=.env scripts/update/audit.ts",
     "update": "tsx --env-file-if-exists=.env scripts/update/index.ts",
     "update:dry": "tsx --env-file-if-exists=.env scripts/update/index.ts --dry-run"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^14.2.0",
     "@astrojs/markdown-remark": "^7.2.2",
     "@astrojs/sitemap": "^3.7.3",
     "@mozilla/readability": "^0.6.0",
+    "@shikijs/engine-javascript": "^4.4.3",
+    "@shikijs/rehype": "^4.4.3",
     "astro": "^7.2.0",
     "defuddle": "^0.19.2",
     "jsdom": "^29.1.1",
     "katex": "^0.18.4",
+    "linkedom": "^0.18.13",
     "pagefind": "^1.5.2",
     "rehype-katex": "^7.0.1",
+    "rehype-stringify": "^10.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
     "remark-stringify": "^11.0.0",
     "turndown": "^7.2.4",
     "undici": "^8.10.0",
@@ -33,11 +44,20 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
+    "@cloudflare/vitest-pool-workers": "^0.20.0",
+    "@cloudflare/workers-types": "^5.20260811.1",
     "@types/jsdom": "^30.0.0",
     "@types/mdast": "^4.0.4",
     "@types/node": "^26.2.0",
     "@types/turndown": "^5.0.6",
     "tsx": "^4.20.5",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.120.1"
+  },
+  "overrides": {
+    "@cloudflare/vitest-pool-workers": {
+      "wrangler": "$wrangler"
+    }
   }
 }

@@ -1,5 +1,5 @@
 ---
-name: Jay Alammar / Language Models & Co.
+name: Jay Alammar
 type: personal
 author: Jay Alammar
 description: LLM 可视化教育与深度解读。

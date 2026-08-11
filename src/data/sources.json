@@ -114,13 +114,17 @@
     "homepage_url": "https://cursor.com/",
     "blog_url": "https://cursor.com/blog",
     "domain": "cursor.com",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "/blog"
     ],
     "exclude_paths": [
       "/blog/topic"
     ],
+    "prefer_official_zh": true,
+    "zh_path_map": {
+      "/blog": "/cn/blog"
+    },
     "sitemap_url": "https://cursor.com/sitemap.xml"
   },
   {
@@ -132,7 +136,7 @@
     "domain": "huggingface.co",
     "rss_url": "https://huggingface.co/blog/feed.xml",
     "sitemap_url": "https://huggingface.co/sitemap-blog.xml",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "^/blog/[^/]+$"
     ],
@@ -146,11 +150,14 @@
     "blog_url": "https://qwenlm.github.io/blog/",
     "domain": "qwenlm.github.io",
     "sitemap_url": "https://qwenlm.github.io/en/sitemap.xml",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "/blog"
     ],
-    "prefer_official_zh": true
+    "prefer_official_zh": true,
+    "zh_path_map": {
+      "/blog": "/zh/blog"
+    }
   },
   {
     "id": "google-deepmind",
@@ -205,7 +212,7 @@
     "blog_url": "https://research.google/blog/",
     "domain": "research.google",
     "rss_url": "https://research.google/blog/rss/",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "/blog"
     ]
@@ -217,7 +224,7 @@
     "homepage_url": "https://ai.meta.com/",
     "blog_url": "https://ai.meta.com/blog/",
     "domain": "ai.meta.com",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "article_paths": [
       "/blog"
     ],
@@ -417,19 +424,135 @@
     ]
   },
   {
-    "id": "one-poem-suffices",
-    "name": "One Poem Suffices",
+    "id": "keli-wen",
+    "name": "keli-wen",
     "type": "personal",
     "homepage_url": "https://keli-wen.github.io/One-Poem-Suffices/",
     "blog_url": "https://keli-wen.github.io/One-Poem-Suffices/",
     "domain": "keli-wen.github.io",
     "sitemap_url": "https://keli-wen.github.io/One-Poem-Suffices/sitemap.xml",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
+    "git_date": {
+      "repo": "keli-wen/One-Poem-Suffices",
+      "branch": "master",
+      "path_prefix": "/One-Poem-Suffices",
+      "path_template": "docs/{pathname}/index.md"
+    },
     "article_paths": [
       "/One-Poem-Suffices/one-poem-suffices",
       "/One-Poem-Suffices/thinking-in-context",
       "/One-Poem-Suffices/zen-of-harness-engineering",
       "/One-Poem-Suffices/scaling-thoughts"
+    ]
+  },
+  {
+    "id": "moonshot",
+    "name": "Moonshot",
+    "type": "company",
+    "homepage_url": "https://www.kimi.com/",
+    "blog_url": "https://www.kimi.com/blog/",
+    "domain": "kimi.com",
+    "sitemap_url": "https://www.kimi.com/sitemap/sitemap-ug-blog.xml",
+    "update_mode": "active",
+    "article_paths": [
+      "^/blog/[a-z0-9-]+$"
+    ],
+    "exclude_paths": [
+      "^/blog/$"
+    ]
+  },
+  {
+    "id": "z-ai",
+    "name": "z.ai",
+    "type": "company",
+    "homepage_url": "https://z.ai/",
+    "blog_url": "https://z.ai/blog",
+    "domain": "z.ai",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "^/blog/[a-z0-9-]+$"
+    ]
+  },
+  {
+    "id": "google-security",
+    "name": "Google Security Blog",
+    "type": "company",
+    "homepage_url": "https://blog.google/",
+    "blog_url": "https://blog.google/security/",
+    "domain": "blog.google",
+    "rss_url": "https://blog.google/security/rss/",
+    "sitemap_url": "https://blog.google/en-us/sitemap.xml",
+    "update_mode": "active",
+    "article_paths": [
+      "^/security/[a-z0-9-]+$"
+    ]
+  },
+  {
+    "id": "meta-engineering",
+    "name": "Meta Engineering",
+    "type": "company",
+    "homepage_url": "https://engineering.fb.com/",
+    "blog_url": "https://engineering.fb.com/",
+    "domain": "engineering.fb.com",
+    "rss_url": "https://engineering.fb.com/feed/",
+    "sitemap_url": "https://engineering.fb.com/sitemap_index.xml",
+    "sitemap_include_paths": [
+      "/post-sitemap.xml",
+      "/post-sitemap2.xml"
+    ],
+    "update_mode": "active",
+    "article_paths": [
+      "^/20\\d\\d/\\d\\d/\\d\\d/"
+    ],
+    "exclude_paths": [
+      "^/.*meta-tech-podcast"
+    ]
+  },
+  {
+    "id": "github-engineering",
+    "name": "GitHub Engineering",
+    "type": "company",
+    "homepage_url": "https://github.blog/",
+    "blog_url": "https://github.blog/engineering/",
+    "domain": "github.blog",
+    "rss_url": "https://github.blog/engineering/feed/",
+    "sitemap_url": "https://github.blog/sitemap_index.xml",
+    "update_mode": "active",
+    "article_paths": [
+      "^/engineering/"
+    ],
+    "exclude_paths": [
+      "^/changelog",
+      "^/news-insights/",
+      "^/latest/",
+      "^/author/",
+      "^/category/"
+    ]
+  },
+  {
+    "id": "tencent-cloud",
+    "name": "腾讯云开发者社区",
+    "type": "company",
+    "homepage_url": "https://cloud.tencent.com/",
+    "blog_url": "https://cloud.tencent.com/developer/",
+    "domain": "cloud.tencent.com",
+    "update_mode": "dry-run-only",
+    "article_paths": [
+      "^/developer/article/\\d+$"
+    ],
+    "exclude_paths": [
+      "^/developer/article/write",
+      "^/developer/ask",
+      "^/developer/video",
+      "^/developer/salon",
+      "^/developer/competition",
+      "^/developer/special",
+      "^/developer/learning",
+      "^/developer/mcp",
+      "^/developer/user",
+      "^/developer/search",
+      "^/developer/column",
+      "^/developer/zone"
     ]
   }
 ]

@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import SearchPanel from '../components/SearchPanel.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { byOriginalPublicationDateDesc } from '../lib/article-dates';
+import { slugFromId } from '../lib/article-id';
 import { sitePath } from '../lib/urls';
 
 const [blogs, articles] = await Promise.all([
@@ -10,7 +11,9 @@ const [blogs, articles] = await Promise.all([
   getCollection('articles'),
 ]);
 const blogNames = new Map(blogs.map((blog) => [blog.id, blog.data.name]));
-const articlesByPublicationDate = [...articles].sort(byOriginalPublicationDateDesc);
+const articlesByPublicationDate = articles
+  .filter((article) => article.data.language === 'zh-cn')
+  .sort(byOriginalPublicationDateDesc);
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric',
   month: '2-digit',
@@ -27,10 +30,9 @@ const items = [
   })),
   ...articlesByPublicationDate.map((article) => ({
     kind: 'article' as const,
-    title: article.data.translatedTitle,
-    originalTitle: article.data.originalTitle,
+    title: article.data.title,
     subtitle: blogNames.get(article.data.blogId) ?? article.data.sourceDomain,
-    url: sitePath(`articles/${article.id}/`),
+    url: sitePath(`articles/${article.data.blogId}/${slugFromId(article.id)}/`),
     date: dateFormatter.format(article.data.publishedAt),
     categories: article.data.categories,
   })),

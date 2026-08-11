@@ -2,39 +2,43 @@
 import CategoryPill from './CategoryPill.astro';
 import RemoteImage from './RemoteImage.astro';
 import { sitePath } from '../lib/urls';
+import { parseDateSafe } from '../lib/server/content';
 
 interface Props {
-  id: string;
-  translatedTitle: string;
-  originalTitle: string;
+  blogId: string;
+  slug: string;
+  title: string;
+  originalTitle?: string;
   publishedAt: Date | string;
   categories: string[];
   imageUrl?: string;
 }
 
 const {
-  id,
-  translatedTitle,
+  blogId,
+  slug,
+  title,
   originalTitle,
   publishedAt,
   categories,
   imageUrl,
 } = Astro.props;
-const date = new Date(publishedAt);
-const year = String(date.getFullYear());
-const month = String(date.getMonth() + 1).padStart(2, '0');
-const day = String(date.getDate()).padStart(2, '0');
+const date = parseDateSafe(publishedAt instanceof Date ? publishedAt.toISOString() : publishedAt);
+// 中文是默认语言，列表项链接到不带语言段的路由
+const href = sitePath(`articles/${blogId}/${slug}/`);
 ---
 
 <article class:list={['article-row', { 'article-row--no-image': !imageUrl }]}>
-  <a href={sitePath(`articles/${id}/`)} aria-label={`阅读：${translatedTitle}`}>
-    <time datetime={date.toISOString()}>
-      <span>{year}</span>
-      <span>/{month}/{day}</span>
-    </time>
+  <a href={href} aria-label={`阅读：${title}`}>
+    {date && (
+      <time datetime={date.toISOString()}>
+        <span>{date.getFullYear()}</span>
+        <span>/{String(date.getMonth() + 1).padStart(2, '0')}/{String(date.getDate()).padStart(2, '0')}</span>
+      </time>
+    )}
     <span class="article-row-main">
-      <span class="article-row-title">{translatedTitle}</span>
-      <span class="article-row-original" lang="en">{originalTitle}</span>
+      <span class="article-row-title">{title}</span>
+      {originalTitle && <span class="article-row-original" lang="en">{originalTitle}</span>}
       <span class="article-row-categories">
         {categories.map((category) => <CategoryPill label={category} quiet />)}
       </span>

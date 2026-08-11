@@ -1,50 +1,41 @@
 ---
-import { getCollection, type CollectionEntry } from 'astro:content';
+import { getCollection } from 'astro:content';
+import { env } from 'cloudflare:workers';
 import ArticleRow from '../../components/ArticleRow.astro';
 import BlogMark from '../../components/BlogMark.astro';
 import CategoryPill from '../../components/CategoryPill.astro';
 import RemoteImage from '../../components/RemoteImage.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { byOriginalPublicationDateDesc } from '../../lib/article-dates';
 import { sitePath } from '../../lib/urls';
+import { listArticlesByBlog, parseDateSafe, type ArticleListItem } from '../../lib/server/content';
 
-export async function getStaticPaths() {
-  const [blogs, articles] = await Promise.all([
-    getCollection('blogs'),
-    getCollection('articles'),
-  ]);
+export const prerender = false;
 
-  return blogs.map((blog) => ({
-    params: { id: blog.id },
-    props: {
-      blog,
-      articles: articles
-        .filter((article) => article.data.blogId === blog.id)
-        .sort(byOriginalPublicationDateDesc),
-    },
-  }));
-}
+const { id } = Astro.params;
+if (!id) return new Response('Not Found', { status: 404 });
 
-interface Props {
-  blog: CollectionEntry<'blogs'>;
-  articles: CollectionEntry<'articles'>[];
-}
+const blogs = await getCollection('blogs');
+const blog = blogs.find((b) => b.id === id);
+if (!blog) return new Response('Not Found', { status: 404 });
 
-const { blog, articles } = Astro.props;
+const db = env.DB;
+// D1 列表已按发布日期降序，语言版本限定 zh-cn
+const articles = await listArticlesByBlog(db, id, 'zh-cn');
+
 const { name, type, logo, avatar, description, blogUrl, homepageUrl, categories = [] } = blog.data;
 
-function firstRemoteImage(markdown: string | undefined): string | undefined {
-  const match = markdown?.match(/!\[[^\]]*\]\((https?:\/\/[^\s)]+(?:\?[^\s)]*)?)/i);
-  return match?.[1];
+// D1 里 article id 形如 `blogId/slug`，路由只需 slug 段
+function slugFromArticleId(articleId: string): string {
+  return articleId.split('/').slice(1).join('/');
 }
 
-function imageFor(article: CollectionEntry<'articles'>): string | undefined {
-  return article.data.imageUrl ?? firstRemoteImage(article.body);
+function imageFor(article: ArticleListItem): string | undefined {
+  return article.imageUrl ?? undefined;
 }
 
 const [featuredArticle, ...remainingArticles] = articles;
 const featuredImage = featuredArticle ? imageFor(featuredArticle) : undefined;
-const featuredDate = featuredArticle ? new Date(featuredArticle.data.publishedAt) : undefined;
+const featuredDate = featuredArticle ? parseDateSafe(featuredArticle.publishedAt) : null;
 const featuredDateText = featuredDate
   ? `${featuredDate.getFullYear()}/${String(featuredDate.getMonth() + 1).padStart(2, '0')}/${String(featuredDate.getDate()).padStart(2, '0')}`
   : '';
@@ -91,18 +82,16 @@ const featuredDateText = featuredDate
         <article class="featured-article">
           <a
             class:list={['featured-article-link', { 'featured-article-link--no-image': !featuredImage }]}
-            href={sitePath(`articles/${featuredArticle.id}/`)}
+            href={sitePath(`articles/${blog.id}/${slugFromArticleId(featuredArticle.id)}/`)}
           >
             <span class="featured-article-copy">
               <span class="eyebrow">Latest · 最新</span>
-              <strong>{featuredArticle.data.translatedTitle}</strong>
-              <span class="featured-article-original" lang="en">{featuredArticle.data.originalTitle}</span>
-              {featuredArticle.data.excerpt && (
-                <span class="featured-article-excerpt">{featuredArticle.data.excerpt}</span>
+              <strong>{featuredArticle.title}</strong>
+              {featuredArticle.excerpt && (
+                <span class="featured-article-excerpt">{featuredArticle.excerpt}</span>
               )}
               <span class="featured-article-meta">
                 <time datetime={featuredDate?.toISOString()}>{featuredDateText}</time>
-                {featuredArticle.data.categories.map((category) => <CategoryPill label={category} quiet />)}
               </span>
             </span>
             {featuredImage && (
@@ -130,11 +119,11 @@ const featuredDateText = featuredDate
       <div class="article-list">
         {remainingArticles.length ? remainingArticles.map((article) => (
           <ArticleRow
-            id={article.id}
-            translatedTitle={article.data.translatedTitle}
-            originalTitle={article.data.originalTitle}
-            publishedAt={article.data.publishedAt}
-            categories={article.data.categories}
+            blogId={blog.id}
+            slug={slugFromArticleId(article.id)}
+            title={article.title}
+            publishedAt={article.publishedAt}
+            categories={[]}
             imageUrl={imageFor(article)}
           />
         )) : !featuredArticle ? (

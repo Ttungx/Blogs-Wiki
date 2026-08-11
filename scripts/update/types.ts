@@ -22,6 +22,28 @@ export interface SourceConfig {
   /** When true, fetch prefers an official Simplified Chinese alternate and
    *  marks the article as `official-zh` (skipping model translation). */
   prefer_official_zh?: boolean;
+  /** Optional pathname-prefix mapping from the default (usually English) URL
+   *  shape to its official Simplified Chinese shape, e.g. `{ "/blog": "/zh/blog" }`.
+   *  When the page advertises no hreflang alternate, the fetch layer probes the
+   *  mapped Chinese URL and uses it when it resolves to `lang=zh` (cursor,
+   *  qwen). */
+  zh_path_map?: Record<string, string>;
+  /** Optional GitHub commit-history date fallback for sites that publish no
+   *  machine-readable date (e.g. keli-wen.github.io). When the page exposes no
+   *  date, the fetch layer resolves the article file path and asks the GitHub
+   *  API for its first commit date. */
+  git_date?: {
+    repo: string;
+    /** Defaults to the repository's default branch when omitted. */
+    branch?: string;
+    /** Optional URL pathname prefix to strip before building the file path
+     *  (e.g. `/One-Poem-Suffices`). */
+    path_prefix?: string;
+    /** Path of the article source file relative to the repo root. The tokens
+     *  `{pathname}` (URL pathname without leading slash) and `{slug}` (last
+     *  path segment) are substituted, e.g. `docs{pathname}/index.md`. */
+    path_template: string;
+  };
   /** Optional pathname prefixes; when set, only URLs under one of these paths are treated as articles. */
   article_paths?: string[];
   /** Optional pathname prefixes to reject regardless of `article_paths`. */

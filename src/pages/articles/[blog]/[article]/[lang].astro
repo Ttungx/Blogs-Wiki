@@ -1,0 +1,176 @@
+---
+export const prerender = false;
+
+import { getCollection } from 'astro:content';
+import { env } from 'cloudflare:workers';
+import BlogMark from '../../../../components/BlogMark.astro';
+import CategoryPill from '../../../../components/CategoryPill.astro';
+import LanguageSwitcher from '../../../../components/LanguageSwitcher.astro';
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { sitePath } from '../../../../lib/urls';
+import { getArticle, getAvailableLanguages, listArticlesByBlog, parseDateSafe } from '../../../../lib/server/content';
+import { renderMarkdown } from '../../../../lib/server/markdown';
+
+const { blog: blogId, article: slug, lang } = Astro.params;
+if (!blogId || !slug) return new Response('Not Found', { status: 404 });
+// 语言白名单：只有 en 走语言段路由，其余一律视为中文默认路由（避免未知语言段悬空）
+const targetLang = lang === 'en' ? 'en' : 'zh-cn';
+
+const db = env.DB;
+// 指定语言版本（默认兜底 en）
+const articleData = await getArticle(db, blogId, slug, targetLang);
+if (!articleData) return new Response('Not Found', { status: 404 });
+
+// blogs 元数据仍从静态 collection 读取（构建期解析，SSR 可用）
+const blogs = await getCollection('blogs');
+const blog = blogs.find((b) => b.id === blogId);
+if (!blog) return new Response('Not Found', { status: 404 });
+
+// 渲染 markdown（D1 中的 content_markdown）
+const html = await renderMarkdown(articleData.contentMarkdown);
+
+// 相关文章：同来源其他文章（zh-cn 版本，链接到中文默认路由）
+const relatedArticles = (await listArticlesByBlog(db, blogId, 'zh-cn'))
+  .filter((a) => a.id !== articleData.id)
+  .slice(0, 3);
+
+// 可用语言（语言切换器）
+const availableLanguages = await getAvailableLanguages(db, blogId, slug);
+
+const publishedDate = parseDateSafe(articleData.publishedAt);
+// ArticleDetail 未提供版本时间，暂时以原文发表日期作为"版本"时间
+const versionDate = publishedDate;
+const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+---
+
+<BaseLayout
+  title={articleData.title}
+  description={`${blog.data.name}：${articleData.title}`}
+  pageClass="reader-page"
+>
+  <main id="main-content" data-pagefind-body>
+    <article class="reader">
+      <header class="reader-header shell">
+        <a class="reader-source" href={sitePath(`blogs/${blog.id}/`)}>
+          <BlogMark
+            name={blog.data.name}
+            type={blog.data.type}
+            logo={blog.data.logo}
+            avatar={blog.data.avatar}
+            logoScale={blog.data.logoScale}
+            size="small"
+          />
+          <span>
+            <small>来自</small>
+            <strong data-pagefind-filter="blog">{blog.data.name}</strong>
+          </span>
+          <i aria-hidden="true">↗</i>
+        </a>
+
+        <div class="reader-title-block">
+          <h1 data-pagefind-meta="title">{articleData.title}</h1>
+          <LanguageSwitcher
+            availableLanguages={availableLanguages}
+            currentLanguage={targetLang}
+            blogId={blog.id}
+            slug={slug}
+          />
+        </div>
+
+        <div class="reader-meta-grid">
+          <div>
+            <span>原文发表于</span>
+            <strong>
+              {publishedDate && (
+                <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
+              )}
+            </strong>
+          </div>
+          <div>
+            <span>版本</span>
+            <strong>
+              {versionDate && (
+                <time datetime={versionDate.toISOString()}>{dateFormatter.format(versionDate)}</time>
+              )}
+            </strong>
+          </div>
+          <div>
+            <span>分类</span>
+            <p>
+              {articleData.categories.map((category) => <CategoryPill label={category} />)}
+            </p>
+          </div>
+          {articleData.translationModel && (
+            <div>
+              <span>翻译模型</span>
+              <strong>{articleData.translationModel}</strong>
+            </div>
+          )}
+          <div>
+            <span>原文语言</span>
+            <strong>{articleData.originalLanguage.toUpperCase()}</strong>
+          </div>
+          <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
+            查看原文 <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </header>
+
+      <div class="reader-content prose">
+        <div set:html={html} />
+      </div>
+
+      {relatedArticles.length > 0 && (
+        <section class="reader-related shell" aria-labelledby="reader-related-title">
+          <header class="reader-related-heading">
+            <div>
+              <p class="eyebrow">Read next · 延伸阅读</p>
+              <h2 id="reader-related-title">继续阅读</h2>
+            </div>
+            <a href={sitePath(`blogs/${blog.id}/`)}>查看全部文章 ↗</a>
+          </header>
+          <div class="reader-related-list">
+            {relatedArticles.map((relatedArticle, index) => {
+              const relatedDate = parseDateSafe(relatedArticle.publishedAt);
+              const relatedSlug = relatedArticle.id.split('/').slice(1).join('/');
+              return (
+                <a href={sitePath(`articles/${relatedArticle.sourceId}/${relatedSlug}/`)}>
+                  <span class="reader-related-number">{String(index + 1).padStart(2, '0')}</span>
+                  <span class="reader-related-copy">
+                    <strong>{relatedArticle.title}</strong>
+                  </span>
+                  {relatedDate && (
+                    <time datetime={relatedDate.toISOString()}>
+                      {compactDateFormatter.format(relatedDate)}
+                    </time>
+                  )}
+                  <i aria-hidden="true">↗</i>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <footer class="reader-end shell">
+        <div>
+          <p>原文版权归原作者与来源网站所有。</p>
+          <a href={articleData.originalUrl} target="_blank" rel="noreferrer">继续阅读原文 ↗</a>
+        </div>
+        <a class="back-to-collection" href={sitePath(`blogs/${blog.id}/`)}>
+          <span aria-hidden="true">←</span>
+          返回 {blog.data.name} 收藏册
+        </a>
+      </footer>
+    </article>
+  </main>
+</BaseLayout>

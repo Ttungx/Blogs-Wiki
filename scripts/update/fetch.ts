@@ -4,12 +4,12 @@ import { JSDOM } from 'jsdom';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { proxyUrlFor } from './network';
-import { findOfficialChineseUrl } from './localization';
+import { USER_AGENT, normalizeDate, resolveGitDate, resolveGitFilePath } from './git-date';
+import { findOfficialChineseUrl, mapToOfficialZhPath } from './localization';
 import type { DiscoveredArticle, ExtractedArticle, FetchLike, SourceConfig } from './types';
 
 const execFileAsync = promisify(execFile);
 
-const USER_AGENT = 'BlogsWikiBot/0.1 (+https://github.com; article fetch)';
 const FETCH_TIMEOUT_MS = 30_000;
 const RETRY_STATUSES = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
 const RETRY_DELAY_MS = 2_000;
@@ -146,12 +146,88 @@ function jsonLdDatePublished(document: Document): string | undefined {
   return undefined;
 }
 
-function normalizeDate(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-  const date = new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+/**
+ * Some sites (ai.meta.com, keli-wen.github.io) expose the publish date only
+ * as visible body text: "July 9, 2026" or "2025/01/10". Readability's
+ * `parsed.textContent` is the cleanest post-extraction text, so this runs
+ * after extraction and only accepts well-formed calendar dates that appear
+ * near the start of the article (first 1600 chars), which keeps footer
+ * copyrights and reference dates out of the running.
+ */
+const VISIBLE_DATE_HEAD_LIMIT = 1600;
+
+const VISIBLE_DATE_PATTERNS: Array<{ pattern: RegExp; normalize: (match: RegExpMatchArray) => string | null }> = [
+  {
+    // "July 9, 2026" / "Jul 9, 2026"
+    pattern: /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2}),\s+(\d{4})\b/i,
+    normalize: (match) => {
+      const monthNames = [
+        'january', 'february', 'march', 'april', 'may', 'june',
+        'july', 'august', 'september', 'october', 'november', 'december',
+      ];
+      const [, monthText, dayText, yearText] = match;
+      const month = monthNames.findIndex((name) => monthText.toLowerCase().startsWith(name.slice(0, 3)));
+      const day = Number(dayText);
+      const year = Number(yearText);
+      if (month < 0 || day < 1 || day > 31) return null;
+      const date = new Date(Date.UTC(year, month, day));
+      return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    },
+  },
+  {
+    // "2025/01/10" / "2026-1-5"
+    pattern: /\b(20\d{2})[\/\-](\d{1,2})[\/\-](\d{1,2})\b/,
+    normalize: (match) => {
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+      const date = new Date(Date.UTC(year, month - 1, day));
+      return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+    },
+  },
+  {
+    // "2025年1月10日"
+    pattern: /(20\d{2})年(\d{1,2})月(\d{1,2})日/,
+    normalize: (match) => {
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+      const date = new Date(Date.UTC(year, month - 1, day));
+      return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+    },
+  },
+];
+
+export function resolveVisibleDate(text: string): string {
+  const head = text.replace(/\s+/g, ' ').slice(0, VISIBLE_DATE_HEAD_LIMIT);
+  for (const entry of VISIBLE_DATE_PATTERNS) {
+    const match = head.match(entry.pattern);
+    if (!match) continue;
+    const normalized = entry.normalize(match);
+    if (normalized) return normalized;
+  }
+  return '';
+}
+
+/**
+ * Date near the article heading that Readability strips as a header (e.g.
+ * ai.meta.com renders `<span class="_amum">July 9, 2026</span>` under the
+ * <h1>). Scan the heading's siblings and the page head text before
+ * extraction, so the date survives even when it never reaches
+ * `parsed.textContent`.
+ */
+function resolveHeadingDate(document: Document): string {
+  const heading = document.querySelector('article h1, main h1, [role="main"] h1, h1');
+  if (!heading) return '';
+  const siblings = heading.parentElement
+    ? Array.from(heading.parentElement.children).filter((child) => child !== heading)
+    : [];
+  const nearby = [heading.parentElement, ...siblings]
+    .map((node) => (node?.textContent ?? '').replace(/\s+/g, ' ').trim())
+    .join(' | ');
+  return resolveVisibleDate(nearby);
 }
 
 function resolvePublishedAt(document: Document, discovered: DiscoveredArticle): string {
@@ -233,6 +309,85 @@ function preserveBlockquoteFooters(document: Document): void {
     while (footer.firstChild) span.appendChild(footer.firstChild);
     footer.replaceWith(span);
   }
+}
+
+/**
+ * Some CMSs (e.g. research.google) wrap every body image in a textless
+ * container (`dynamic_media` / `glue-grid` divs) that Readability scores as
+ * non-content and removes, dropping the picture entirely. Before extraction,
+ * lift such image-only containers into a semantic `<figure>` with a
+ * `<figcaption>` when a caption is present, so Readability keeps them and
+ * Turndown renders the original remote URL.
+ *
+ * Only containers that are dominated by a single `<picture>` and carry little
+ * or no prose are touched; text blocks and multi-image galleries are left
+ * alone. The `<picture>` is unwrapped to its inner `<img>` with the highest-
+ * resolution srcset candidate so the final Markdown keeps one canonical image.
+ */
+// Captions on research.google can run a few hundred characters, so the host
+// walk must tolerate that much prose without stopping early (stopping too
+// early leaves the figure nested in a `dynamic_media` div that Readability
+// still scores as non-content and removes).
+const PICTURE_HOST_MAX_TEXT = 1200;
+const PICTURE_HOST_MAX_PARAGRAPHS = 1;
+
+function unwrapPictureToImage(picture: Element): HTMLImageElement | null {
+  const img = picture.querySelector('img');
+  if (!img) return null;
+  const srcset = picture.querySelector('source[srcset]')?.getAttribute('srcset') ?? '';
+  const largest = srcset
+    .split(',')
+    .map((candidate) => candidate.trim().split(/\s+/))
+    .filter((parts) => parts[0] && parts[0].startsWith('http'))
+    .sort((a, b) => Number.parseFloat(b[1] ?? '0') - Number.parseFloat(a[1] ?? '0'))[0]?.[0];
+  if (largest) img.setAttribute('src', largest);
+  return img;
+}
+
+export function protectPictureFigures(root: Element): number {
+  let protectedCount = 0;
+  for (const picture of [...root.querySelectorAll('picture')]) {
+    if (picture.closest('figure')) continue;
+    const img = picture.querySelector('img');
+    if (!img || img.hasAttribute('data-nosnippet')) continue;
+
+    // Walk up while the host stays image-dominated: almost no prose and at
+    // most one paragraph (a caption). Stop at a text block or another picture
+    // (multi-image gallery), and never cross into a <figure>.
+    let host = picture;
+    for (let depth = 0; depth < 6 && host.parentElement && host.parentElement !== root; depth += 1) {
+      const parent = host.parentElement;
+      if (parent.closest('figure')) break;
+      const text = (parent.textContent ?? '').replace(/\s+/g, ' ').trim();
+      const paragraphs = parent.querySelectorAll('p').length;
+      const pictures = parent.querySelectorAll('picture').length;
+      if (text.length > PICTURE_HOST_MAX_TEXT || paragraphs > PICTURE_HOST_MAX_PARAGRAPHS || pictures > 1) break;
+      host = parent;
+    }
+
+    const figure = root.ownerDocument.createElement('figure');
+    const image = unwrapPictureToImage(picture);
+    if (!image) continue;
+    figure.appendChild(image);
+
+    // Preserve an adjacent caption (`.caption`, `.wp-caption-text`, or a
+    // standalone <p> inside the host) as <figcaption>.
+    // Extract any caption living inside the host (`.caption`,
+    // `.wp-caption-text`, `figcaption`, or the first short <p>) so it is not
+    // lost when the whole host is replaced by the figure.
+    const caption = host.querySelector('.caption, .wp-caption-text, figcaption') ?? Array.from(
+      host.querySelectorAll('p'),
+    ).find((paragraph) => (paragraph.textContent ?? '').trim().length <= 300);
+    if (caption && (caption.textContent ?? '').trim()) {
+      const figcaption = root.ownerDocument.createElement('figcaption');
+      figcaption.textContent = (caption.textContent ?? '').trim();
+      figure.appendChild(figcaption);
+    }
+
+    host.replaceWith(figure);
+    protectedCount += 1;
+  }
+  return protectedCount;
 }
 
 const CAROUSEL_CONTAINER_PATTERN = /(^|[\s_-])carousel([\s_-]|$)/i;
@@ -320,7 +475,9 @@ export function collapseCarousels(root: Element, articleUrl: string): void {
     const link = container.ownerDocument.createElement('a');
     link.href = articleUrl;
     link.textContent = '原文';
-    note.append('更多客户证言请见', link, '。');
+    note.append('更多客户证言请见');
+    note.appendChild(link);
+    note.append('。');
     container.appendChild(note);
   }
 }
@@ -456,18 +613,31 @@ export async function fetchArticle(
   const documentTitle = document.title.trim() || undefined;
   const author = resolveAuthor(document);
   const headImageUrl = resolveHeadImage(document, articleUrl);
-  const publishedAt = resolvePublishedAt(document, discovered);
   const originalLanguage = resolveLanguage(document);
+  // Capture the heading-adjacent visible date before Readability rewrites the
+  // DOM (it strips h1/header siblings, which would otherwise hide the date).
+  const headingDate = resolveHeadingDate(document);
 
   // Readability strips every <footer> (including testimonial attribution
   // inside <blockquote>s) and deletes elements whose class/id matches noise
   // tokens, so protect quote attribution before extraction.
   preserveBlockquoteFooters(document);
+  // Readability drops textless image-only containers (e.g. research.google's
+  // `dynamic_media` wrappers); lift them into semantic figures first.
+  protectPictureFigures(document.body);
 
   const parsed = new Readability(document).parse();
   if (!parsed?.content) {
     throw new Error(`${source.id} ${articleUrl}: Readability failed to extract article content`);
   }
+  // Fall back to a visible publish date when the page exposes none in
+  // meta/JSON-LD (ai.meta.com, keli-wen.github.io). Runs on the extracted
+  // body text so footer copyrights and nav dates are out of scope.
+  const publishedAt =
+    resolvePublishedAt(document, discovered) ||
+    headingDate ||
+    resolveVisibleDate(parsed.textContent ?? '') ||
+    (await resolveGitDate(source, articleUrl, fetchImpl));
 
   const title = ogTitle ?? documentTitle ?? parsed.title?.trim() ?? discovered.title?.trim() ?? '';
   if (!title) {
@@ -527,8 +697,10 @@ export async function fetchArticleWithLocalization(
   try {
     const html = await fetchHtml(fetchImpl, original.url, source);
     officialZhUrl = findOfficialChineseUrl(html, original.url);
+    officialZhUrl ??= mapToOfficialZhPath(original.url, source.zh_path_map);
   } catch {
-    // Localization probing is best-effort; keep the original article.
+    // Localization probing is best-effort; fall back to the path map probe.
+    officialZhUrl = mapToOfficialZhPath(original.url, source.zh_path_map);
   }
   if (!officialZhUrl || officialZhUrl === original.url) return original;
 
