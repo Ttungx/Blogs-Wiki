@@ -142,21 +142,22 @@ export async function writeArticle(
     );
   }
   const articlesDir = path.join(rootDir, ...CONTENT_DIR);
-  await fs.mkdir(articlesDir, { recursive: true });
+  const blogDir = path.join(articlesDir, blog.id);
+  await fs.mkdir(blogDir, { recursive: true });
 
   const baseSlug = articleSlug(blog.id, article.url);
   let slug = baseSlug;
-  let candidate = path.join(articlesDir, `${slug}.md`);
+  let candidate = path.join(blogDir, `${slug}.md`);
   let index = 2;
 
   while (true) {
     try {
       const existing = await fs.readFile(candidate, 'utf8');
       if (frontmatterValue(existing, 'original_url') === article.url) {
-        return { file: candidate, slug, created: false };
+        return { file: candidate, slug: `${blog.id}/${slug}`, created: false };
       }
       slug = `${baseSlug}-${index}`;
-      candidate = path.join(articlesDir, `${slug}.md`);
+      candidate = path.join(blogDir, `${slug}.md`);
       index += 1;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
@@ -166,5 +167,5 @@ export async function writeArticle(
 
   const content = `${buildFrontmatter(blog, article, translation, translatedAt)}${translation.contentMarkdown.replace(/\s+$/, '')}\n`;
   await fs.writeFile(candidate, content, 'utf8');
-  return { file: candidate, slug, created: true };
+  return { file: candidate, slug: `${blog.id}/${slug}`, created: true };
 }

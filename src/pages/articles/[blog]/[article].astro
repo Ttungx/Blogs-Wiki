@@ -1,13 +1,25 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content';
-import BlogMark from '../../components/BlogMark.astro';
-import CategoryPill from '../../components/CategoryPill.astro';
-import RemoteImage from '../../components/RemoteImage.astro';
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import { byOriginalPublicationDateDesc } from '../../lib/article-dates';
-import { sitePath } from '../../lib/urls';
+import BlogMark from '../../../components/BlogMark.astro';
+import CategoryPill from '../../../components/CategoryPill.astro';
+import RemoteImage from '../../../components/RemoteImage.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { byOriginalPublicationDateDesc } from '../../../lib/article-dates';
+import { sitePath } from '../../../lib/urls';
+
+/** article.id 格式为 `blogId/slug`，取末段作为路由参数。 */
+function slugFromId(id: string): string {
+  const sep = id.indexOf('/');
+  return sep >= 0 ? id.slice(sep + 1) : id;
+}
 
 export async function getStaticPaths() {
+  // Astro 将 frontmatter helper 放入页面渲染函数；getStaticPaths 需要本地定义。
+  const slugFromId = (id: string): string => {
+    const sep = id.indexOf('/');
+    return sep >= 0 ? id.slice(sep + 1) : id;
+  };
+
   const [blogs, articles] = await Promise.all([
     getCollection('blogs'),
     getCollection('articles'),
@@ -19,7 +31,9 @@ export async function getStaticPaths() {
       .filter((entry) => entry.id !== article.id && entry.data.blogId === article.data.blogId)
       .sort(byOriginalPublicationDateDesc)
       .slice(0, 3);
-    return blog ? [{ params: { id: article.id }, props: { article, blog, relatedArticles } }] : [];
+    return blog
+      ? [{ params: { blog: blog.id, article: slugFromId(article.id) }, props: { article, blog, relatedArticles } }]
+      : [];
   });
 }
 
@@ -131,7 +145,7 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
             {relatedArticles.map((relatedArticle, index) => {
               const relatedDate = new Date(relatedArticle.data.publishedAt);
               return (
-                <a href={sitePath(`articles/${relatedArticle.id}/`)}>
+                <a href={sitePath(`articles/${relatedArticle.data.blogId}/${slugFromId(relatedArticle.id)}/`)}>
                   <span class="reader-related-number">{String(index + 1).padStart(2, '0')}</span>
                   <span class="reader-related-copy">
                     <strong>{relatedArticle.data.translatedTitle}</strong>

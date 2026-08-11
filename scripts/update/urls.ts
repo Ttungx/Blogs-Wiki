@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 
 const TRACKING_PARAMETERS = new Set([
   'fbclid',
@@ -93,9 +92,13 @@ function slugPart(value: string): string {
     .slice(0, 56);
 }
 
-export function articleSlug(blogId: string, originalUrl: string): string {
+export function articleSlug(_blogId: string, originalUrl: string): string {
   const url = new URL(originalUrl);
-  const pathPart = slugPart(url.pathname.split('/').filter(Boolean).at(-1) ?? 'article') || 'article';
-  const hash = createHash('sha256').update(originalUrl).digest('hex').slice(0, 8);
-  return `${slugPart(blogId) || 'source'}-${pathPart}-${hash}`;
+  const lastSegment = url.pathname.split('/').filter(Boolean).at(-1) ?? 'article';
+  // 剥掉末段的文件扩展名（greatwork.html → greatwork）
+  const stem = lastSegment.replace(/\.[a-z0-9]{1,8}$/i, '');
+  const pathPart = slugPart(stem) || 'article';
+  // 剥掉日期前缀（2026-07-04-harness → harness）
+  const withoutDate = pathPart.replace(/^\d{4}-\d{2}-\d{2}-/, '');
+  return withoutDate || 'article';
 }
