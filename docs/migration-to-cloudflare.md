@@ -15,8 +15,8 @@
 | 2. FileRepository（与旧行为字节对齐） | ✅ 完成 | `worker/repositories/file/`，46 个 Node 测试全绿 |
 | 3. D1 schema + migrations | ✅ 完成 | `worker/migrations/0001_initial_schema.sql` + `0002_seed_categories.sql`，本地数据库当前无待应用迁移 |
 | 4. D1Repository | ✅ 完成 | `D1ArticleRepository` / `D1SourceStateRepository`，真实 Miniflare D1 binding 测试 18/18 通过 |
-| 5. 管线接 repository interface | 🟨 Node File + Worker D1 注入已接线，更新编排待补 | Node CLI 默认 File；Worker 通过 `env.DB` 注入 D1；更新 Workflow 仍属 Phase 7 |
-| 6. Worker-compatible fetch path | 🟨 backend 已接线，运行时验证待补 | `FETCH_BACKEND=node|worker` 已接入 Node 管线；Worker extractor 仍需真实来源对照与独立 HTTP runtime 验证 |
+| 5. 管线接 repository interface | 🟨 Node File + Worker D1 注入已接线，Workflow 编排待补 | `runUpdate()` 已从 CLI 参数解析中抽出并支持依赖注入；File/D1 后端保持可替换；更新 Workflow 仍属 Phase 7 |
+| 6. Worker-compatible fetch path | 🟨 本地 Worker runtime 已验证，真实来源对照待补 | `FETCH_BACKEND=node|worker` 已接入 Node 管线；Miniflare D1 测试覆盖 `/extract`、`/storage/health`、健康检查和 404；仍需独立 `wrangler dev` 与 Tier A Node/Worker A/B 证据 |
 | 7. Workflow 运行时 | ⬜ | Cloudflare Workflow 编排 + Cron Trigger |
 | 8. Astro 切 D1 | ⬜ | getCollection → ArticleRepository，SSR |
 | 9. 搜索切 FTS5 | ⬜ | Pagefind → D1 FTS5 |
@@ -28,7 +28,7 @@
 
 按以下门禁推进，不跨层并行修改：
 
-1. **先收口 Phase 6**：在 `wrangler dev` 下验证 `/extract` 与 `/storage/health`，对 Tier A 来源做 Node / Worker A/B 抓取对照，并记录正文、元数据、公式和耗时证据。
+1. **先收口 Phase 6**：本地 Worker runtime smoke 已纳入 D1 测试；剩余门禁是在 `wrangler dev` 下验证 `/extract` 与 `/storage/health`，对 Tier A 来源做 Node / Worker A/B 抓取对照，并记录正文、元数据、公式和耗时证据。
 2. **再做 Phase 7**：先解决远程 D1 `database_id` 与 Cloudflare Secrets 注入方案，再补 `source_items` 状态机与 `source_runs` 运行记录；随后实现 discover → fetch → translate → persist 的 Workflow steps，最后接 Cron，保留手动触发和 Node 回滚路径。
 3. **然后做 Phase 8**：Cloudflare adapter + hybrid/SSR，只迁移文章列表、来源页、阅读页和计数；先保持静态资源与旧构建链路可回滚。
 4. **最后做 Phase 9/10**：D1 FTS5 查询稳定后再移除 Pagefind；确认 D1 唯一真相、Workflow 可恢复、SSR 可读、搜索实时后，才删除 File backend 和文件状态产物。
@@ -150,7 +150,7 @@
 
 **关键纪律**：只改持久化调用，不动 discovery/fetch/translate 的任何逻辑。管线仍由 tsx + Node 运行（Phase 7 才迁 Workflow）。
 
-**当前完成标准**：factory 与适配器测试通过；`check:worker`、`test:worker`、`test:d1`、`test:update`、`check` 全绿。Worker runtime factory 已由 `env.DB` + Miniflare D1 binding 测试验证；`/storage/health` 独立 HTTP smoke 与完整更新编排留到后续阶段。
+**当前完成标准**：factory 与适配器测试通过；`runUpdate()` 集成测试覆盖 full-run、dry-run 只读、成功后状态标记、已处理 URL 去重和单文章失败隔离；`check:worker`、`test:worker`、`test:d1`、`test:update`、`check` 全绿。Worker runtime factory 与 `/storage/health` 已由 `env.DB` + Miniflare D1 binding 测试验证；独立 `wrangler dev` 留作运行时门禁。
 
 **回滚**：`STORAGE_BACKEND=file` 使用 FileRepository；dry-run 始终使用只读 File 视图，避免误写 D1。
 
@@ -169,7 +169,7 @@
 
 **涉及文件**：新建 `worker/fetch/`（不原地改 scripts/update/fetch.ts，避免破坏 Node 路径）；`node:crypto createHash('sha1')` → Web Crypto `crypto.subtle`（translation-plan.ts 的 chunkId）。
 
-**完成标准**：Workers fetch 路径在 `wrangler dev` 下通过；现有 Tier A 来源（RSS/Sitemap + 普通 HTML）抓取成功率 ≥ Node 路径。
+**完成标准**：Workers fetch 路径在 `wrangler dev` 下通过；现有 Tier A 来源（RSS/Sitemap + 普通 HTML）抓取成功率 ≥ Node 路径。当前已完成 Worker extractor 单测、Node 管线 backend 接线和 Miniflare HTTP handler smoke；真实来源 A/B 及独立 `wrangler dev` 尚未完成。
 
 **回滚**：`FETCH_BACKEND=node|worker` 切换。
 

@@ -9,7 +9,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "check:worker": "tsc --noEmit -p worker/tsconfig.json",
-    "test:update": "tsx scripts/update/smoke.ts",
+    "test:update": "tsx --test scripts/update/runner.test.ts && tsx scripts/update/smoke.ts",
     "test:worker": "tsx --test worker/__tests__/*.test.ts",
     "test:d1": "vitest run",
     "audit:source": "tsx --env-file-if-exists=.env scripts/update/audit.ts",
