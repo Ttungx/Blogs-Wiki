@@ -8,7 +8,10 @@
     "build": "astro build && pagefind --site dist",
     "preview": "astro preview",
     "check": "astro check",
+    "check:worker": "tsc --noEmit -p worker/tsconfig.json",
     "test:update": "tsx scripts/update/smoke.ts",
+    "test:worker": "tsx --test worker/__tests__/*.test.ts",
+    "test:d1": "vitest run",
     "audit:source": "tsx --env-file-if-exists=.env scripts/update/audit.ts",
     "update": "tsx --env-file-if-exists=.env scripts/update/index.ts",
     "update:dry": "tsx --env-file-if-exists=.env scripts/update/index.ts --dry-run"
@@ -21,6 +24,7 @@
     "defuddle": "^0.19.2",
     "jsdom": "^29.1.1",
     "katex": "^0.18.4",
+    "linkedom": "^0.18.13",
     "pagefind": "^1.5.2",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
@@ -33,11 +37,20 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
+    "@cloudflare/vitest-pool-workers": "^0.20.0",
+    "@cloudflare/workers-types": "^5.20260811.1",
     "@types/jsdom": "^30.0.0",
     "@types/mdast": "^4.0.4",
     "@types/node": "^26.2.0",
     "@types/turndown": "^5.0.6",
     "tsx": "^4.20.5",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.120.0"
+  },
+  "overrides": {
+    "@cloudflare/vitest-pool-workers": {
+      "wrangler": "$wrangler"
+    }
   }
 }

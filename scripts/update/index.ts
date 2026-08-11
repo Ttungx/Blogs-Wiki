@@ -1,8 +1,7 @@
-import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverSource } from './discovery';
-import { fetchArticle, fetchArticleWithLocalization } from './fetch';
+import { createFetchBackend } from './fetch-backend';
 import { createTranslateClient } from './translate';
 import { createTranslateV2Client } from './translate-v2';
 import { selectSourcesForRun } from './source-policy';
@@ -10,17 +9,15 @@ import { loadSources } from './config';
 import { createFetchImpl } from './network';
 import { CATEGORIES } from '../../src/config/categories';
 import {
-  isProcessed,
-  frontmatterValue,
-  loadProcessedState,
-  markProcessed,
-  saveProcessedState,
-  writeArticle,
-} from './persist';
+  createUpdateRepositories,
+  toDomainArticle,
+  toDomainSource,
+  toDomainTranslation,
+} from './repository-factory';
+import type { UpdateRepositories } from './repository-factory';
 import type {
   ExtractedArticle,
   Logger,
-  ProcessedUrlState,
   SourceConfig,
   UpdateSummary,
 } from './types';
@@ -81,9 +78,11 @@ Options:
 Environment:
   OPENAI_API_KEY        API key for the OpenAI-compatible endpoint.
   OPENAI_BASE_URL       Base URL, e.g. https://api.openai.com/v1.
-  TRANSLATION_MODEL     Model identifier, recorded on each article.`);
-    console.log(`  USE_PROXY             Set to "true" to route requests through PROXY_URL.
+  TRANSLATION_MODEL     Model identifier, recorded on each article.
+  STORAGE_BACKEND       file (default) or d1; d1 requires an injected Worker binding.`);
+      console.log(`  USE_PROXY             Set to "true" to route requests through PROXY_URL.
   PROXY_URL             HTTP proxy, e.g. http://127.0.0.1:7897.`);
+      console.log(`  FETCH_BACKEND          node (default) or worker; worker uses Defuddle + linkedom.`);
       process.exit(0);
     }
   }
@@ -103,35 +102,39 @@ const consoleLogger: Logger = {
   },
 };
 
-async function reconcileProcessed(
-  rootDir: string,
+async function initializeSeenUrls(
+  repositories: UpdateRepositories,
   sources: SourceConfig[],
-  state: ProcessedUrlState,
   logger: Logger,
-): Promise<number> {
-  const articlesDir = path.join(rootDir, 'src', 'content', 'articles');
-  let files: string[];
-  try {
-    files = await fs.readdir(articlesDir);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return 0;
-    throw error;
+  persistReconciliation: boolean,
+): Promise<Map<string, Set<string>>> {
+  const knownIds = new Set(sources.map((source) => source.id));
+  const seenBySource = new Map<string, Set<string>>();
+  for (const source of sources) {
+    seenBySource.set(source.id, new Set(await repositories.sourceState.listProcessed(source.id)));
   }
 
-  const knownIds = new Set(sources.map((source) => source.id));
-  let reconciled = 0;
-  for (const file of files.filter((name) => name.endsWith('.md'))) {
-    const content = await fs.readFile(path.join(articlesDir, file), 'utf8');
-    const blogId = frontmatterValue(content, 'blog_id');
-    const url = frontmatterValue(content, 'original_url');
-    if (!blogId || !url || !knownIds.has(blogId)) continue;
-    if (!isProcessed(state, blogId, url)) {
-      markProcessed(state, blogId, url);
-      reconciled += 1;
+  const entries = (await repositories.articles.listAll())
+    .filter((article) => knownIds.has(article.sourceId))
+    .map((article) => ({ sourceId: article.sourceId, url: article.originalUrl }));
+  const reconciled = persistReconciliation
+    ? await repositories.sourceState.reconcile(entries)
+    : entries.reduce((count, entry) => {
+        const seen = seenBySource.get(entry.sourceId);
+        if (!seen || seen.has(entry.url)) return count;
+        seen.add(entry.url);
+        return count + 1;
+      }, 0);
+
+  if (persistReconciliation) {
+    for (const entry of entries) {
+      seenBySource.get(entry.sourceId)?.add(entry.url);
     }
   }
-  if (reconciled > 0) logger.info(`reconciled ${reconciled} processed URL(s) from existing article files`);
-  return reconciled;
+  if (reconciled > 0) {
+    logger.info(`reconciled ${reconciled} processed URL(s) from existing article records`);
+  }
+  return seenBySource;
 }
 
 async function run() {
@@ -178,11 +181,21 @@ async function run() {
     process.exit(1);
   }
 
-  const state = await loadProcessedState(rootDir);
-  const reconciled = await reconcileProcessed(rootDir, sources, state, logger);
-  let stateChanged = reconciled > 0;
+  // Dry-run must remain read-only and local. Full runs select the configured
+  // backend; STORAGE_BACKEND=d1 requires a Worker-side D1 binding injection.
+  const repositories = createUpdateRepositories({
+    rootDir,
+    backend: options.dryRun ? 'file' : process.env.STORAGE_BACKEND,
+  });
+  const seenBySource = await initializeSeenUrls(
+    repositories,
+    sources,
+    logger,
+    !options.dryRun,
+  );
   const limit = options.limit === undefined ? DEFAULT_LIMIT_PER_SOURCE : options.limit;
   const fetchImpl = createFetchImpl(logger);
+  const fetchBackend = createFetchBackend(process.env.FETCH_BACKEND);
   const pipeline = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase();
   const translate = options.dryRun
     ? undefined
@@ -193,6 +206,10 @@ async function run() {
   logger.info(`Blogs Wiki update: ${options.dryRun ? 'dry run (discover + fetch only)' : 'full run'}`);
   logger.info(`Sources: ${sources.map((s) => s.id).join(', ') || '(none)'} | limit per source: ${limit === 0 ? 'unlimited' : limit}`);
   if (!options.dryRun) logger.info(`Translation pipeline: ${pipeline}`);
+  if (!options.dryRun) {
+    logger.info(`Storage backend: ${(process.env.STORAGE_BACKEND ?? 'file').trim().toLowerCase()}`);
+  }
+  logger.info(`Fetch backend: ${fetchBackend.name}`);
   logger.info('');
 
   const summary: UpdateSummary = { sources: [], discovered: 0, pending: 0, processed: 0, failed: 0 };
@@ -213,7 +230,7 @@ async function run() {
       result.discovered = discovered.length;
 
       const pending = discovered
-        .filter((item) => !isProcessed(state, source.id, item.url))
+        .filter((item) => !(seenBySource.get(source.id) ?? new Set()).has(item.url))
         .sort((a, b) => {
           const aTime = a.publishedAt ? Date.parse(a.publishedAt) : 0;
           const bTime = b.publishedAt ? Date.parse(b.publishedAt) : 0;
@@ -229,8 +246,8 @@ async function run() {
       for (const item of candidates) {
         try {
           const article: ExtractedArticle = source.prefer_official_zh
-            ? await fetchArticleWithLocalization(source, item, fetchImpl)
-            : await fetchArticle(source, item, fetchImpl);
+            ? await fetchBackend.fetchArticleWithLocalization(source, item, fetchImpl)
+            : await fetchBackend.fetchArticle(source, item, fetchImpl);
           if (!translate) {
             logger.info(
               source.update_mode === 'dry-run-only'
@@ -244,16 +261,18 @@ async function run() {
             continue;
           }
           const translation = await translate(article, CATEGORIES);
-          const written = await writeArticle(rootDir, source, article, translation);
-          if (written.created) {
-            markProcessed(state, source.id, article.url);
-            stateChanged = true;
+          const saved = await repositories.articles.save({
+            source: toDomainSource(source),
+            article: toDomainArticle(source, article),
+            translation: toDomainTranslation(translation),
+          });
+          await repositories.sourceState.markProcessed(source.id, article.url);
+          seenBySource.get(source.id)?.add(article.url);
+          if (saved.created) {
             result.processed += 1;
             summary.processed += 1;
-            logger.info(`  + ${written.slug} (${translation.translatedTitle})`);
+            logger.info(`  + ${saved.id} (${translation.translatedTitle})`);
           } else {
-            markProcessed(state, source.id, article.url);
-            stateChanged = true;
             logger.info(`  = already present: ${item.url}`);
           }
         } catch (error) {
@@ -271,11 +290,6 @@ async function run() {
       result.errors.push(message);
       logger.error(`[${source.id}] ${message}`);
     }
-  }
-
-  if (stateChanged && !options.dryRun) {
-    state.updated_at = new Date().toISOString();
-    await saveProcessedState(rootDir, state);
   }
 
   logger.info('');

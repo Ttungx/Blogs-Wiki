@@ -320,7 +320,9 @@ export function collapseCarousels(root: Element, articleUrl: string): void {
     const link = container.ownerDocument.createElement('a');
     link.href = articleUrl;
     link.textContent = '原文';
-    note.append('更多客户证言请见', link, '。');
+    note.append('更多客户证言请见');
+    note.appendChild(link);
+    note.append('。');
     container.appendChild(note);
   }
 }

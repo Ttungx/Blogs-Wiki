@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "blogs-wiki",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-02-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "blogs-wiki",
+      "database_id": "local",
+      "migrations_dir": "worker/migrations"
+    }
+  ]
+}
