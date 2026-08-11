@@ -17,6 +17,7 @@ import {
   resolveVisibleDate,
   resolveImageUrl,
 } from './fetch';
+import { resolveGitFilePath } from './git-date';
 import { parseArgs } from './index';
 import {
   extractLocalizedAlternates,
@@ -380,6 +381,24 @@ async function run() {
     );
     assert.equal(mapToOfficialZhPath('https://example.com/blog/post', undefined), undefined);
     assert.equal(mapToOfficialZhPath('https://example.com/other/post', { '/blog': '/zh/blog' }), undefined);
+
+    // git date: GitHub Pages 无日期博客解析源文件路径（one-poem-suffices）
+    assert.equal(
+      resolveGitFilePath('https://keli-wen.github.io/One-Poem-Suffices/one-poem-suffices/model-context-protocol/', {
+        repo: 'keli-wen/One-Poem-Suffices',
+        path_prefix: '/One-Poem-Suffices',
+        path_template: 'docs/{pathname}/index.md',
+      }),
+      'docs/one-poem-suffices/model-context-protocol/index.md',
+    );
+    assert.equal(
+      resolveGitFilePath('https://keli-wen.github.io/One-Poem-Suffices/scaling-thoughts/renting-time/', {
+        repo: 'keli-wen/One-Poem-Suffices',
+        path_prefix: '/One-Poem-Suffices',
+        path_template: 'docs/{pathname}/index.md',
+      }),
+      'docs/scaling-thoughts/renting-time/index.md',
+    );
 
     // visible date: sites without meta/JSON-LD dates fall back to body text
     assert.equal(resolveVisibleDate('Published July 9, 2026 in Research'), '2026-07-09T00:00:00.000Z');

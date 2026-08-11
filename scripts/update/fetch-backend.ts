@@ -6,6 +6,8 @@ import {
   fetchWorkerArticle,
   fetchWorkerArticleWithLocalization,
 } from '../../worker/fetch/worker-article';
+// Node-only：注册系统 curl 回退（TLS 指纹拦截的 CDN）。Worker 打包不包含此文件。
+import '../../worker/fetch/curl';
 import type { DiscoveredArticle, ExtractedArticle, FetchLike, SourceConfig } from './types';
 
 export type FetchBackendName = 'node' | 'worker';
@@ -31,6 +33,8 @@ function toWorkerSource(source: SourceConfig) {
     ...(source.prefer_official_zh !== undefined
       ? { preferOfficialZh: source.prefer_official_zh }
       : {}),
+    ...(source.zh_path_map !== undefined ? { zhPathMap: source.zh_path_map } : {}),
+    ...(source.git_date !== undefined ? { gitDate: source.git_date } : {}),
   };
 }
 

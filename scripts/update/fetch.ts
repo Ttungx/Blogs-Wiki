@@ -4,12 +4,12 @@ import { JSDOM } from 'jsdom';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { proxyUrlFor } from './network';
+import { USER_AGENT, normalizeDate, resolveGitDate, resolveGitFilePath } from './git-date';
 import { findOfficialChineseUrl, mapToOfficialZhPath } from './localization';
 import type { DiscoveredArticle, ExtractedArticle, FetchLike, SourceConfig } from './types';
 
 const execFileAsync = promisify(execFile);
 
-const USER_AGENT = 'BlogsWikiBot/0.1 (+https://github.com; article fetch)';
 const FETCH_TIMEOUT_MS = 30_000;
 const RETRY_STATUSES = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
 const RETRY_DELAY_MS = 2_000;
@@ -144,14 +144,6 @@ function jsonLdDatePublished(document: Document): string | undefined {
     if (match?.[1]) return match[1];
   }
   return undefined;
-}
-
-function normalizeDate(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-  const date = new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 /**
@@ -644,7 +636,8 @@ export async function fetchArticle(
   const publishedAt =
     resolvePublishedAt(document, discovered) ||
     headingDate ||
-    resolveVisibleDate(parsed.textContent ?? '');
+    resolveVisibleDate(parsed.textContent ?? '') ||
+    (await resolveGitDate(source, articleUrl, fetchImpl));
 
   const title = ogTitle ?? documentTitle ?? parsed.title?.trim() ?? discovered.title?.trim() ?? '';
   if (!title) {

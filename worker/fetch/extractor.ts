@@ -97,12 +97,36 @@ export interface ExtractionResult {
  */
 export async function extractArticle(input: ExtractionInput): Promise<ExtractionResult> {
   const { html, url } = input;
-  const { document } = parseHTML(html);
+  let { document } = parseHTML(html);
+
+  // Defuddle's `embedToMarkdown` rule matches image/link sources against a
+  // substring regex (`twitter\.com|x\.com`). CDN hostnames that merely end in
+  // "x.com" (e.g. Meta's `*.fbsbx.com`) are then misclassified as X/Twitter
+  // embeds and the image is dropped entirely from the Markdown output. Rewrite
+  // the offending substring to a placeholder before extraction and restore it
+  // afterwards so such images survive (defuddle 0.19.2 upstream bug).
+  const X_COM_TOKEN = 'x__dot__com';
+  let patchedSources = false;
+  for (const img of document.querySelectorAll('img[src]')) {
+    const src = img.getAttribute('src') ?? '';
+    if (!/(?:twitter\.com|x\.com)/i.test(src)) continue;
+    try {
+      const hostname = new URL(src, url).hostname;
+      if (/^(?:www\.)?(?:twitter\.com|x\.com)$/i.test(hostname)) continue; // genuine embed
+    } catch {
+      continue;
+    }
+    img.setAttribute('src', src.replace(/x\.com/gi, X_COM_TOKEN));
+    patchedSources = true;
+  }
 
   const DefuddleFull = await getDefuddle();
   const result = new DefuddleFull(document, { url, markdown: true }).parse();
 
-  const contentMarkdown = (result.content ?? '').trim();
+  let contentMarkdown = (result.content ?? '').trim();
+  if (patchedSources) {
+    contentMarkdown = contentMarkdown.replace(new RegExp(X_COM_TOKEN, 'g'), 'x.com');
+  }
   const textLength = contentMarkdown.replace(/\s+/g, ' ').length;
   if (textLength < MIN_CONTENT_CHARS) {
     throw new Error(

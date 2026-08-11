@@ -8,6 +8,12 @@ const TRACKING_PARAMETERS = new Set([
   'mc_eid',
   '_hsenc',
   '_hsmi',
+  // Tencent Cloud developer articles append `policyId`, `traceId`, and
+  // `frompage` marketing/analytics parameters to otherwise identical URLs.
+  'policyid',
+  'traceid',
+  'frompage',
+  'amp',
 ]);
 
 const NON_ARTICLE_PATHS = [
@@ -25,7 +31,10 @@ const NON_ARTICLE_PATHS = [
 
 export function canonicalizeUrl(value: string, base?: string): string | null {
   try {
-    const url = new URL(value, base);
+    // Listing pages sometimes keep HTML entities (`&amp;`) un-decoded in href
+    // attributes; URL parsing then treats `amp;` as the query key.
+    const decoded = value.replace(/&amp;/gi, '&');
+    const url = new URL(decoded, base);
     if (!['http:', 'https:'].includes(url.protocol)) return null;
 
     url.hash = '';

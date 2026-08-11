@@ -46,3 +46,30 @@ export function findOfficialChineseUrl(html: string, pageUrl: string): string | 
     (entry) => entry.language === 'zh-hans' || entry.language.startsWith('zh-hans-'),
   )?.url;
 }
+
+/**
+ * 某些站点（cursor / qwen）在固定路径前缀下提供官方简体中文版
+ * （如 `/blog/<slug>` → `/zh/blog/<slug>`）但不声明 hreflang alternate。
+ * 探测映射后的 URL；调用方必须验证响应确实是中文再使用。
+ */
+export function mapToOfficialZhPath(
+  pageUrl: string,
+  pathMap: Record<string, string> | undefined,
+): string | undefined {
+  if (!pathMap) return undefined;
+  try {
+    const url = new URL(pageUrl);
+    const pathname = url.pathname.replace(/\/+$/, '');
+    for (const [from, to] of Object.entries(pathMap)) {
+      const fromPath = from.replace(/\/+$/, '');
+      if (pathname === fromPath || pathname.startsWith(`${fromPath}/`)) {
+        const suffix = pathname.slice(fromPath.length);
+        url.pathname = `${to.replace(/\/+$/, '')}${suffix}/`;
+        return url.toString();
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}

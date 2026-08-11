@@ -116,3 +116,22 @@ test('extractArticle: contentMarkdown 不少于 MIN_CONTENT_CHARS', async () => 
   const textLength = result.contentMarkdown.replace(/\s+/g, ' ').trim().length;
   assert.ok(textLength >= 200, `正文应 ≥ 200 字符，实际 ${textLength}`);
 });
+
+test('extractArticle: fbsbx.com 图片不被 embedToMarkdown 规则吞掉', async () => {
+  // Defuddle 的 embedToMarkdown 用子串正则 `x\.com` 匹配，`*.fbsbx.com` 会被
+  // 误判为 X/Twitter 嵌入并整体丢弃；extractor 用占位符改写后还原。
+  const body = `
+    <p>Evaluations</p>
+    <img src="https://lookaside.fbsbx.com/elementpath/media/?media_id=123&version=1" alt="Chart one">
+    <img src="https://lookaside.fbsbx.com/elementpath/media/?media_id=456" alt="Chart two">
+    <p>This paragraph ensures the article is long enough for the extractor
+    minimum content length check. Lorem ipsum dolor sit amet consectetur
+    adipiscing elit sed do eiusmod tempor incididunt ut labore.</p>
+  `;
+  const result = await extractArticle({ html: fullPageHtml({ body }), url: BASE_URL });
+
+  assert.match(result.contentMarkdown, /lookaside\.fbsbx\.com/, 'fbsbx.com 图片应保留');
+  assert.match(result.contentMarkdown, /media_id=123/, 'query 参数应原样保留');
+  assert.match(result.contentMarkdown, /media_id=456/, '第二张图也应保留');
+  assert.doesNotMatch(result.contentMarkdown, /x__dot__com/, '占位符不应泄漏');
+});

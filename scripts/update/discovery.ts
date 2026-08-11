@@ -1,5 +1,7 @@
 import type { DiscoveredArticle, FetchLike, SourceConfig } from './types';
 import { canonicalizeUrl, isLikelyArticleUrl, uniqueCanonicalUrls } from './urls';
+import { proxyUrlFor } from './proxy';
+import { getCurlRunner } from '../../worker/fetch/curl-runner';
 
 export interface DiscoveryPathDiagnostic {
   name: 'rss' | 'sitemap' | 'listing';
@@ -73,16 +75,40 @@ export function isCandidateArticle(url: string, source: SourceConfig): boolean {
 }
 
 async function fetchText(fetchImpl: FetchLike, url: string, context: string): Promise<string> {
-  const response = await fetchImpl(url, {
-    headers: {
-      accept: 'application/atom+xml, application/rss+xml, application/xml, text/xml, text/html;q=0.8',
-      'user-agent': USER_AGENT,
-    },
-    signal: AbortSignal.timeout(25_000),
-  });
-
-  if (!response.ok) throw new Error(`${context}: HTTP ${response.status} ${response.statusText}`);
-  return response.text();
+  try {
+    const response = await fetchImpl(url, {
+      headers: {
+        accept: 'application/atom+xml, application/rss+xml, application/xml, text/xml, text/html;q=0.8',
+        'user-agent': USER_AGENT,
+      },
+      signal: AbortSignal.timeout(25_000),
+    });
+    if (!response.ok) throw new Error(`${context}: HTTP ${response.status} ${response.statusText}`);
+    return await response.text();
+  } catch (error) {
+    // 部分 CDN（openai.com 等）按 Node TLS 指纹拦截 403，但接受 curl 的
+    // TLS 栈；回退系统 curl 一次（与 fetch 层行为一致）。
+    // 仅 Node 侧可用（curl-runner 注册）；Worker 运行时跳过回退。
+    if (error instanceof Error && /HTTP 403/.test(error.message)) {
+      const runner = getCurlRunner();
+      if (runner) {
+        const proxyUrl = proxyUrlFor(url);
+        const args = [
+          '-sS', '-L', '--max-time', '25',
+          '-A', USER_AGENT,
+          '-H', 'Accept: application/atom+xml, application/rss+xml, application/xml, text/xml, text/html;q=0.8',
+        ];
+        if (proxyUrl) args.push('-x', proxyUrl);
+        args.push(url);
+        const { stdout } = await runner(args, {
+          maxBuffer: 20 * 1024 * 1024,
+          timeout: 25_000,
+        });
+        return stdout;
+      }
+    }
+    throw error;
+  }
 }
 
 function firstTag(block: string, names: string[]): string | undefined {
