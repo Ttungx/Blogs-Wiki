@@ -31,3 +31,16 @@
 5. ⬜ Phase 10：删除旧文件 backend —— FileRepository / persist.ts / processed-urls.json / .gitignore 清理
 6. 🟨 清理：`worker/index.ts` 已不再作为入口（API 迁移到 `src/pages/api/`），`worker-runtime.test.ts` 需适配新架构
 7. 🟨 Phase 8 收尾（SEO）：sitemap 动态化（server 模式下 sitemap-index.xml 不含动态文章 URL，Phase 9 一并处理）
+
+# 文章渲染 TODO：
+
+- [ ] 段间距优化
+- [ ] 代码块优化
+- [ ] markdown渲染优化
+
+# 内容更新架构 TODO：
+
+- [ ] 调整为 Cloudflare Worker + GitHub Actions 组合架构
+- [ ] Cloudflare Worker 保留线上站点、API 与 D1 访问职责
+- [ ] GitHub Actions 承担内容更新管线执行职责
+- [ ] 暂不启用 Cloudflare Workflow 承担重计算内容管线
