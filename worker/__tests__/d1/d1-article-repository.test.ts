@@ -1,13 +1,31 @@
 /**
- * D1ArticleRepository 测试。
+ * D1ArticleRepository 测试（多语言架构）。
+ *
+ * 多语言架构下文章拆为两层：
+ * - articles：身份行（id、url、发布日期、作者、来源域），UNIQUE(source_id, original_url)。
+ * - article_versions：语言版本行（title、contentMarkdown、excerpt、provenance），
+ *   PK(article_id, language)。
+ *
+ * save() 写身份 + 原文版本（原文无分类，provenance='original'）；
+ * saveVersion() 为已有文章追加/更新语言版本，并把翻译带来的分类同步到文章身份。
+ *
  * 用 vitest-pool-workers 的真实 Miniflare D1 binding。
- * 每个测试用唯一 URL 避免数据污染（D1 存储测试间不隔离）。
+ * 每个测试用唯一 URL 避免数据污染（D1 存储测试间不隔离）；
+ * 第一个测试用默认 hello-world URL 验证 id 派生，其余均走 uniqueUrl()。
  */
 
 import { env, applyD1Migrations } from "cloudflare:test";
 import { beforeAll, describe, expect, test } from "vitest";
 import { D1ArticleRepository } from "../../repositories/d1/d1-article-repository.ts";
-import { makeSaveInput, seedSources, seedCategories, source, ALL_CATEGORIES } from "./helpers.ts";
+import {
+  makeSaveInput,
+  makeSaveVersionInput,
+  seedSources,
+  seedCategories,
+  source,
+  ALL_CATEGORIES,
+} from "./helpers.ts";
+import type { ArticleRecord, ArticleVersionRecord } from "../../domain/types.ts";
 
 /** 每个测试用唯一 URL，避免同一 D1 存储测试间数据污染。 */
 let urlCounter = 0;
@@ -23,13 +41,37 @@ beforeAll(async () => {
 });
 
 describe("D1ArticleRepository.save", () => {
-  test("新建文章返回 created:true", async () => {
+  test("新建文章返回 created:true，并写入身份与原文版本", async () => {
     const repo = new D1ArticleRepository(env.DB);
-    const url = uniqueUrl();
-    const result = await repo.save(makeSaveInput({ article: { url } }));
+    const result = await repo.save(makeSaveInput());
 
     expect(result.created).toBe(true);
-    expect(result.id).toBe(`smoke-blog/test-${urlCounter}`);
+    expect(result.id).toContain("smoke-blog/hello-world");
+
+    // getById 返回 ArticleRecord（身份字段，无内容字段）
+    const record = await repo.getById(result.id);
+    expect(record).not.toBeNull();
+    const identity = record as ArticleRecord;
+    expect(identity.id).toBe(result.id);
+    expect(identity.sourceId).toBe("smoke-blog");
+    expect(identity.originalUrl).toBe("https://example.com/blog/hello-world/");
+    expect(identity.originalLanguage).toBe("en");
+    expect(identity.sourceDomain).toBe("example.com");
+    // ArticleRecord 不再含内容字段
+    const extra = identity as unknown as Record<string, unknown>;
+    expect(extra).not.toHaveProperty("originalTitle");
+    expect(extra).not.toHaveProperty("translatedTitle");
+    expect(extra).not.toHaveProperty("contentMarkdown");
+    expect(extra).not.toHaveProperty("excerpt");
+    expect(extra).not.toHaveProperty("translatedAt");
+
+    // getVersion 返回原文版本（save 写入的 language=originalLanguage 行）
+    const enVersion = await repo.getVersion(result.id, "en");
+    expect(enVersion).not.toBeNull();
+    const en = enVersion as ArticleVersionRecord;
+    expect(en.title).toBe("Hello World");
+    expect(en.contentMarkdown).toBe("# Hello\n\nThis is the original body.");
+    expect(en.provenance).toBe("original");
   });
 
   test("同 originalUrl 幂等返回 created:false", async () => {
@@ -52,77 +94,118 @@ describe("D1ArticleRepository.save", () => {
     ).rejects.toThrow(/no published date/);
   });
 
-  test("categories 写入关联表", async () => {
+  test("exists 在 save 前后返回正确值", async () => {
     const repo = new D1ArticleRepository(env.DB);
     const url = uniqueUrl();
-    await repo.save(makeSaveInput({ article: { url }, translation: { categories: ["AI", "Agent"] } }));
 
-    const record = await repo.getByOriginalUrl(source.id, url);
-    expect(record?.categories).toEqual(["AI", "Agent"]);
-  });
-
-  test("excerpt 自动生成", async () => {
-    const repo = new D1ArticleRepository(env.DB);
-    const url = uniqueUrl();
-    await repo.save(
-      makeSaveInput({
-        article: { url },
-        translation: { contentMarkdown: "这是一段足够长的正文内容用于测试摘要提取功能是否正常工作。" },
-      }),
-    );
-
-    const record = await repo.getByOriginalUrl(source.id, url);
-    expect(record?.excerpt).toBeTruthy();
+    expect(await repo.exists(source.id, url)).toBe(false);
+    await repo.save(makeSaveInput({ article: { url } }));
+    expect(await repo.exists(source.id, url)).toBe(true);
   });
 });
 
 describe("D1ArticleRepository 读取", () => {
-  test("getById 存在和不存在", async () => {
-    const repo = new D1ArticleRepository(env.DB);
-    const url = uniqueUrl();
-    const result = await repo.save(makeSaveInput({ article: { url } }));
-
-    const found = await repo.getById(result.id);
-    expect(found).not.toBeNull();
-    expect(found?.translatedTitle).toBe("你好世界");
-
-    const missing = await repo.getById("smoke-blog/nonexistent");
-    expect(missing).toBeNull();
-  });
-
   test("getByOriginalUrl 按 (sourceId, url) 查找", async () => {
     const repo = new D1ArticleRepository(env.DB);
     const url = uniqueUrl();
-    await repo.save(makeSaveInput({ article: { url } }));
+    const saved = await repo.save(makeSaveInput({ article: { url } }));
 
     const found = await repo.getByOriginalUrl(source.id, url);
     expect(found).not.toBeNull();
-    expect(found?.originalTitle).toBe("Hello World");
+    const record = found as ArticleRecord;
+    expect(record.id).toBe(saved.id);
+    expect(record.sourceId).toBe(source.id);
+    expect(record.originalUrl).toBe(url);
   });
 
   test("listBySource 过滤 sourceId", async () => {
     const repo = new D1ArticleRepository(env.DB);
-    await repo.save(makeSaveInput({ article: { url: uniqueUrl() } }));
-    await repo.save(makeSaveInput({ article: { url: uniqueUrl(), title: "Second" } }));
+    const urlA = uniqueUrl();
+    const urlB = uniqueUrl();
+    await repo.save(makeSaveInput({ article: { url: urlA } }));
+    await repo.save(makeSaveInput({ article: { url: urlB } }));
 
     const list = await repo.listBySource(source.id);
-    expect(list.length).toBeGreaterThanOrEqual(2);
+    const urls = list.map((r) => r.originalUrl);
+    expect(urls).toContain(urlA);
+    expect(urls).toContain(urlB);
+    expect(list.every((r) => r.sourceId === source.id)).toBe(true);
   });
 
   test("listAll 返回所有文章", async () => {
     const repo = new D1ArticleRepository(env.DB);
-    await repo.save(makeSaveInput({ article: { url: uniqueUrl() } }));
+    const url = uniqueUrl();
+    await repo.save(makeSaveInput({ article: { url } }));
 
     const list = await repo.listAll();
     expect(list.length).toBeGreaterThanOrEqual(1);
+    expect(list.some((r) => r.originalUrl === url)).toBe(true);
+  });
+});
+
+describe("D1ArticleRepository.saveVersion", () => {
+  test("写入翻译版本，原文版本不受影响", async () => {
+    const repo = new D1ArticleRepository(env.DB);
+    const saved = await repo.save(makeSaveInput({ article: { url: uniqueUrl() } }));
+
+    const versionResult = await repo.saveVersion(makeSaveVersionInput(saved.id));
+    expect(versionResult.created).toBe(true);
+
+    const zhVersion = await repo.getVersion(saved.id, "zh-cn");
+    expect(zhVersion).not.toBeNull();
+    const zh = zhVersion as ArticleVersionRecord;
+    expect(zh.title).toBe("你好世界");
+    expect(zh.provenance).toBe("model");
+    expect(zh.translationModel).toBe("smoke-model");
+
+    // 原文版本仍然存在
+    const enVersion = await repo.getVersion(saved.id, "en");
+    expect(enVersion).not.toBeNull();
+    expect((enVersion as ArticleVersionRecord).provenance).toBe("original");
   });
 
-  test("exists 判断", async () => {
+  test("同 language 幂等返回 created:false", async () => {
     const repo = new D1ArticleRepository(env.DB);
-    const url = uniqueUrl();
-    expect(await repo.exists(source.id, url)).toBe(false);
+    const saved = await repo.save(makeSaveInput({ article: { url: uniqueUrl() } }));
 
-    await repo.save(makeSaveInput({ article: { url } }));
-    expect(await repo.exists(source.id, url)).toBe(true);
+    const first = await repo.saveVersion(makeSaveVersionInput(saved.id));
+    const second = await repo.saveVersion(makeSaveVersionInput(saved.id));
+
+    expect(first.created).toBe(true);
+    expect(second.created).toBe(false);
+  });
+
+  test("不存在的 articleId 抛错", async () => {
+    const repo = new D1ArticleRepository(env.DB);
+    await expect(
+      repo.saveVersion(makeSaveVersionInput("smoke-blog/nonexistent")),
+    ).rejects.toThrow(/does not exist/);
+  });
+
+  test("categories 随 saveVersion 同步到文章身份", async () => {
+    const repo = new D1ArticleRepository(env.DB);
+    const saved = await repo.save(makeSaveInput({ article: { url: uniqueUrl() } }));
+
+    // save 写原文版本，原文无分类 → 身份 categories 为空
+    const afterSave = await repo.getById(saved.id);
+    expect((afterSave as ArticleRecord).categories).toEqual([]);
+
+    // saveVersion 带分类，同步到文章身份
+    await repo.saveVersion(makeSaveVersionInput(saved.id, { categories: ["AI"] }));
+    const afterVersion = await repo.getById(saved.id);
+    expect((afterVersion as ArticleRecord).categories).toEqual(["AI"]);
+  });
+});
+
+describe("D1ArticleRepository.listVersions", () => {
+  test("返回文章的所有语言版本", async () => {
+    const repo = new D1ArticleRepository(env.DB);
+    const saved = await repo.save(makeSaveInput({ article: { url: uniqueUrl() } }));
+    await repo.saveVersion(makeSaveVersionInput(saved.id));
+
+    const versions = await repo.listVersions(saved.id);
+    const languages = versions.map((v) => v.language);
+    expect(languages).toEqual(expect.arrayContaining(["en", "zh-cn"]));
+    expect(versions).toHaveLength(2);
   });
 });

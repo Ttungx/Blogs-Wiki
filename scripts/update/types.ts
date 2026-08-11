@@ -22,6 +22,12 @@ export interface SourceConfig {
   /** When true, fetch prefers an official Simplified Chinese alternate and
    *  marks the article as `official-zh` (skipping model translation). */
   prefer_official_zh?: boolean;
+  /** Optional pathname-prefix mapping from the default (usually English) URL
+   *  shape to its official Simplified Chinese shape, e.g. `{ "/blog": "/zh/blog" }`.
+   *  When the page advertises no hreflang alternate, the fetch layer probes the
+   *  mapped Chinese URL and uses it when it resolves to `lang=zh` (cursor,
+   *  qwen). */
+  zh_path_map?: Record<string, string>;
   /** Optional pathname prefixes; when set, only URLs under one of these paths are treated as articles. */
   article_paths?: string[];
   /** Optional pathname prefixes to reject regardless of `article_paths`. */

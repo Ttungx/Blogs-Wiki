@@ -1,0 +1,27 @@
+---
+import { sitePath } from '../lib/urls';
+
+interface Props {
+  availableLanguages: string[];
+  currentLanguage: string;
+  blogId: string;
+  slug: string;
+}
+
+const { availableLanguages, currentLanguage, blogId, slug } = Astro.props;
+
+// 中文是默认语言，走不带语言段的路由；其他语言追加 lang 段。
+const base = `articles/${blogId}/${slug}/`;
+const langHref = (lang: string): string =>
+  lang === 'zh-cn' ? sitePath(base) : sitePath(`${base}${lang}/`);
+const langLabel = (lang: string): string => (lang === 'zh-cn' ? '中文' : 'English');
+---
+{availableLanguages.length > 1 && (
+  <nav class="reader-langs" aria-label="语言切换">
+    {availableLanguages.map((lang) => (
+      <a href={langHref(lang)} class={lang === currentLanguage ? 'active' : ''} lang={lang}>
+        {langLabel(lang)}
+      </a>
+    ))}
+  </nav>
+)}

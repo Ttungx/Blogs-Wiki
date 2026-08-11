@@ -100,10 +100,10 @@ test('save slug 冲突加 -2 后缀', async () => {
   try {
     const repo = new FileArticleRepository({ rootDir });
     const a = await repo.save({ source, article: makeArticle() });
-    // 同 blogId 同 slug 但不同 URL → 冲突
+    // 不同 URL 但 slug 归一化后相同（HELLO_WORLD → hello-world）→ 冲突
     const b = await repo.save({
       source,
-      article: makeArticle({ url: 'https://example.com/blog/hello-world-v2/' }),
+      article: makeArticle({ url: 'https://example.com/blog/HELLO_WORLD/' }),
     });
     assert.equal(a.id, 'smoke-blog/hello-world');
     assert.equal(b.id, 'smoke-blog/hello-world-2');

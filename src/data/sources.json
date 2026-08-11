@@ -121,6 +121,10 @@
     "exclude_paths": [
       "/blog/topic"
     ],
+    "prefer_official_zh": true,
+    "zh_path_map": {
+      "/blog": "/zh/blog"
+    },
     "sitemap_url": "https://cursor.com/sitemap.xml"
   },
   {
@@ -150,7 +154,10 @@
     "article_paths": [
       "/blog"
     ],
-    "prefer_official_zh": true
+    "prefer_official_zh": true,
+    "zh_path_map": {
+      "/blog": "/zh/blog"
+    }
   },
   {
     "id": "google-deepmind",

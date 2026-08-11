@@ -213,19 +213,36 @@ export class D1ArticleRepository implements ArticleRepository {
       .first();
 
     const excerpt = excerptFromMarkdown(input.contentMarkdown);
-    await this.db
-      .prepare(ARTICLE_VERSION_UPSERT_SQL)
-      .bind(
-        input.articleId,
-        input.language,
-        input.title,
-        input.contentMarkdown,
-        excerpt || null,
-        input.provenance,
-        input.translationModel ?? null,
-        input.originalAltUrl ?? null,
-      )
-      .run();
+    const statements = [
+      this.db
+        .prepare(ARTICLE_VERSION_UPSERT_SQL)
+        .bind(
+          input.articleId,
+          input.language,
+          input.title,
+          input.contentMarkdown,
+          excerpt || null,
+          input.provenance,
+          input.translationModel ?? null,
+          input.originalAltUrl ?? null,
+        ),
+    ];
+
+    // 翻译带来的分类同步到文章身份（DELETE + INSERT，与 version upsert 同一 batch）。
+    if (input.categories && input.categories.length > 0) {
+      statements.push(
+        this.db.prepare('DELETE FROM article_categories WHERE article_id = ?').bind(input.articleId),
+      );
+      for (const cat of input.categories) {
+        statements.push(
+          this.db
+            .prepare('INSERT INTO article_categories (article_id, category_name) VALUES (?, ?)')
+            .bind(input.articleId, cat),
+        );
+      }
+    }
+
+    await this.db.batch(statements);
 
     return { id: input.articleId, created: !existingVersion };
   }

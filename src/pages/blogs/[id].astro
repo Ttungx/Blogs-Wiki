@@ -6,6 +6,7 @@ import CategoryPill from '../../components/CategoryPill.astro';
 import RemoteImage from '../../components/RemoteImage.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { byOriginalPublicationDateDesc } from '../../lib/article-dates';
+import { slugFromId } from '../../lib/article-id';
 import { sitePath } from '../../lib/urls';
 
 export async function getStaticPaths() {
@@ -19,7 +20,7 @@ export async function getStaticPaths() {
     props: {
       blog,
       articles: articles
-        .filter((article) => article.data.blogId === blog.id)
+        .filter((article) => article.data.blogId === blog.id && article.data.language === 'zh-cn')
         .sort(byOriginalPublicationDateDesc),
     },
   }));
@@ -91,12 +92,11 @@ const featuredDateText = featuredDate
         <article class="featured-article">
           <a
             class:list={['featured-article-link', { 'featured-article-link--no-image': !featuredImage }]}
-            href={sitePath(`articles/${featuredArticle.id}/`)}
+            href={sitePath(`articles/${blog.id}/${slugFromId(featuredArticle.id)}/`)}
           >
             <span class="featured-article-copy">
               <span class="eyebrow">Latest · 最新</span>
-              <strong>{featuredArticle.data.translatedTitle}</strong>
-              <span class="featured-article-original" lang="en">{featuredArticle.data.originalTitle}</span>
+              <strong>{featuredArticle.data.title}</strong>
               {featuredArticle.data.excerpt && (
                 <span class="featured-article-excerpt">{featuredArticle.data.excerpt}</span>
               )}
@@ -130,9 +130,9 @@ const featuredDateText = featuredDate
       <div class="article-list">
         {remainingArticles.length ? remainingArticles.map((article) => (
           <ArticleRow
-            id={article.id}
-            translatedTitle={article.data.translatedTitle}
-            originalTitle={article.data.originalTitle}
+            blogId={blog.id}
+            slug={slugFromId(article.id)}
+            title={article.data.title}
             publishedAt={article.data.publishedAt}
             categories={article.data.categories}
             imageUrl={imageFor(article)}

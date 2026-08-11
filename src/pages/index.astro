@@ -10,6 +10,8 @@ const [blogs, articles] = await Promise.all([
 
 const articleCount = new Map<string, number>();
 for (const article of articles) {
+  // 每篇文章只按中文版本计一次数
+  if (article.data.language !== 'zh-cn') continue;
   articleCount.set(article.data.blogId, (articleCount.get(article.data.blogId) ?? 0) + 1);
 }
 

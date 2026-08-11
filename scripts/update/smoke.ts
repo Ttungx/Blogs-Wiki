@@ -12,11 +12,17 @@ import {
   directoryBaseUrl,
   fetchArticle,
   normalizeArticleMarkdown,
+  protectPictureFigures,
   removeNoiseBlocks,
+  resolveVisibleDate,
   resolveImageUrl,
 } from './fetch';
 import { parseArgs } from './index';
-import { extractLocalizedAlternates, selectOfficialChineseAlternate } from './localization';
+import {
+  extractLocalizedAlternates,
+  mapToOfficialZhPath,
+  selectOfficialChineseAlternate,
+} from './localization';
 import { loadProxySettings, proxyUrlFor } from './network';
 import { createTranslateClient } from './translate';
 import { createTranslateV2Client } from './translate-v2';
@@ -362,6 +368,40 @@ async function run() {
       selectOfficialChineseAlternate([{ language: 'zh-Hant', url: 'https://example.com/hant/post' }]),
       undefined,
     );
+    // localization: zh path map probes a deterministic Chinese route when no
+    // hreflang alternate is advertised (cursor / qwen)
+    assert.equal(
+      mapToOfficialZhPath('https://cursor.com/blog/grok-4-5', { '/blog': '/zh/blog' }),
+      'https://cursor.com/zh/blog/grok-4-5/',
+    );
+    assert.equal(
+      mapToOfficialZhPath('https://qwenlm.github.io/blog/qwen3guard/', { '/blog': '/zh/blog' }),
+      'https://qwenlm.github.io/zh/blog/qwen3guard/',
+    );
+    assert.equal(mapToOfficialZhPath('https://example.com/blog/post', undefined), undefined);
+    assert.equal(mapToOfficialZhPath('https://example.com/other/post', { '/blog': '/zh/blog' }), undefined);
+
+    // visible date: sites without meta/JSON-LD dates fall back to body text
+    assert.equal(resolveVisibleDate('Published July 9, 2026 in Research'), '2026-07-09T00:00:00.000Z');
+    assert.equal(resolveVisibleDate('写于 2025年1月10日，一篇就够了'), '2025-01-10');
+    assert.equal(resolveVisibleDate('2025/01/10 首发'), '2025-01-10');
+    assert.equal(resolveVisibleDate('© 2026 All rights reserved.'), '');
+    assert.equal(resolveVisibleDate(''), '');
+
+    // picture protection: textless image containers are lifted into figures
+    // so Readability does not drop them (research.google dynamic_media)
+    const pictureDocument = new JSDOM(
+      '<main><article><div class="dynamic_media"><div class="glue-grid"><picture>' +
+        '<source media="(min-width: 768px)" srcset="https://cdn.example.com/fig-large.png 1250w">' +
+        '<img src="https://cdn.example.com/fig-small.png" alt="figure"></picture>' +
+        '<p class="caption">Figure caption.</p></div></div></article></main>',
+      { url: 'https://example.com/blog/post/' },
+    ).window.document;
+    assert.equal(protectPictureFigures(pictureDocument.body), 1);
+    const protectedFigure = pictureDocument.querySelector('figure');
+    assert.equal(protectedFigure?.querySelector('img')?.getAttribute('src'), 'https://cdn.example.com/fig-large.png');
+    assert.equal(protectedFigure?.querySelector('figcaption')?.textContent, 'Figure caption.');
+    assert.equal(pictureDocument.querySelector('.dynamic_media'), null);
 
     // network: invalid switches fail loudly; NO_PROXY applies to every fetch path
     assert.throws(() => loadProxySettings({ USE_PROXY: 'TRUE' }), /exactly "true" or "false"/);

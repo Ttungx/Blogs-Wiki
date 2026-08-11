@@ -90,15 +90,21 @@ function makeSourceRunRecord(overrides: Partial<SourceRunRecord>): SourceRunReco
 /** in-memory repos：全部方法返回 Promise，并统计关键调用次数。 */
 function createMockRepos(options: { processedUrls?: string[] } = {}) {
   let nextItemId = 1;
-  const calls = { save: 0, markProcessed: 0, transition: 0, recordFailure: 0 };
+  const calls = { save: 0, saveVersion: 0, markProcessed: 0, transition: 0, recordFailure: 0 };
   const repos: WorkerRepositories = {
     articles: {
       getById: async () => null,
       getByOriginalUrl: async () => null,
+      getVersion: async () => null,
+      listVersions: async () => [],
       listBySource: async () => [],
       listAll: async () => [],
       save: async () => {
         calls.save += 1;
+        return { id: 'test/test', created: true };
+      },
+      saveVersion: async () => {
+        calls.saveVersion += 1;
         return { id: 'test/test', created: true };
       },
       exists: async () => false,
@@ -150,6 +156,7 @@ describe('processSource', () => {
     assert.equal(result.failed, 0);
     assert.deepEqual(result.errors, []);
     assert.equal(calls.save, 2);
+    assert.equal(calls.saveVersion, 2);
     assert.equal(calls.markProcessed, 2);
     assert.equal(calls.transition, 2);
   });
@@ -168,6 +175,7 @@ describe('processSource', () => {
     assert.equal(result.processed, 1);
     assert.equal(result.failed, 0);
     assert.equal(calls.save, 1);
+    assert.equal(calls.saveVersion, 1);
   });
 
   test('单文章失败隔离：第一篇失败不影响第二篇', async () => {
@@ -191,6 +199,7 @@ describe('processSource', () => {
     assert.ok(result.errors[0].includes('fetch boom'));
     assert.equal(calls.recordFailure, 1);
     assert.equal(calls.save, 1);
+    assert.equal(calls.saveVersion, 1);
   });
 
   test('dry-run：无 translate 时只发现+抓取，不翻译/持久化', async () => {
@@ -204,6 +213,7 @@ describe('processSource', () => {
     assert.equal(result.processed, 0);
     assert.equal(result.failed, 0);
     assert.equal(calls.save, 0);
+    assert.equal(calls.saveVersion, 0);
     assert.equal(calls.transition, 0);
   });
 });

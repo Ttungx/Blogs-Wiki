@@ -1,13 +1,13 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content';
-import BlogMark from '../../../components/BlogMark.astro';
-import CategoryPill from '../../../components/CategoryPill.astro';
-import LanguageSwitcher from '../../../components/LanguageSwitcher.astro';
-import RemoteImage from '../../../components/RemoteImage.astro';
-import BaseLayout from '../../../layouts/BaseLayout.astro';
-import { byOriginalPublicationDateDesc } from '../../../lib/article-dates';
-import { groupArticleKey, slugFromId } from '../../../lib/article-id';
-import { sitePath } from '../../../lib/urls';
+import BlogMark from '../../../../components/BlogMark.astro';
+import CategoryPill from '../../../../components/CategoryPill.astro';
+import LanguageSwitcher from '../../../../components/LanguageSwitcher.astro';
+import RemoteImage from '../../../../components/RemoteImage.astro';
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { byOriginalPublicationDateDesc } from '../../../../lib/article-dates';
+import { groupArticleKey, slugFromId } from '../../../../lib/article-id';
+import { sitePath } from '../../../../lib/urls';
 
 type ArticleGroup = CollectionEntry<'articles'>[];
 
@@ -17,7 +17,6 @@ export async function getStaticPaths() {
     getCollection('articles'),
   ]);
 
-  // 按 blogId/slug 分组（跨语言），entry id 格式 blogId/lang/slug
   const groups = new Map<string, ArticleGroup>();
   for (const entry of articles) {
     const key = groupArticleKey(entry.id);
@@ -30,30 +29,29 @@ export async function getStaticPaths() {
   }
 
   return [...groups.values()].flatMap((siblings) => {
-    // 默认路由只承载中文版本
-    const zhEntry = siblings.find((s) => s.data.language === 'zh-cn');
-    if (!zhEntry) return [];
-    const [blogId] = zhEntry.id.split('/');
-    const slug = slugFromId(zhEntry.id);
-    const blog = blogs.find((b) => b.id === blogId);
-    if (!blog) return [];
+    // 每个非中文语言版本各生成一条路由
+    const langEntries = siblings.filter((s) => s.data.language !== 'zh-cn');
+    return langEntries.flatMap((langEntry) => {
+      const [blogId] = langEntry.id.split('/');
+      const slug = slugFromId(langEntry.id);
+      const blog = blogs.find((b) => b.id === blogId);
+      if (!blog) return [];
 
-    const availableLanguages = siblings.map((s) => s.data.language).sort();
-    const enSibling = siblings.find((s) => s.data.language === 'en');
-    const originalTitle = enSibling?.data.title;
+      const availableLanguages = siblings.map((s) => s.data.language).sort();
 
-    // 相关文章：同 blogId 的其他文章（去重到 article 级别，只取 zh-cn 版本）
-    const relatedArticles = [...groups.values()]
-      .filter((g) => g !== siblings && g[0].id.split('/')[0] === blogId)
-      .map((g) => g.find((s) => s.data.language === 'zh-cn'))
-      .filter((s): s is CollectionEntry<'articles'> => s !== undefined)
-      .sort(byOriginalPublicationDateDesc)
-      .slice(0, 3);
+      // 相关文章：同 blogId 的其他文章，链接到中文默认版本
+      const relatedArticles = [...groups.values()]
+        .filter((g) => g !== siblings && g[0].id.split('/')[0] === blogId)
+        .map((g) => g.find((s) => s.data.language === 'zh-cn'))
+        .filter((s): s is CollectionEntry<'articles'> => s !== undefined)
+        .sort(byOriginalPublicationDateDesc)
+        .slice(0, 3);
 
-    return [{
-      params: { blog: blogId, article: slug },
-      props: { article: zhEntry, blog, relatedArticles, availableLanguages, originalTitle },
-    }];
+      return [{
+        params: { blog: blogId, article: slug, lang: langEntry.data.language },
+        props: { article: langEntry, blog, relatedArticles, availableLanguages },
+      }];
+    });
   });
 }
 
@@ -62,10 +60,9 @@ interface Props {
   blog: CollectionEntry<'blogs'>;
   relatedArticles: CollectionEntry<'articles'>[];
   availableLanguages: string[];
-  originalTitle?: string;
 }
 
-const { article, blog, relatedArticles, availableLanguages, originalTitle } = Astro.props;
+const { article, blog, relatedArticles, availableLanguages } = Astro.props;
 const { Content } = await render(article);
 const publishedDate = new Date(article.data.publishedAt);
 const versionDate = new Date(article.data.versionAt);
@@ -107,7 +104,6 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
 
         <div class="reader-title-block">
           <h1 data-pagefind-meta="title">{article.data.title}</h1>
-          {originalTitle && <p class="reader-original-title" lang="en">{originalTitle}</p>}
           <LanguageSwitcher
             availableLanguages={availableLanguages}
             currentLanguage={article.data.language}
@@ -124,7 +120,7 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
             </strong>
           </div>
           <div>
-            <span>译于</span>
+            <span>版本</span>
             <strong>
               <time datetime={versionDate.toISOString()}>{dateFormatter.format(versionDate)}</time>
             </strong>

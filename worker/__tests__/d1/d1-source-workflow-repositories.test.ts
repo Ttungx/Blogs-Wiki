@@ -27,24 +27,16 @@ beforeAll(async () => {
   );
   await env.DB
     .prepare(`
-      INSERT INTO articles (
-        id, source_id, original_url, original_title, translated_title,
-        published_at, translated_at, original_language, translation_model,
-        content_markdown, source_domain
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO articles (id, source_id, original_url, original_language, published_at, source_domain)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO NOTHING
     `)
     .bind(
       'workflow-state/article-one',
       'workflow-state',
       'https://state.example.com/article/one',
-      'First title',
-      '第一篇',
-      '2026-08-10',
-      '2026-08-11T00:00:00.000Z',
       'en',
-      'test-model',
-      '# 第一篇',
+      '2026-08-10',
       'state.example.com',
     )
     .run();
