@@ -1,50 +1,33 @@
-# TODO：抓取引擎迁移 Readability → Defuddle
+# 迁移 TODO：Phase 8 完成，Phase 9/10 待做
 
-## Phase 6 引擎组件：🟨 backend 已接线，运行时验证待补
+## 当前状态
 
-`worker/fetch/extractor.ts` + `worker/__tests__/extractor.test.ts` 已就位，46 个 Node worker 测试全绿。D1 backend 已由
-`@cloudflare/vitest-pool-workers` 的真实 Miniflare Worker runtime 测试验证。
+迁移主链路已打通：更新管线已接 Repository interface（Phase 5）、Worker fetch path 已验证（Phase 6）、UpdateWorkflow 已实现并部署且 dry-run 端到端通过（Phase 7）、网站已上线并全量 SSR 从 D1 实时读取（Phase 8）。
 
-**尚未完成的运行时门禁**：
-- `worker/index.ts` 的独立 HTTP 探针尚未在 `wrangler dev` 下完成验证。
-- 尚未完成真实来源的 Node / Worker 抓取对照评测。
+测试全绿：`check:worker` ✅、`test:worker` 66/66 ✅、`test:d1` 28/28 ✅、`test:update` ✅、`astro check` 0 errors ✅。
 
-**技术要点**：
-- Defuddle 零 Node 内置依赖，UMD 打包，Workers 兼容。
-- linkedom 替代 jsdom（Workers 不可用），有 `linkedom/worker` 入口。
-- turndown 需 3 个全局 shim（`window`/`DOMParser`/`document`），必须动态 import defuddle 确保 shim 先于 turndown 初始化。
-- `wrangler.jsonc`：`nodejs_compat` flag，`compatibility_date` 2026-02-01。
+## 本轮已完成（2026-08-11）
 
-## 剩余接线（按路线图顺序）
+- ✅ 文章页 500 修复并上线验证：根因是 `src/lib/server/content.ts` 的 `listArticlesByBlog` 把 snake_case 行直接强转 `ArticleListItem`，`relatedArticle.publishedAt` undefined → `toISOString()` 抛 RangeError。已加 `ArticleListRow` + `.map()` 映射；本地 `wrangler dev` 与生产 `/articles/anthropic/building-effective-agents/`（含 `/en/`）均 200。
+- ✅ SEO canonical/og:url 修复：`astro.config.mjs` 的 `site` 缺省回退生产域名（原回退 localhost:4321）；生产 HTML 已验证。
+- ✅ SSR 防御加固：`parseDateSafe`（非法/缺失日期不再整页 500）、markdown 高亮初始化失败降级、单代码块高亮失败隔离、`[lang]` 语言白名单兜底。
+- ✅ 清理残留 `wrangler dev`/`workerd` 进程（两个 dev 会话，端口 8795/8796），修复 dist 被锁导致的构建静默失败。
 
-### Phase 3：D1 schema + migrations：✅ 已完成
-- [x] `worker/migrations/*.sql`：articles / source_items / source_runs 表 + 受控分类初始化
-- [x] `wrangler.jsonc` 加 D1 binding（`d1_databases`）
-- [x] `wrangler d1 migrations apply --local` 通过
+## 已完成摘要（Phase 3-8）
 
-### Phase 4：D1Repository：✅ 已完成
-- [x] `worker/repositories/d1/`：实现 ArticleRepository / SourceStateRepository 接口
-- [x] D1 测试套件 18/18 通过
+- **Phase 3**：D1 schema + migrations（0001-0005：initial schema / seed categories / seed sources / drop source_runs FK / articles 拆分 article_versions）✅
+- **Phase 4**：D1Repository（ArticleRepository / SourceStateRepository，28/28 测试）✅
+- **Phase 5**：管线接 repository interface（Node 默认 `STORAGE_BACKEND=file`，Worker `env.DB` → D1 repository 注入）✅
+- **Phase 6**：Worker-compatible fetch path（`FETCH_BACKEND=node|worker`，注入式 curl 回退）✅
+- **Phase 7**：Workflow 运行时 ✅ —— UpdateWorkflow 已部署；dry-run 端到端通过（RSS 发现 20 篇 → Defuddle 抓取 → source_runs/source_items 状态记录）；`POST /api/trigger` 手动触发
+- **Phase 8**：Astro 切 D1 ✅ —— 网站上线 https://blogs-wiki.1323593614.workers.dev；首页/博客页/文章页 SSR 从 D1 实时读取；`/api/health` `/api/sources` `/api/trigger` 可用
 
-### Phase 5：管线接 Repository interface
-- [x] `scripts/update/index.ts`：`writeArticle` → `repo.save()`，状态走 `stateRepo`
-- [x] `scripts/update/repository-factory.ts`：默认 File backend；D1 需要注入 D1 binding
-- [x] Worker runtime `env.DB` → D1 repositories 注入（Miniflare D1 binding 测试）
-- [ ] `/storage/health` 独立 HTTP 探针
-- [x] snake_case 管线模型 → camelCase domain 模型适配
-- [ ] Phase 7 Workflow 注入 D1 binding，验证完整更新编排
-- [x] `FETCH_BACKEND=node|worker` 切换
-- [ ] `scripts/update/fetch.ts`：`new Readability().parse()` → `extractArticle()`
-- [ ] 删除 6 个手写元数据函数 + `toMarkdown`
-- [ ] 评估后处理去留：`removeNoiseBlocks`、`collapseCarousels`、`preserveBlockquoteFooters`
-- [ ] `worker/domain/article.ts` 的 `node:crypto` → Web Crypto
+## 剩余任务（按优先级）
 
-### Phase 7：Workflow 运行时
-- [ ] `worker/workflows/update-workflow.ts`：Cloudflare Workflow 编排
-- [ ] Cron Trigger 替代 GitHub Actions
-
-## 必须保留（与提取引擎无关）
-
-- 网络层：`fetchWithCurl`（TLS 指纹回退）、`proxyUrlFor` + `NO_PROXY`
-- `fetchArticleWithLocalization`（官方中文 alternate 探测）
-- `resolveImageUrl`（图片懒加载 fallback）、`directoryBaseUrl`、`absolutizeUrls`
+1. 🟨 注入生产 Secrets：`wrangler secret put` 写入 OPENAI_API_KEY / OPENAI_BASE_URL / TRANSLATION_MODEL
+2. 🟨 全量 Workflow 验证：触发真实翻译，D1 填充文章数据（当前仅 dry-run 验证过，翻译链路未实测）
+3. 🟨 启用 Cron schedules：`wrangler.deploy.jsonc` workflows binding 加 `"schedules": ["17 2 * * *"]`（对应原 CI 的 02:17 UTC）
+4. ⬜ Phase 9：搜索切 FTS5 —— Pagefind → D1 FTS5（Pagefind 在 Windows 有路径问题，构建脚本已临时移除，Phase 9 彻底替换）
+5. ⬜ Phase 10：删除旧文件 backend —— FileRepository / persist.ts / processed-urls.json / .gitignore 清理
+6. 🟨 清理：`worker/index.ts` 已不再作为入口（API 迁移到 `src/pages/api/`），`worker-runtime.test.ts` 需适配新架构
+7. 🟨 Phase 8 收尾（SEO）：sitemap 动态化（server 模式下 sitemap-index.xml 不含动态文章 URL，Phase 9 一并处理）

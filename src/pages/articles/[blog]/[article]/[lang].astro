@@ -1,71 +1,45 @@
 ---
-import { getCollection, render, type CollectionEntry } from 'astro:content';
+export const prerender = false;
+
+import { getCollection } from 'astro:content';
+import { env } from 'cloudflare:workers';
 import BlogMark from '../../../../components/BlogMark.astro';
 import CategoryPill from '../../../../components/CategoryPill.astro';
 import LanguageSwitcher from '../../../../components/LanguageSwitcher.astro';
-import RemoteImage from '../../../../components/RemoteImage.astro';
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
-import { byOriginalPublicationDateDesc } from '../../../../lib/article-dates';
-import { groupArticleKey, slugFromId } from '../../../../lib/article-id';
 import { sitePath } from '../../../../lib/urls';
+import { getArticle, getAvailableLanguages, listArticlesByBlog, parseDateSafe } from '../../../../lib/server/content';
+import { renderMarkdown } from '../../../../lib/server/markdown';
 
-type ArticleGroup = CollectionEntry<'articles'>[];
+const { blog: blogId, article: slug, lang } = Astro.params;
+if (!blogId || !slug) return new Response('Not Found', { status: 404 });
+// 语言白名单：只有 en 走语言段路由，其余一律视为中文默认路由（避免未知语言段悬空）
+const targetLang = lang === 'en' ? 'en' : 'zh-cn';
 
-export async function getStaticPaths() {
-  const [blogs, articles] = await Promise.all([
-    getCollection('blogs'),
-    getCollection('articles'),
-  ]);
+const db = env.DB;
+// 指定语言版本（默认兜底 en）
+const articleData = await getArticle(db, blogId, slug, targetLang);
+if (!articleData) return new Response('Not Found', { status: 404 });
 
-  const groups = new Map<string, ArticleGroup>();
-  for (const entry of articles) {
-    const key = groupArticleKey(entry.id);
-    let list = groups.get(key);
-    if (!list) {
-      list = [];
-      groups.set(key, list);
-    }
-    list.push(entry);
-  }
+// blogs 元数据仍从静态 collection 读取（构建期解析，SSR 可用）
+const blogs = await getCollection('blogs');
+const blog = blogs.find((b) => b.id === blogId);
+if (!blog) return new Response('Not Found', { status: 404 });
 
-  return [...groups.values()].flatMap((siblings) => {
-    // 每个非中文语言版本各生成一条路由
-    const langEntries = siblings.filter((s) => s.data.language !== 'zh-cn');
-    return langEntries.flatMap((langEntry) => {
-      const [blogId] = langEntry.id.split('/');
-      const slug = slugFromId(langEntry.id);
-      const blog = blogs.find((b) => b.id === blogId);
-      if (!blog) return [];
+// 渲染 markdown（D1 中的 content_markdown）
+const html = await renderMarkdown(articleData.contentMarkdown);
 
-      const availableLanguages = siblings.map((s) => s.data.language).sort();
+// 相关文章：同来源其他文章（zh-cn 版本，链接到中文默认路由）
+const relatedArticles = (await listArticlesByBlog(db, blogId, 'zh-cn'))
+  .filter((a) => a.id !== articleData.id)
+  .slice(0, 3);
 
-      // 相关文章：同 blogId 的其他文章，链接到中文默认版本
-      const relatedArticles = [...groups.values()]
-        .filter((g) => g !== siblings && g[0].id.split('/')[0] === blogId)
-        .map((g) => g.find((s) => s.data.language === 'zh-cn'))
-        .filter((s): s is CollectionEntry<'articles'> => s !== undefined)
-        .sort(byOriginalPublicationDateDesc)
-        .slice(0, 3);
+// 可用语言（语言切换器）
+const availableLanguages = await getAvailableLanguages(db, blogId, slug);
 
-      return [{
-        params: { blog: blogId, article: slug, lang: langEntry.data.language },
-        props: { article: langEntry, blog, relatedArticles, availableLanguages },
-      }];
-    });
-  });
-}
-
-interface Props {
-  article: CollectionEntry<'articles'>;
-  blog: CollectionEntry<'blogs'>;
-  relatedArticles: CollectionEntry<'articles'>[];
-  availableLanguages: string[];
-}
-
-const { article, blog, relatedArticles, availableLanguages } = Astro.props;
-const { Content } = await render(article);
-const publishedDate = new Date(article.data.publishedAt);
-const versionDate = new Date(article.data.versionAt);
+const publishedDate = parseDateSafe(articleData.publishedAt);
+// ArticleDetail 未提供版本时间，暂时以原文发表日期作为"版本"时间
+const versionDate = publishedDate;
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric',
   month: 'long',
@@ -79,8 +53,8 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
 ---
 
 <BaseLayout
-  title={article.data.title}
-  description={`${blog.data.name}：${article.data.title}`}
+  title={articleData.title}
+  description={`${blog.data.name}：${articleData.title}`}
   pageClass="reader-page"
 >
   <main id="main-content" data-pagefind-body>
@@ -103,12 +77,12 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
         </a>
 
         <div class="reader-title-block">
-          <h1 data-pagefind-meta="title">{article.data.title}</h1>
+          <h1 data-pagefind-meta="title">{articleData.title}</h1>
           <LanguageSwitcher
             availableLanguages={availableLanguages}
-            currentLanguage={article.data.language}
+            currentLanguage={targetLang}
             blogId={blog.id}
-            slug={slugFromId(article.id)}
+            slug={slug}
           />
         </div>
 
@@ -116,46 +90,43 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
           <div>
             <span>原文发表于</span>
             <strong>
-              <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
+              {publishedDate && (
+                <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
+              )}
             </strong>
           </div>
           <div>
             <span>版本</span>
             <strong>
-              <time datetime={versionDate.toISOString()}>{dateFormatter.format(versionDate)}</time>
+              {versionDate && (
+                <time datetime={versionDate.toISOString()}>{dateFormatter.format(versionDate)}</time>
+              )}
             </strong>
           </div>
           <div>
             <span>分类</span>
             <p>
-              {article.data.categories.map((category) => <CategoryPill label={category} />)}
+              {articleData.categories.map((category) => <CategoryPill label={category} />)}
             </p>
           </div>
-          {article.data.translationModel && (
+          {articleData.translationModel && (
             <div>
               <span>翻译模型</span>
-              <strong>{article.data.translationModel}</strong>
+              <strong>{articleData.translationModel}</strong>
             </div>
           )}
           <div>
             <span>原文语言</span>
-            <strong>{article.data.originalLanguage.toUpperCase()}</strong>
+            <strong>{articleData.originalLanguage.toUpperCase()}</strong>
           </div>
-          <a class="reader-meta-link" href={article.data.originalUrl} target="_blank" rel="noreferrer">
+          <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
             查看原文 <span aria-hidden="true">↗</span>
           </a>
         </div>
       </header>
 
-      {article.data.demo && (
-        <aside class="demo-notice shell" aria-label="演示内容说明">
-          <span>Demo</span>
-          <p>此页用于验证内容模型与阅读排版，不代表完整官方译文。</p>
-        </aside>
-      )}
-
       <div class="reader-content prose">
-        <Content components={{ img: RemoteImage }} />
+        <div set:html={html} />
       </div>
 
       {relatedArticles.length > 0 && (
@@ -169,16 +140,19 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
           </header>
           <div class="reader-related-list">
             {relatedArticles.map((relatedArticle, index) => {
-              const relatedDate = new Date(relatedArticle.data.publishedAt);
+              const relatedDate = parseDateSafe(relatedArticle.publishedAt);
+              const relatedSlug = relatedArticle.id.split('/').slice(1).join('/');
               return (
-                <a href={sitePath(`articles/${relatedArticle.data.blogId}/${slugFromId(relatedArticle.id)}/`)}>
+                <a href={sitePath(`articles/${relatedArticle.sourceId}/${relatedSlug}/`)}>
                   <span class="reader-related-number">{String(index + 1).padStart(2, '0')}</span>
                   <span class="reader-related-copy">
-                    <strong>{relatedArticle.data.title}</strong>
+                    <strong>{relatedArticle.title}</strong>
                   </span>
-                  <time datetime={relatedDate.toISOString()}>
-                    {compactDateFormatter.format(relatedDate)}
-                  </time>
+                  {relatedDate && (
+                    <time datetime={relatedDate.toISOString()}>
+                      {compactDateFormatter.format(relatedDate)}
+                    </time>
+                  )}
                   <i aria-hidden="true">↗</i>
                 </a>
               );
@@ -190,7 +164,7 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
       <footer class="reader-end shell">
         <div>
           <p>原文版权归原作者与来源网站所有。</p>
-          <a href={article.data.originalUrl} target="_blank" rel="noreferrer">继续阅读原文 ↗</a>
+          <a href={articleData.originalUrl} target="_blank" rel="noreferrer">继续阅读原文 ↗</a>
         </div>
         <a class="back-to-collection" href={sitePath(`blogs/${blog.id}/`)}>
           <span aria-hidden="true">←</span>

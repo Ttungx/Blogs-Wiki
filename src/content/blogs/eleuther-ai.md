@@ -1,5 +1,5 @@
 ---
-name: EleutherAI Blog
+name: EleutherAI
 type: company
 author: EleutherAI
 description: 开源 LLM、可解释性与安全研究博客。

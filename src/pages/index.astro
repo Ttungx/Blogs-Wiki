@@ -1,19 +1,17 @@
 ---
 import { getCollection } from 'astro:content';
+import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import BlogShelfCard from '../components/BlogShelfCard.astro';
+import { getArticleCountBySource } from '../lib/server/content';
 
-const [blogs, articles] = await Promise.all([
-  getCollection('blogs'),
-  getCollection('articles'),
-]);
+export const prerender = false;
 
-const articleCount = new Map<string, number>();
-for (const article of articles) {
-  // 每篇文章只按中文版本计一次数
-  if (article.data.language !== 'zh-cn') continue;
-  articleCount.set(article.data.blogId, (articleCount.get(article.data.blogId) ?? 0) + 1);
-}
+const blogs = await getCollection('blogs');
+
+const db = env.DB;
+// 每来源文章计数来自 D1（只计有 zh-cn 版本的文章）
+const articleCount = await getArticleCountBySource(db, 'zh-cn');
 
 const companyBlogs = blogs
   .filter((blog) => blog.data.type === 'company')

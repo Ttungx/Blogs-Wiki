@@ -1,0 +1,213 @@
+/**
+ * D1 内容服务 —— SSR 页面的读模型。
+ *
+ * 直接用 D1 prepared statements 做高效的 JOIN 查询，
+ * 返回页面友好的数据结构。写操作仍走 worker/repositories/ 的 Repository。
+ */
+
+import type { D1Database } from '@cloudflare/workers-types';
+
+/** 文章详情（身份 + 版本 + 分类）。 */
+export interface ArticleDetail {
+  id: string;
+  sourceId: string;
+  originalUrl: string;
+  originalLanguage: string;
+  publishedAt: string;
+  imageUrl: string | null;
+  author: string | null;
+  sourceDomain: string;
+  title: string;
+  contentMarkdown: string;
+  excerpt: string | null;
+  provenance: string;
+  translationModel: string | null;
+  originalAltUrl: string | null;
+  categories: string[];
+}
+
+/** 文章列表项（轻量，不含正文）。 */
+export interface ArticleListItem {
+  id: string;
+  sourceId: string;
+  publishedAt: string;
+  imageUrl: string | null;
+  author: string | null;
+  title: string;
+  excerpt: string | null;
+  provenance: string;
+}
+
+interface ArticleJoinRow {
+  id: string;
+  source_id: string;
+  original_url: string;
+  original_language: string;
+  published_at: string;
+  image_url: string | null;
+  author: string | null;
+  source_domain: string;
+  title: string;
+  content_markdown: string;
+  excerpt: string | null;
+  provenance: string;
+  translation_model: string | null;
+  original_alt_url: string | null;
+}
+
+/** 从 blogId + slug 构造 D1 article id。 */
+export function buildArticleId(blogId: string, slug: string): string {
+  return `${blogId}/${slug}`;
+}
+
+/** 从 article id 提取 blogId 段。 */
+export function blogIdFromArticleId(articleId: string): string {
+  return articleId.split('/')[0] ?? articleId;
+}
+
+/**
+ * 安全解析日期文本。缺失或无法解析时返回 null，
+ * 调用方负责条件渲染，避免 `new Date(bad).toISOString()` 抛 RangeError 导致整页 500。
+ */
+export function parseDateSafe(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * 获取单篇文章 + 指定语言版本。
+ * 找不到返回 null（页面渲染 404）。
+ */
+export async function getArticle(
+  db: D1Database,
+  blogId: string,
+  slug: string,
+  lang = 'zh-cn',
+): Promise<ArticleDetail | null> {
+  const articleId = buildArticleId(blogId, slug);
+
+  const row = await db
+    .prepare(
+      `SELECT a.id, a.source_id, a.original_url, a.original_language, a.published_at,
+              a.image_url, a.author, a.source_domain,
+              v.title, v.content_markdown, v.excerpt, v.provenance,
+              v.translation_model, v.original_alt_url
+       FROM articles a
+       JOIN article_versions v ON v.article_id = a.id AND v.language = ?
+       WHERE a.id = ?`,
+    )
+    .bind(lang, articleId)
+    .first<ArticleJoinRow>();
+
+  if (!row) return null;
+
+  const categories = await getCategories(db, articleId);
+
+  return {
+    id: row.id,
+    sourceId: row.source_id,
+    originalUrl: row.original_url,
+    originalLanguage: row.original_language,
+    publishedAt: row.published_at,
+    imageUrl: row.image_url,
+    author: row.author,
+    sourceDomain: row.source_domain,
+    title: row.title,
+    contentMarkdown: row.content_markdown,
+    excerpt: row.excerpt,
+    provenance: row.provenance,
+    translationModel: row.translation_model,
+    originalAltUrl: row.original_alt_url,
+    categories,
+  };
+}
+
+/**
+ * 获取一篇文章的所有可用语言版本（语言切换器用）。
+ */
+export async function getAvailableLanguages(
+  db: D1Database,
+  blogId: string,
+  slug: string,
+): Promise<string[]> {
+  const articleId = buildArticleId(blogId, slug);
+  const result = await db
+    .prepare('SELECT language FROM article_versions WHERE article_id = ? ORDER BY language')
+    .bind(articleId)
+    .all<{ language: string }>();
+  return result.results.map((r) => r.language);
+}
+
+interface ArticleListRow {
+  id: string;
+  source_id: string;
+  published_at: string;
+  image_url: string | null;
+  author: string | null;
+  title: string;
+  excerpt: string | null;
+  provenance: string;
+}
+
+/**
+ * 列出某来源的文章（指定语言版本），按发布日期降序。
+ */
+export async function listArticlesByBlog(
+  db: D1Database,
+  sourceId: string,
+  lang = 'zh-cn',
+): Promise<ArticleListItem[]> {
+  const result = await db
+    .prepare(
+      `SELECT a.id, a.source_id, a.published_at, a.image_url, a.author,
+              v.title, v.excerpt, v.provenance
+       FROM articles a
+       JOIN article_versions v ON v.article_id = a.id AND v.language = ?
+       WHERE a.source_id = ?
+       ORDER BY a.published_at DESC`,
+    )
+    .bind(lang, sourceId)
+    .all<ArticleListRow>();
+
+  return result.results.map((row) => ({
+    id: row.id,
+    sourceId: row.source_id,
+    publishedAt: row.published_at,
+    imageUrl: row.image_url,
+    author: row.author,
+    title: row.title,
+    excerpt: row.excerpt,
+    provenance: row.provenance,
+  }));
+}
+
+/**
+ * 每来源的文章计数（首页 blog card 用）。
+ * 只计有指定语言版本的文章。
+ */
+export async function getArticleCountBySource(
+  db: D1Database,
+  lang = 'zh-cn',
+): Promise<Map<string, number>> {
+  const result = await db
+    .prepare(
+      `SELECT a.source_id, COUNT(*) as count
+       FROM articles a
+       JOIN article_versions v ON v.article_id = a.id AND v.language = ?
+       GROUP BY a.source_id`,
+    )
+    .bind(lang)
+    .all<{ source_id: string; count: number }>();
+
+  return new Map(result.results.map((r) => [r.source_id, r.count]));
+}
+
+/** 查文章的分类列表。 */
+async function getCategories(db: D1Database, articleId: string): Promise<string[]> {
+  const result = await db
+    .prepare('SELECT category_name FROM article_categories WHERE article_id = ? ORDER BY category_name')
+    .bind(articleId)
+    .all<{ category_name: string }>();
+  return result.results.map((r) => r.category_name);
+}

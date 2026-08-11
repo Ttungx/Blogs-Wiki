@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "blogs-wiki",
+  "main": "./dist/server/_entry.mjs",
   "compatibility_date": "2026-02-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
@@ -8,7 +9,7 @@
   },
   "assets": {
     "binding": "ASSETS",
-    "directory": "./dist"
+    "directory": "./dist/client"
   },
   "d1_databases": [
     {
@@ -17,6 +18,12 @@
       "database_id": "6dd813ef-7d75-45ba-9a01-af3958b69725",
       "migrations_dir": "worker/migrations"
     }
+  ],
+  "workflows": [
+    {
+      "binding": "UPDATE_WORKFLOW",
+      "name": "update-workflow",
+      "class_name": "UpdateWorkflow"
+    }
   ]
 }
-
