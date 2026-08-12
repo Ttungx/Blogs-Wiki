@@ -124,7 +124,10 @@ export async function extractArticle(input: ExtractionInput): Promise<Extraction
   // 客户证言轮播折叠（与 Node 抓取链共用逻辑）：只保留前 3 条
   // logo + quote，删除轮播 UI，追加原文指引。必须赶在 Defuddle
   // 转 Markdown 之前执行，否则 16 张 logo 全部进入正文。
-  collapseCarousels(document.body as unknown as CarouselNode, url);
+  // 作用域收窄到正文根，避免 header/sidebar 轮播被当成证言并注入指引。
+  const carouselRoot =
+    document.querySelector('main, article, [role="main"]') ?? document.body;
+  collapseCarousels(carouselRoot as unknown as CarouselNode, url);
 
   const DefuddleFull = await getDefuddle();
   const result = new DefuddleFull(document, { url, markdown: true }).parse();

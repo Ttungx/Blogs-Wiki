@@ -176,3 +176,45 @@ test('extractArticle: 客户证言轮播折叠为前 3 条并删 UI', async () =
   assert.match(result.contentMarkdown, /更多客户证言请见/, '应追加折叠指引');
   assert.match(result.contentMarkdown, /\[原文\]\(https:\/\/example\.com\/posts\/test-article\)/, '指引应链回原文');
 });
+
+test('extractArticle: 正文外 header 轮播不折叠、不注入证言指引', async () => {
+  const slide = (name: string, quote: string) => `
+    <div class="carousel-item">
+      <img alt="${name} logo" src="https://example.com/${name.toLowerCase()}.png">
+      <blockquote><p>${quote}</p></blockquote>
+    </div>`;
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Outside Carousel</title>
+  <meta property="og:title" content="Outside Carousel">
+  <meta name="author" content="Alice Author">
+  <meta property="article:published_time" content="2026-01-15T00:00:00Z">
+</head>
+<body>
+  <header>
+    <div class="hero-carousel">
+      <div class="carousel-track">
+        ${slide('HeroA', 'Hero A must not be treated as a testimonial collapse.')}
+        ${slide('HeroB', 'Hero B belongs to the marketing header carousel only.')}
+        ${slide('HeroC', 'Hero C should remain outside the article content root.')}
+        ${slide('HeroD', 'Hero D would trigger collapse notice if body-scoped.')}
+      </div>
+      <span class="carousel-counter">1 / 4</span>
+    </div>
+  </header>
+  <article>
+    <h1>Outside Carousel</h1>
+    <p>This article body intentionally has no testimonial carousel. It only needs
+    enough characters to pass the extractor minimum content length check with
+    comfortable margin, so we keep writing ordinary prose about the product and
+    the engineering process that produced it.</p>
+  </article>
+</body>
+</html>`;
+  const result = await extractArticle({ html, url: BASE_URL });
+
+  assert.doesNotMatch(result.contentMarkdown, /更多客户证言请见/, 'header 轮播不应注入证言折叠指引');
+  assert.doesNotMatch(result.contentMarkdown, /Hero D/, 'header 轮播不应被错误地折叠进正文');
+});
