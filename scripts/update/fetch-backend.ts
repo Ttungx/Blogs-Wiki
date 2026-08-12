@@ -35,6 +35,7 @@ function toWorkerSource(source: SourceConfig) {
       : {}),
     ...(source.zh_path_map !== undefined ? { zhPathMap: source.zh_path_map } : {}),
     ...(source.git_date !== undefined ? { gitDate: source.git_date } : {}),
+    ...(source.api !== undefined ? { api: source.api } : {}),
   };
 }
 

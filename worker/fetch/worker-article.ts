@@ -13,12 +13,16 @@ export interface WorkerArticleSource {
   zhPathMap?: Record<string, string>;
   /** GitHub 提交历史日期兜底（无机器可读日期的 GitHub Pages 博客）。 */
   gitDate?: SourceConfig['git_date'];
+  /** JSON-API 来源配置（腾讯混元等 React SPA）。 */
+  api?: SourceConfig['api'];
 }
 
 export interface WorkerDiscoveredArticle {
   url: string;
   title?: string;
   publishedAt?: string;
+  apiId?: string;
+  apiLang?: string;
 }
 
 export interface WorkerArticleResult {
@@ -38,6 +42,16 @@ type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<
 const FETCH_TIMEOUT_MS = 30_000;
 const RETRY_STATUSES = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
 const RETRY_DELAY_MS = 2_000;
+
+function dotPath(value: unknown, path: string): unknown {
+  let current = value;
+  for (const segment of path.split('.')) {
+    if (current === null || current === undefined) return undefined;
+    if (typeof current !== 'object') return undefined;
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
 
 class HttpStatusError extends Error {
   constructor(readonly status: number, statusText: string) {
@@ -169,6 +183,135 @@ async function fetchHtml(fetchImpl: FetchLike, url: string, sourceId: string): P
   }
 }
 
+/**
+ * JSON-API 来源（腾讯混元等 React SPA）：正文与元数据直接由详情接口返回
+ * Markdown，无需 HTML 解析。`lang` 参数由本地化层指定。
+ */
+async function fetchWorkerApiArticle(
+  source: WorkerArticleSource,
+  discovered: WorkerDiscoveredArticle,
+  articleUrl: string,
+  fetchImpl: FetchLike,
+  language?: string,
+): Promise<WorkerArticleResult> {
+  const api = source.api;
+  if (!api?.detail_url) {
+    throw new Error(`${source.id}: api source missing detail_url`);
+  }
+  const lang = language ?? discovered.apiLang ?? 'en';
+  const body = JSON.stringify(api.detail_body
+    ? Object.fromEntries(Object.entries(api.detail_body).map(([key, value]) => [
+        key,
+        typeof value === 'string' && value === '{id}' && discovered.apiId !== undefined
+          ? /^\d+$/.test(discovered.apiId)
+            ? Number(discovered.apiId)
+            : discovered.apiId
+          : typeof value === 'string'
+            ? value.replace(/\{id\}/g, discovered.apiId ?? '').replace(/\{lang\}/g, lang)
+            : value,
+      ]))
+    : { id: discovered.apiId, lang });
+
+  let payload: unknown;
+  try {
+    let requestOrigin: string;
+    try {
+      requestOrigin = new URL(source.homepageUrl).origin;
+    } catch {
+      requestOrigin = new URL(api.detail_url).origin;
+    }
+    const response = await fetchImpl(api.detail_url, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json, text/plain, */*',
+        'content-type': 'application/json',
+        'user-agent': 'BlogsWikiBot/0.1 (+https://github.com; article fetch)',
+        origin: requestOrigin,
+        referer: source.homepageUrl,
+        ...(api.detail_headers
+          ? Object.fromEntries(Object.entries(api.detail_headers).map(([key, value]) => [
+              key,
+              value.replace(/\{lang\}/g, lang).replace(/\{id\}/g, discovered.apiId ?? ''),
+            ]))
+          : {}),
+      },
+      body,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      throw new Error(`api detail: HTTP ${response.status} ${response.statusText}`);
+    }
+    payload = JSON.parse(await response.text());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${source.id} ${articleUrl}: ${message}`);
+  }
+
+  const detailContainer =
+    api.content_path?.split('.').slice(0, -1).join('.') || '';
+  const detail = detailContainer ? dotPath(payload, detailContainer) : payload;
+  const content =
+    (api.content_path ? dotPath(payload, api.content_path) : undefined) ??
+    (typeof detail === 'object' && detail !== null
+      ? (detail as Record<string, unknown>).content
+      : undefined);
+  const title =
+    (api.title_path ? dotPath(payload, api.title_path) : undefined) ??
+    (typeof detail === 'object' && detail !== null
+      ? (detail as Record<string, unknown>).title
+      : undefined);
+  const author =
+    (api.author_path ? dotPath(payload, api.author_path) : undefined) ??
+    (typeof detail === 'object' && detail !== null
+      ? (detail as Record<string, unknown>).author
+      : undefined);
+  const imageUrl =
+    (api.image_path ? dotPath(payload, api.image_path) : undefined) ??
+    (typeof detail === 'object' && detail !== null
+      ? (detail as Record<string, unknown>).coverImage
+      : undefined);
+  const publishedAtRaw =
+    (api.published_at_path ? dotPath(payload, api.published_at_path) : undefined) ??
+    discovered.publishedAt;
+  const responseLang =
+    (api.language_path ? dotPath(payload, api.language_path) : undefined) ??
+    (typeof detail === 'object' && detail !== null
+      ? (detail as Record<string, unknown>).lang
+      : undefined);
+
+  if (typeof content !== 'string' || !content.trim()) {
+    throw new Error(`${source.id} ${articleUrl}: api detail returned no content`);
+  }
+  const contentMarkdown = content.trim();
+  if (contentMarkdown.replace(/\s+/g, ' ').length < 200) {
+    throw new Error(`${source.id} ${articleUrl}: api content too short (minimum 200 chars)`);
+  }
+  const resolvedTitle = typeof title === 'string' && title.trim()
+    ? title.trim()
+    : discovered.title?.trim() ?? '';
+  if (!resolvedTitle) {
+    throw new Error(`${source.id} ${articleUrl}: no title found in api detail`);
+  }
+  const publishedAt =
+    (typeof publishedAtRaw === 'number' ? new Date(publishedAtRaw * 1000).toISOString() : undefined) ??
+    (typeof publishedAtRaw === 'string' && publishedAtRaw.trim() ? publishedAtRaw : '') ??
+    '';
+  const originalLanguage =
+    typeof responseLang === 'string' && /^[a-z]{2}$/i.test(responseLang.trim())
+      ? responseLang.trim().toLowerCase()
+      : lang.split(/[_-]/)[0]?.toLowerCase() || 'en';
+
+  return {
+    url: articleUrl,
+    title: resolvedTitle,
+    author: typeof author === 'string' ? author.trim() : '',
+    imageUrl: typeof imageUrl === 'string' ? imageUrl.trim() : '',
+    publishedAt,
+    originalLanguage,
+    contentMarkdown,
+  };
+}
+
 export async function fetchWorkerArticle(
   source: WorkerArticleSource,
   discovered: WorkerDiscoveredArticle,
@@ -179,6 +322,10 @@ export async function fetchWorkerArticle(
     articleUrl = new URL(discovered.url, source.homepageUrl).toString();
   } catch {
     throw new Error(`${source.id}: invalid article URL ${discovered.url}`);
+  }
+
+  if (source.api) {
+    return fetchWorkerApiArticle(source, discovered, articleUrl, fetchImpl);
   }
 
   const html = await fetchHtml(fetchImpl, articleUrl, source.id);
@@ -218,6 +365,28 @@ export async function fetchWorkerArticleWithLocalization(
   discovered: WorkerDiscoveredArticle,
   fetchImpl: FetchLike = fetch,
 ): Promise<WorkerArticleResult> {
+  // JSON-API 来源：官方中文由详情接口 lang 参数直通。
+  if (source.api) {
+    let articleUrl: string;
+    try {
+      articleUrl = new URL(discovered.url, source.homepageUrl).toString();
+    } catch {
+      throw new Error(`${source.id}: invalid article URL ${discovered.url}`);
+    }
+    const zhLang = source.api.zh_lang ?? 'zh';
+    if (source.preferOfficialZh) {
+      try {
+        const zh = await fetchWorkerApiArticle(source, discovered, articleUrl, fetchImpl, zhLang);
+        if (zh.originalLanguage === zhLang) {
+          return { ...zh, officialZhUrl: articleUrl, contentSource: 'official-zh' };
+        }
+      } catch {
+        // 无官方中文版本时回退原文。
+      }
+    }
+    return fetchWorkerApiArticle(source, discovered, articleUrl, fetchImpl);
+  }
+
   const original = await fetchWorkerArticle(source, discovered, fetchImpl);
   if (original.originalLanguage === 'zh') {
     return { ...original, contentSource: 'native-zh' };

@@ -568,5 +568,42 @@
     "article_paths": [
       "/p"
     ]
+  },
+  {
+    "id": "tencent-hunyuan",
+    "name": "腾讯混元研究",
+    "type": "company",
+    "homepage_url": "https://hy.tencent.com/",
+    "blog_url": "https://hy.tencent.com/research",
+    "domain": "hy.tencent.com",
+    "update_mode": "dry-run-only",
+    "prefer_official_zh": true,
+    "article_paths": [
+      "/research"
+    ],
+    "api": {
+      "list_url": "https://api.hunyuan.tencent.com/api/blog/publicList",
+      "list_body": {
+        "pageNum": 1,
+        "pageSize": 50
+      },
+      "list_path": "data.list",
+      "article_url_template": "https://hy.tencent.com/research/{slug}",
+      "detail_url": "https://api.hunyuan.tencent.com/api/blog/publicDetail",
+      "detail_body": {
+        "id": "{id}",
+        "lang": "{lang}"
+      },
+      "content_path": "data.detail.content",
+      "title_path": "data.detail.title",
+      "author_path": "data.detail.author",
+      "image_path": "data.detail.coverImage",
+      "published_at_path": "data.detail.publishedAt",
+      "language_path": "data.detail.lang",
+      "zh_lang": "zh",
+      "detail_headers": {
+        "accept-language": "{lang}"
+      }
+    }
   }
 ]

@@ -11,7 +11,7 @@
     "preview:worker": "npm run build && wrangler dev --config wrangler.deploy.jsonc",
     "check": "astro check",
     "check:worker": "tsc --noEmit -p worker/tsconfig.json",
-    "test:update": "tsx --test scripts/update/runner.test.ts && tsx scripts/update/smoke.ts",
+    "test:update": "tsx --test scripts/update/runner.test.ts scripts/update/api-source.test.ts && tsx scripts/update/smoke.ts",
     "test:worker": "tsx --test worker/__tests__/*.test.ts",
     "test:d1": "vitest run",
     "test:markdown": "tsx --test src/lib/server/markdown.test.ts",

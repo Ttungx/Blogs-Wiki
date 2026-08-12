@@ -4,7 +4,7 @@ import { proxyUrlFor } from './proxy';
 import { getCurlRunner } from '../../worker/fetch/curl-runner';
 
 export interface DiscoveryPathDiagnostic {
-  name: 'rss' | 'sitemap' | 'listing';
+  name: 'rss' | 'sitemap' | 'listing' | 'api';
   configured: boolean;
   ok: boolean;
   rawCount: number;
@@ -216,11 +216,89 @@ async function fromListing(source: SourceConfig, fetchImpl: FetchLike): Promise<
   return parseListing(html, source.blog_url, source.domain);
 }
 
+function dotPath(value: unknown, path: string): unknown {
+  let current = value;
+  for (const segment of path.split('.')) {
+    if (current === null || current === undefined) return undefined;
+    if (typeof current !== 'object') return undefined;
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
+function apiPublishedAt(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === 'number') {
+    // Unix seconds（混元接口）；毫秒级时间戳已超 4 亿，不会误判为秒。
+    return new Date(value * 1000).toISOString();
+  }
+  const text = String(value).trim();
+  if (!text) return undefined;
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+async function fromApi(source: SourceConfig, fetchImpl: FetchLike): Promise<DiscoveredArticle[]> {
+  const api = source.api;
+  if (!api?.list_url) return [];
+
+  const body = JSON.stringify(api.list_body ?? {});
+  const response = await fetchImpl(api.list_url, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json, text/plain, */*',
+      'content-type': 'application/json',
+      'user-agent': USER_AGENT,
+      origin: new URL(api.list_url).origin,
+      referer: source.blog_url,
+    },
+    body,
+    signal: AbortSignal.timeout(25_000),
+  });
+  if (!response.ok) throw new Error(`api list: HTTP ${response.status} ${response.statusText}`);
+  let payload: unknown;
+  try {
+    payload = JSON.parse(await response.text());
+  } catch {
+    throw new Error('api list: response is not valid JSON');
+  }
+
+  const list = api.list_path ? dotPath(payload, api.list_path) : payload;
+  if (!Array.isArray(list)) throw new Error(`api list: no array at "${api.list_path ?? 'root'}"`);
+
+  const template = api.article_url_template;
+  return list.flatMap((item) => {
+    if (typeof item !== 'object' || item === null) return [];
+    const record = item as Record<string, unknown>;
+    const id = String(record.id ?? '');
+    if (!id) return [];
+    const customSlug = String(record.customUrl ?? record.slug ?? '').trim();
+    const slug = customSlug || id;
+
+    let url: string | null = null;
+    if (template) {
+      url = template.replace(/\{id\}/g, encodeURIComponent(id)).replace(/\{slug\}/g, encodeURIComponent(slug));
+    } else if (typeof record.url === 'string') {
+      url = record.url;
+    }
+    if (!url) return [];
+
+    return [{
+      url,
+      title: typeof record.title === 'string' ? record.title : undefined,
+      publishedAt: apiPublishedAt(record.publishedAt ?? record.publishTime ?? record.date),
+      apiId: id,
+      ...(typeof record.lang === 'string' ? { apiLang: record.lang } : {}),
+    }];
+  });
+}
+
 export async function discoverSource(
   source: SourceConfig,
   fetchImpl: FetchLike = fetch,
 ): Promise<DiscoveredArticle[]> {
   const attempts: Array<{ name: string; run: () => Promise<DiscoveredArticle[]> }> = [
+    { name: 'api', run: () => fromApi(source, fetchImpl) },
     { name: 'RSS/Atom', run: () => fromFeed(source, fetchImpl) },
     { name: 'sitemap', run: () => fromSitemap(source, fetchImpl) },
     { name: 'listing', run: () => fromListing(source, fetchImpl) },
@@ -297,7 +375,14 @@ export async function diagnoseSourceDiscovery(
     }
   };
 
-  const [rss, sitemap, listing] = await Promise.all([
+  const [api, rss, sitemap, listing] = await Promise.all([
+    runPath('api', Boolean(source.api?.list_url), async () => {
+      const entries = await fromApi(source, fetchImpl);
+      return {
+        rawCount: entries.length,
+        candidates: entries.filter((item) => isCandidateArticle(item.url, source)),
+      };
+    }),
     runPath('rss', Boolean(source.rss_url), async () => {
       const rssUrl = source.rss_url as string;
       const xml = await fetchText(fetchImpl, rssUrl, `${source.id} RSS`);
@@ -327,7 +412,7 @@ export async function diagnoseSourceDiscovery(
 
   return {
     sourceId: source.id,
-    paths: [rss.diagnostic, sitemap.diagnostic, listing.diagnostic],
-    candidates: uniqueCanonicalUrls([...rss.candidates, ...sitemap.candidates, ...listing.candidates]),
+    paths: [api.diagnostic, rss.diagnostic, sitemap.diagnostic, listing.diagnostic],
+    candidates: uniqueCanonicalUrls([...api.candidates, ...rss.candidates, ...sitemap.candidates, ...listing.candidates]),
   };
 }

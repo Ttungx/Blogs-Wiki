@@ -65,6 +65,17 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
         issues.push({ path: `[${index}].${key}`, message: 'must be an absolute http(s) URL' });
       }
     }
+    if (value.api !== undefined) {
+      if (!isRecord(value.api)) {
+        issues.push({ path: `[${index}].api`, message: 'must be an object' });
+      } else {
+        for (const key of ['list_url', 'detail_url']) {
+          if (value.api[key] !== undefined && !validHttpUrl(value.api[key])) {
+            issues.push({ path: `[${index}].api.${key}`, message: 'must be an absolute http(s) URL' });
+          }
+        }
+      }
+    }
 
     if (!SOURCE_TYPES.has(value.type as SourceType)) {
       issues.push({ path: `[${index}].type`, message: 'must be "company" or "personal"' });
