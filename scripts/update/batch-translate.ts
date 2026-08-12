@@ -19,7 +19,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createTranslateClient } from './translate';
+import { createTranslateClient, routeTranslator } from './translate';
 import { createTranslateV2Client } from './translate-v2';
 import { createFetchImpl } from './network';
 import { createUpdateRepositories } from './repository-factory';
@@ -218,18 +218,21 @@ async function run() {
   }
 
   const fetchImpl = createFetchImpl(logger);
-  const pipeline = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase();
+  const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
   const common = {
     apiKey: process.env.OPENAI_API_KEY ?? '',
     baseUrl: process.env.OPENAI_BASE_URL ?? '',
     model: process.env.TRANSLATION_MODEL ?? '',
-    reasoningEffort: (process.env.TRANSLATION_REASONING_EFFORT ?? '').trim() || undefined,
+    reasoningEffort: (process.env.MODEL_REASONING_EFFORT ?? '').trim() || undefined,
     fetchImpl,
   } as const;
-  const translate = pipeline === 'v2'
-    ? createTranslateV2Client(common)
-    : createTranslateClient(common);
-  logger.info(`Translation pipeline: ${pipeline}`);
+  // 默认 V1 整篇一次；TRANSLATION_PIPELINE=v2 强制 V2；超长（>100K 字符）兜底 V2。
+  const translate = routeTranslator(
+    createTranslateClient(common),
+    createTranslateV2Client(common),
+    forceV2,
+  );
+  logger.info(`Translation pipeline: ${forceV2 ? 'v2 (forced)' : 'v1 whole-article (v2 fallback >100k chars)'}`);
   const repositories = createUpdateRepositories({ rootDir, backend: 'file' });
 
   let success = 0;

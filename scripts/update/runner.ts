@@ -1,6 +1,6 @@
 import { createFetchBackend, type FetchBackend } from './fetch-backend';
 import { discoverSource } from './discovery';
-import { createTranslateClient } from './translate';
+import { createTranslateClient, routeTranslator } from './translate';
 import { createTranslateV2Client } from './translate-v2';
 import { selectSourcesForRun } from './source-policy';
 import { loadSources } from './config';
@@ -111,11 +111,12 @@ function buildTranslator(
     );
   }
 
-  const reasoningEffort = (process.env.TRANSLATION_REASONING_EFFORT ?? '').trim() || undefined;
-  const pipeline = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase();
-  return pipeline === 'v2'
-    ? createTranslateV2Client({ apiKey, baseUrl, model, fetchImpl, reasoningEffort })
-    : createTranslateClient({ apiKey, baseUrl, model, fetchImpl, reasoningEffort });
+  const reasoningEffort = (process.env.MODEL_REASONING_EFFORT ?? '').trim() || undefined;
+  // 默认 V1 整篇一次（吞吐高）；TRANSLATION_PIPELINE=v2 强制 V2；超长（>100K 字符）兜底 V2。
+  const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
+  const v1 = createTranslateClient({ apiKey, baseUrl, model, fetchImpl, reasoningEffort });
+  const v2 = createTranslateV2Client({ apiKey, baseUrl, model, fetchImpl, reasoningEffort });
+  return routeTranslator(v1, v2, forceV2);
 }
 
 function selectSources(

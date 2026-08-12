@@ -75,7 +75,7 @@ Environment:
   OPENAI_API_KEY        API key for the OpenAI-compatible endpoint.
   OPENAI_BASE_URL       Base URL, e.g. https://api.openai.com/v1.
   TRANSLATION_MODEL     Model identifier, recorded on each article.
-  TRANSLATION_REASONING_EFFORT  Optional (e.g. max); sent as reasoning_effort on chat/completions.
+  MODEL_REASONING_EFFORT  Optional (e.g. high); sent as reasoning_effort on chat/completions.
   STORAGE_BACKEND       file (default) or d1; d1 requires an injected Worker binding.`);
       console.log(`  USE_PROXY             Set to "true" to route requests through PROXY_URL.
   PROXY_URL             HTTP proxy, e.g. http://127.0.0.1:7897.`);
