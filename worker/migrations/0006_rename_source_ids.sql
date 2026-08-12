@@ -14,7 +14,7 @@ ON CONFLICT(id) DO UPDATE SET
   updated_at=datetime('now');
 
 INSERT INTO sources (id, name, type, homepage_url, blog_url, domain, rss_url, sitemap_url, logo, avatar)
-VALUES ('z-ai', 'z.ai', 'company', 'https://z.ai/', 'https://z.ai/blog', 'z.ai', NULL, NULL, NULL, NULL)
+VALUES ('z-ai', 'Z.ai', 'company', 'https://z.ai/', 'https://z.ai/blog', 'z.ai', NULL, NULL, NULL, NULL)
 ON CONFLICT(id) DO UPDATE SET
   name=excluded.name,
   homepage_url=excluded.homepage_url,
