@@ -62,13 +62,31 @@ export function canonicalizeUrl(value: string, base?: string): string | null {
   }
 }
 
-export function isLikelyArticleUrl(value: string, sourceDomain: string): boolean {
+// 未展开的模板占位符（Liquid/Jinja/JS 模板）。部分站点的 listing 页是客户端渲染，
+// HTML 里会泄漏 `{%- postPermalink %}` 一类模板锚点，listing 解析会把它当成 href
+// 抓下来（canonicalize 后含 `%7B`/`%7D`）。真实文章 URL 不会出现裸花括号，故任何
+// 形式的 `{`/`}`（裸或百分号编码）都判定为非文章，最早排除。
+const TEMPLATE_PLACEHOLDER = /%7b|%7d|[{}]/i;
+
+export interface ArticleUrlOptions {
+  /** 为 true 时跳过全局 NON_ARTICLE_PATHS 黑名单，让调用方的 article_paths
+   *  白名单完全决定收录范围（用于博客路径含 /press /media 等段的源）。 */
+  allowNonArticlePaths?: boolean;
+}
+
+export function isLikelyArticleUrl(
+  value: string,
+  sourceDomain: string,
+  options?: ArticleUrlOptions,
+): boolean {
+  if (TEMPLATE_PLACEHOLDER.test(value)) return false;
   try {
     const url = new URL(value);
     const host = url.hostname.replace(/^www\./, '');
     const expectedHost = sourceDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
     if (host !== expectedHost && !host.endsWith(`.${expectedHost}`)) return false;
     if (url.pathname === '/' || url.pathname.length < 4) return false;
+    if (options?.allowNonArticlePaths) return true;
     return !NON_ARTICLE_PATHS.some((pattern) => pattern.test(url.pathname));
   } catch {
     return false;

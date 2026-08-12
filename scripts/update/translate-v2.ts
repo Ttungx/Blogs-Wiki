@@ -23,14 +23,18 @@ export interface TranslateV2Options {
   /** Optional separate model for classification (decoupled). Defaults to `model`. */
   classifyModel?: string;
   timeoutMs?: number;
+  /** chat/completions 的 max_tokens（思考型模型需要大预算）。 */
+  maxTokens?: number;
   fetchImpl?: FetchLike;
-  /** Token cap per body chunk passed to the planner (default 6000). */
+  /** Token cap per body chunk passed to the planner (default 1200). */
   maxChunkTokens?: number;
   /** OpenAI/DeepSeek 兼容 reasoning_effort（如 low/high/max），经 ocx 透传。 */
   reasoningEffort?: string;
 }
 
 const DEFAULT_TIMEOUT_MS = 300_000;
+const DEFAULT_MAX_TOKENS = 16_000;
+const DEFAULT_MAX_CHUNK_TOKENS = 1_200;
 const RETRY_JSON_HINT =
   '\n\nYour previous response was not valid JSON. You MUST output only valid JSON matching the required shape, with no extra text.';
 
@@ -90,6 +94,7 @@ async function classifyArticle(
     model: options.classifyModel ?? options.model,
     messages,
     response_format: { type: 'json_object' },
+    max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
   };
   const reasoningEffort = options.reasoningEffort?.trim() || undefined;
   if (reasoningEffort) body.reasoning_effort = reasoningEffort;
@@ -129,6 +134,7 @@ async function translateChunk(
     model: options.model,
     messages,
     response_format: { type: 'json_object' },
+    max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
   };
   const reasoningEffort = options.reasoningEffort?.trim() || undefined;
   if (reasoningEffort) body.reasoning_effort = reasoningEffort;

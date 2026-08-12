@@ -1,8 +1,8 @@
 # Blogs Wiki
 
-以博客书架为入口，持续收录优质博客文章，并提供统一翻译阅读体验的数字馆藏。
+收录低频、高质量、值得长期阅读，但因为语言和分散发布而容易被错过的博客，并提供统一翻译阅读体验的数字馆藏。
 
-> 已上线：<https://blogswiki.dpdns.org/>
+> 已上线：[https://blogswiki.dpdns.org/](https://blogswiki.dpdns.org/)
 
 ## 特色
 

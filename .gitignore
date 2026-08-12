@@ -6,11 +6,17 @@ dist/
 *.log
 .zcode/
 
+# 并行 worktree（多 agent 独立工作树）
+worktree/
+
 # Wrangler 本地状态（D1 本地副本、临时文件）
 .wrangler/
 
 # 临时 SSR 构建检查产物（astro build --outDir）
 .tmp-ssr-check/
+
+# batch-translate 临时运行产物（报告/日志/watchdog）
+.tmp-bt*/
 
 # 本地 CSS/阅读页视觉回归产物
 .css-qa/

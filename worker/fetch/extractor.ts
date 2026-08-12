@@ -22,8 +22,34 @@
 
 import { parseHTML } from 'linkedom';
 import { collapseCarousels, type CarouselNode } from './carousel-collapse';
+import { DEFAULT_MIN_CONTENT_CHARS as MIN_CONTENT_CHARS } from '../../scripts/update/constants';
 
-const MIN_CONTENT_CHARS = 200;
+/**
+ * 归一化 Defuddle 的 published 值：
+ * - 逗号分隔的多时间戳（github.blog JSON-LD 对同一时刻给出 -07:00 与
+ *   +00:00 两个 datePublished，Defuddle 拼接为 "A, B"）取第一段；
+ * - 非法值返回空串。
+ */
+function normalizePublished(raw: string): string {
+  const value = (raw ?? '').trim();
+  if (!value) return '';
+  const first = value.split(',')[0]?.trim() ?? '';
+  if (!first) return '';
+  const time = Date.parse(first);
+  if (Number.isNaN(time)) return '';
+  const year = new Date(time).getUTCFullYear();
+  return year >= 1970 && year <= 2100 ? first : '';
+}
+
+/**
+ * Next.js Flight 数据里的文章创建时间回退（anthropic research 页面无
+ * meta/JSON-LD 日期，日期只存在于 `_createdAt` 字段）。取第一个出现值
+ * （当前文章），相关推荐等后续值不取。
+ */
+function resolveNextJsCreatedAt(html: string): string {
+  const match = html.match(/_createdAt\\?":\\?"([^\\"]+)/);
+  return match?.[1]?.trim() ?? '';
+}
 
 /**
  * turndown（Defuddle 的 markdown 转换器）在模块初始化时检查 globalThis.window
@@ -72,6 +98,8 @@ export interface ExtractionInput {
   html: string;
   /** 页面 URL（用于 URL 绝对化、Defuddle extractor 匹配）。 */
   url: string;
+  /** 正文最小纯文本字符数；未设则用 DEFAULT_MIN_CONTENT_CHARS。 */
+  minContentChars?: number;
 }
 
 export interface ExtractionResult {
@@ -89,6 +117,52 @@ export interface ExtractionResult {
 }
 
 /**
+ * 与 scripts/update/fetch.ts 的 directoryBaseUrl 等价的内联实现（extractor
+ * 不能依赖 Node-only 模块）。页面 URL 常省略尾斜杠（Jekyll permalinks），
+ * 相对图片/链接会丢目录段；末尾无扩展名时补成目录形式。
+ */
+function directoryBaseUrl(baseUrl: string): string {
+  const url = new URL(baseUrl);
+  const pathname = url.pathname;
+  const lastSegment = pathname.split('/').filter(Boolean).pop() ?? '';
+  if (!pathname.endsWith('/') && !/\.[a-z0-9]{1,8}$/i.test(lastSegment)) {
+    url.pathname = `${pathname}/`;
+  }
+  return url.toString();
+}
+
+/**
+ * Defuddle 转 Markdown 后，相对图片/链接 URL 原样保留（例如 qwenlm
+ * 的 `![Back](back_arrow.png)`）。对 markdown 输出做绝对化：图片与链接
+ * 的 URL 若为相对路径则基于 directoryBaseUrl 补全，保留原始引用链接，
+ * 不下载、不改写 CDN 地址。
+ */
+function absolutizeMarkdownUrls(markdown: string, baseUrl: string): string {
+  const base = directoryBaseUrl(baseUrl);
+  return markdown
+    .replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (match, alt: string, rawUrl: string) => {
+      if (/^(?:https?:|data:|blob:|mailto:|#)/i.test(rawUrl)) return match;
+      try {
+        const resolved = new URL(rawUrl, base);
+        if (!/^https?:$/.test(resolved.protocol)) return match;
+        return `![${alt}](${resolved.toString()})`;
+      } catch {
+        return match;
+      }
+    })
+    .replace(/\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (match, text: string, rawUrl: string) => {
+      if (/^(?:https?:|data:|blob:|mailto:|#|javascript:)/i.test(rawUrl)) return match;
+      try {
+        const resolved = new URL(rawUrl, base);
+        if (!/^https?:$/.test(resolved.protocol)) return match;
+        return `[${text}](${resolved.toString()})`;
+      } catch {
+        return match;
+      }
+    });
+}
+
+/**
  * 从页面 HTML 提取文章正文与元数据。
  *
  * 内部用 Defuddle（defuddle/full，带数学公式 + markdown 转换）+ linkedom（DOM）。
@@ -97,7 +171,7 @@ export interface ExtractionResult {
  * @throws {Error} Defuddle 提取失败，或正文为空 / 过短（< {@link MIN_CONTENT_CHARS} 字符）。
  */
 export async function extractArticle(input: ExtractionInput): Promise<ExtractionResult> {
-  const { html, url } = input;
+  const { html, url, minContentChars } = input;
   let { document } = parseHTML(html);
 
   // Defuddle's `embedToMarkdown` rule matches image/link sources against a
@@ -136,17 +210,19 @@ export async function extractArticle(input: ExtractionInput): Promise<Extraction
   if (patchedSources) {
     contentMarkdown = contentMarkdown.replace(new RegExp(X_COM_TOKEN, 'g'), 'x.com');
   }
+  contentMarkdown = absolutizeMarkdownUrls(contentMarkdown, url);
   const textLength = contentMarkdown.replace(/\s+/g, ' ').length;
-  if (textLength < MIN_CONTENT_CHARS) {
+  const minChars = minContentChars ?? MIN_CONTENT_CHARS;
+  if (textLength < minChars) {
     throw new Error(
-      `extractor: content too short (${textLength} chars, minimum ${MIN_CONTENT_CHARS}) for ${url}`,
+      `extractor: content too short (${textLength} chars, minimum ${minChars}) for ${url}`,
     );
   }
 
   return {
     title: (result.title ?? '').trim(),
     author: (result.author ?? '').trim(),
-    publishedAt: (result.published ?? '').trim(),
+    publishedAt: normalizePublished(result.published ?? '') || resolveNextJsCreatedAt(html),
     imageUrl: (result.image ?? '').trim(),
     originalLanguage: (result.language ?? 'en').trim().split(/[_-]/)[0]?.toLowerCase() || 'en',
     contentMarkdown,

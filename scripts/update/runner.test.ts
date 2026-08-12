@@ -34,7 +34,7 @@ function articleFor(item: DiscoveredArticle): ExtractedArticle {
     title: item.url.split('/').at(-2) ?? 'Article',
     publishedAt: item.publishedAt ?? '2026-08-01',
     originalLanguage: 'en',
-    contentMarkdown: '# Article\n\nOriginal content.',
+    contentMarkdown: 'Original article body with sufficient length for the integrity gate to pass during tests. '.repeat(8),
   };
 }
 

@@ -31,6 +31,13 @@
     "article_paths": [
       "/research",
       "/engineering"
+    ],
+    "exclude_paths": [
+      "^/research/a-mathematical-framework-for-transformer-circuits",
+      "^/research/circuits-updates-may-2023",
+      "^/research/in-context-learning-and-induction-heads",
+      "^/research/toy-models-of-superposition",
+      "^/research/transformer-circuits"
     ]
   },
   {
@@ -75,6 +82,7 @@
     "domain": "simonwillison.net",
     "rss_url": "https://simonwillison.net/atom/everything/",
     "sitemap_url": "https://simonwillison.net/sitemap.xml",
+    "url_date_pattern": "/(\\d{4})/([A-Z][a-z]{2})/(\\d{1,2})/",
     "update_mode": "active"
   },
   {
@@ -188,7 +196,8 @@
       "^/blog/.*multi-agent-ai-safety-research",
       "^/blog/.*lyria-35",
       "^/blog/.*partnering-with-industry-leaders",
-      "^/blog/.*singapores-ai-future"
+      "^/blog/.*singapores-ai-future",
+      "^/blog/.*antigravity"
     ]
   },
   {
@@ -357,6 +366,13 @@
     "update_mode": "active",
     "article_paths": [
       "/p"
+    ],
+    "exclude_paths": [
+      "^/p/7-days-to-lock-it-in",
+      "^/p/how-to-come-up-with-profound-ideas",
+      "^/p/how-to-turn-your-passions-into-profit",
+      "^/p/i-built-the-writing-app-ive-always-wanted",
+      "^/p/youre-not-boring"
     ]
   },
   {
@@ -424,7 +440,7 @@
     ]
   },
   {
-    "id": "keli-wen",
+    "id": "lastwhisper",
     "name": "LastWhisper",
     "type": "personal",
     "homepage_url": "https://keli-wen.github.io/One-Poem-Suffices/",
@@ -485,6 +501,13 @@
     "update_mode": "active",
     "article_paths": [
       "^/security/[a-z0-9-]+$"
+    ],
+    "exclude_paths": [
+      "^/security/vrp$",
+      "^/security/android-security$",
+      "^/security/chrome-security$",
+      "^/security/open-source-security$",
+      "^/security/$"
     ]
   },
   {

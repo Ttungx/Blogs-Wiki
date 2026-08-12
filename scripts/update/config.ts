@@ -10,6 +10,7 @@ export interface ConfigIssue {
 export interface SourceConfigValidation {
   sources: SourceConfig[];
   issues: ConfigIssue[];
+  warnings: ConfigIssue[];
 }
 
 const SOURCE_TYPES = new Set<SourceType>(['company', 'personal']);
@@ -41,10 +42,11 @@ function validateString(
 
 export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
   if (!Array.isArray(raw)) {
-    return { sources: [], issues: [{ path: '$', message: 'must be a JSON array' }] };
+    return { sources: [], issues: [{ path: '$', message: 'must be a JSON array' }], warnings: [] };
   }
 
   const issues: ConfigIssue[] = [];
+  const warnings: ConfigIssue[] = [];
   const ids = new Set<string>();
   const sources: SourceConfig[] = [];
 
@@ -124,10 +126,90 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
       }
     }
 
+    // 未知字段：提示但不阻断（宽松校验是特性，但消除"配了没反应"的静默）。
+    const ALLOWED_KEYS = new Set([
+      'id', 'name', 'type', 'homepage_url', 'blog_url', 'domain',
+      'rss_url', 'sitemap_url', 'sitemap_include_paths', 'logo', 'avatar',
+      'update_mode', 'prefer_official_zh', 'zh_path_map', 'git_date', 'api',
+      'article_paths', 'exclude_paths', 'url_date_pattern',
+      'min_content_chars', 'quality_filter', 'allow_non_article_paths',
+      'limit', 'discovery_strategy', 'max_child_sitemaps', 'backfill',
+    ]);
+    for (const key of Object.keys(value)) {
+      if (!ALLOWED_KEYS.has(key)) {
+        warnings.push({ path: `[${index}].${key}`, message: 'unknown field (silently ignored)' });
+      }
+    }
+
+    // url_date_pattern：必须可编译且含年份捕获组（否则 url-date.ts 静默降级为 undefined）。
+    if (value.url_date_pattern !== undefined) {
+      if (typeof value.url_date_pattern !== 'string' || !value.url_date_pattern.trim()) {
+        issues.push({ path: `[${index}].url_date_pattern`, message: 'must be a non-empty regex string' });
+      } else {
+        try {
+          new RegExp(value.url_date_pattern);
+          if (!/\((?!\?)/.test(value.url_date_pattern)) {
+            issues.push({ path: `[${index}].url_date_pattern`, message: 'must contain a capturing group for the year' });
+          }
+        } catch {
+          issues.push({ path: `[${index}].url_date_pattern`, message: 'must be a valid regex' });
+        }
+      }
+    }
+
+    // 按源可调的正整数阈值。
+    for (const key of ['min_content_chars', 'limit', 'max_child_sitemaps'] as const) {
+      const num = value[key];
+      if (num !== undefined && (typeof num !== 'number' || !Number.isInteger(num) || num <= 0)) {
+        issues.push({ path: `[${index}].${key}`, message: 'must be a positive integer' });
+      }
+    }
+
+    if (value.discovery_strategy !== undefined && !['auto', 'merge'].includes(value.discovery_strategy as string)) {
+      issues.push({ path: `[${index}].discovery_strategy`, message: 'must be "auto" or "merge"' });
+    }
+
+    // backfill 策略（Stage 5 消费）。
+    if (value.backfill !== undefined) {
+      const bf = value.backfill;
+      if (!isRecord(bf)) {
+        issues.push({ path: `[${index}].backfill`, message: 'must be an object' });
+      } else {
+        if (bf.mode !== undefined && !['all', 'since'].includes(bf.mode as string)) {
+          issues.push({ path: `[${index}].backfill.mode`, message: 'must be "all" or "since"' });
+        }
+        if (bf.since !== undefined && (typeof bf.since !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(bf.since) || Number.isNaN(Date.parse(bf.since)))) {
+          issues.push({ path: `[${index}].backfill.since`, message: 'must be a valid YYYY-MM-DD date' });
+        }
+        if (bf.max_articles !== undefined && (typeof bf.max_articles !== 'number' || !Number.isInteger(bf.max_articles) || bf.max_articles <= 0)) {
+          issues.push({ path: `[${index}].backfill.max_articles`, message: 'must be a positive integer' });
+        }
+        if (bf.quality_filter !== undefined && typeof bf.quality_filter !== 'boolean') {
+          issues.push({ path: `[${index}].backfill.quality_filter`, message: 'must be a boolean' });
+        }
+      }
+    }
+
+    // 交叉依赖：声明了消费方字段却缺前置字段（运行时才暴露的错前移到加载时）。
+    if (value.sitemap_include_paths !== undefined && value.sitemap_url === undefined) {
+      issues.push({ path: `[${index}].sitemap_include_paths`, message: 'requires sitemap_url to be set' });
+    }
+    if (isRecord(value.api) && value.api.list_url !== undefined && value.api.detail_url === undefined) {
+      issues.push({ path: `[${index}].api.detail_url`, message: 'required when api.list_url is set' });
+    }
+    if (isRecord(value.git_date)) {
+      if (typeof value.git_date.repo !== 'string' || !value.git_date.repo.trim()) {
+        issues.push({ path: `[${index}].git_date.repo`, message: 'required when git_date is set' });
+      }
+      if (typeof value.git_date.path_template !== 'string' || !value.git_date.path_template.trim()) {
+        issues.push({ path: `[${index}].git_date.path_template`, message: 'required when git_date is set' });
+      }
+    }
+
     sources.push(value as unknown as SourceConfig);
   });
 
-  return { sources, issues };
+  return { sources, issues, warnings };
 }
 
 export async function loadSources(rootDir: string): Promise<SourceConfig[]> {
@@ -137,6 +219,9 @@ export async function loadSources(rootDir: string): Promise<SourceConfig[]> {
   if (result.issues.length) {
     const detail = result.issues.map((issue) => `${issue.path}: ${issue.message}`).join('\n  - ');
     throw new Error(`Invalid source configuration in ${file}:\n  - ${detail}`);
+  }
+  for (const warning of result.warnings) {
+    console.warn(`[sources.json] ${warning.path}: ${warning.message}`);
   }
   return result.sources;
 }

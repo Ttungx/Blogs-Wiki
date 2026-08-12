@@ -2,8 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runUpdate } from './runner';
 import { writeFailureReport, writeUpdateReport } from './report';
-
-const DEFAULT_LIMIT_PER_SOURCE = 3;
+import { DEFAULT_LIMIT_PER_SOURCE } from './constants';
 
 interface CliOptions {
   dryRun: boolean;

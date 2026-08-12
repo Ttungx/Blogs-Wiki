@@ -21,8 +21,16 @@ import type {
   UpdateSummary,
 } from './types';
 import { CATEGORIES } from '../../src/config/categories';
+import { DEFAULT_LIMIT_PER_SOURCE } from './constants';
+import { checkArticleIntegrity } from './backfill-integrity';
 
-const DEFAULT_LIMIT_PER_SOURCE = 3;
+/** 质量门禁失败（永久）：内容不合格，标记处理避免下轮重抓。 */
+class IntegrityGateError extends Error {
+  constructor(readonly codes: string[]) {
+    super(`integrity gate failed: ${codes.join(', ')}`);
+    this.name = 'IntegrityGateError';
+  }
+}
 
 const consoleLogger: Logger = {
   info(message) {
@@ -202,7 +210,8 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
       summary.discovered += discovered.length;
       summary.pending += pending.length;
 
-      const candidates = limit > 0 ? pending.slice(0, limit) : pending;
+      const perSourceLimit = options.limit ?? source.limit ?? DEFAULT_LIMIT_PER_SOURCE;
+      const candidates = perSourceLimit > 0 ? pending.slice(0, perSourceLimit) : pending;
       logger.info(`[${source.id}] discovered ${discovered.length}, new ${pending.length}, processing ${candidates.length}`);
 
       for (const item of candidates) {
@@ -210,6 +219,15 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
           const article: ExtractedArticle = source.prefer_official_zh
             ? await fetchBackend.fetchArticleWithLocalization(source, item, fetchImpl)
             : await fetchBackend.fetchArticle(source, item, fetchImpl);
+
+          // 入库前质量门禁（与 backfill 共用 checkArticleIntegrity）：
+          // 模板页 / 导航列表 / 促销页 / 无标题 / 无日期 / 图片相对 URL 不入库。
+          const { issues } = checkArticleIntegrity(article, source);
+          const blocking = issues.filter((issue) => issue.severity === 'error');
+          if (blocking.length > 0) {
+            throw new IntegrityGateError(blocking.map((issue) => issue.code));
+          }
+
           if (!translate) {
             logger.info(
               source.update_mode === 'dry-run-only'
@@ -218,7 +236,7 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
             );
             logger.info(
               `    title=${article.title} date=${article.publishedAt || 'unknown'} ` +
-                `lang=${article.originalLanguage} markdown=${article.contentMarkdown.length} chars`,
+              `lang=${article.originalLanguage} markdown=${article.contentMarkdown.length} chars`,
             );
             continue;
           }
@@ -227,6 +245,10 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
             source: toDomainSource(source),
             article: toDomainArticle(source, article),
           });
+          // 原文已落盘即标记处理：翻译失败靠 batch-translate 定期补，不再因
+          // reconcile 把原文 URL 回填 seen 而形成「半成品黑洞」（缺中文版被挡住）。
+          await repositories.sourceState.markProcessed(source.id, article.url);
+          seenBySource.get(source.id)?.add(article.url);
           // 2. 翻译 + 分类
           const translation = await translate(article, CATEGORIES);
           // 3. 保存翻译版本
@@ -241,17 +263,30 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
             ...(translation.originalZhUrl ? { originalAltUrl: translation.originalZhUrl } : {}),
             categories: translation.categories,
           });
-          await repositories.sourceState.markProcessed(source.id, article.url);
-          seenBySource.get(source.id)?.add(article.url);
           result.processed += 1;
           summary.processed += 1;
           logger.info(`  + ${saved.id} (${translation.translatedTitle})`);
         } catch (error) {
           result.failed += 1;
           summary.failed += 1;
-          const message = error instanceof Error ? error.message : String(error);
-          result.errors.push(`${item.url}: ${message}`);
-          logger.error(`  ${item.url}: ${message}`);
+          if (error instanceof IntegrityGateError) {
+            // 内容不合格（永久）：非 dry-run 时标记处理避免下轮重抓。
+            if (!options.dryRun) {
+              await repositories.sourceState.markProcessed(source.id, item.url);
+              seenBySource.get(source.id)?.add(item.url);
+            }
+            result.errors.push({
+              url: item.url,
+              kind: 'integrity',
+              code: error.codes.join(', '),
+              message: error.message,
+            });
+            logger.warn(`  ${item.url}: ${error.message} (content rejected; will not retry)`);
+          } else {
+            const message = error instanceof Error ? error.message : String(error);
+            result.errors.push({ url: item.url, kind: 'fatal', message });
+            logger.error(`  ${item.url}: ${message}`);
+          }
         }
       }
     } catch (error) {

@@ -30,12 +30,14 @@ function toWorkerSource(source: SourceConfig) {
   return {
     id: source.id,
     homepageUrl: source.homepage_url,
+    ...(source.url_date_pattern ? { urlDatePattern: source.url_date_pattern } : {}),
     ...(source.prefer_official_zh !== undefined
       ? { preferOfficialZh: source.prefer_official_zh }
       : {}),
     ...(source.zh_path_map !== undefined ? { zhPathMap: source.zh_path_map } : {}),
     ...(source.git_date !== undefined ? { gitDate: source.git_date } : {}),
     ...(source.api !== undefined ? { api: source.api } : {}),
+    ...(source.min_content_chars !== undefined ? { minContentChars: source.min_content_chars } : {}),
   };
 }
 
