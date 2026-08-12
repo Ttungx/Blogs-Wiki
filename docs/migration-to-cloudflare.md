@@ -13,14 +13,14 @@
 |---|---|---|
 | 1. domain types + repository interfaces | ✅ 完成 | `worker/domain/`、`worker/repositories/` 接口定义 |
 | 2. FileRepository（与旧行为字节对齐） | ✅ 完成 | `worker/repositories/file/`，85 个 Node 测试全绿 |
-| 3. D1 schema + migrations | ✅ 完成 | `worker/migrations/0001-0005`（initial schema / seed categories / seed sources / drop source_runs FK / articles 拆分 article_versions），本地数据库当前无待应用迁移 |
+| 3. D1 schema + migrations | ✅ 完成 | `worker/migrations/0001-0007`（含 article_versions、source id rename、translated_at）；部署前须 `wrangler d1 migrations apply blogs-wiki --remote` |
 | 4. D1Repository | ✅ 完成 | `D1ArticleRepository` / `D1SourceStateRepository`，真实 Miniflare D1 binding 测试 44/44 通过 |
 | 5. 管线接 repository interface | ✅ 完成 | `runUpdate()` 支持依赖注入；Node 默认 `STORAGE_BACKEND=file`，Worker `env.DB` → D1 repository 注入；File/D1 后端可替换 |
-| 6. Worker-compatible fetch path | ✅ 完成 | `FETCH_BACKEND=node|worker` 已接入；Workflow dry-run 已用真实来源验证抓取链路（RSS 发现 20 篇 → Defuddle 抓取） |
-| 7. Workflow 运行时 | ✅ 保留 | UpdateWorkflow 与 orchestrator 已实现并通过 dry-run 验证，但因 Free 计划 CPU 限制不作为生产重计算入口；生产 binding 已停用 |
-| 8. Astro 切 D1 | ✅ 完成 | 网站已上线 https://blogs-wiki.1323593614.workers.dev；首页/博客页/文章页 SSR 从 D1 实时读取；`/api/health` `/api/sources` 可用，`/api/trigger` 已停用 |
-| 8A. GitHub Actions 内容更新 | ✅ 完成 | Action 执行 discover → Defuddle fetch → translate，生成 JSON 分片并调用受保护 `/api/content-sync` 幂等写入 D1 |
-| 9. 搜索切 FTS5 | ⬜ | Pagefind → D1 FTS5 |
+| 6. Worker-compatible fetch path | ✅ 完成 | `FETCH_BACKEND=node|worker` 已接入；Workflow dry-run 曾验证抓取链路（RSS → Defuddle） |
+| 7. Workflow 运行时 | ✅ 保留 | 代码保留；**本地** `wrangler.deploy.jsonc` 已无 workflows binding；**线上 2026-08-12 实测** `POST /api/trigger/` 仍创建 Workflow → 旧部署未替换 |
+| 8. Astro 切 D1 | ✅ 完成 | 用户域名 https://blogswiki.dpdns.org/ live：SSR 从 D1 读；`/api/health/` `/api/sources/` 正常 |
+| 8A. GitHub Actions 内容更新 | 🟨 代码完成 / 生产未闭合 | 本地 main：discover→fetch→translate→content-sync + opencode-free；**未 push origin、未配置 Secrets、未 production 首跑** |
+| 9. 搜索切 FTS5 | ⬜ | Pagefind → D1 FTS5（当前搜索索引缺失/降级） |
 | 10. 删除旧文件 backend | ⬜ | 移除 FileRepository / persist.ts / Pagefind |
 
 ## 当前验证证据
@@ -32,12 +32,12 @@
 - `npm run check`（astro check）：0 errors；现有 deprecation/hint 仍存在。
 - `npm run build`：`astro build && node scripts/inject-worker-entry.js` 通过，产出 `dist/client`（静态资源）+ `dist/server/_entry.mjs`（只 re-export Astro handler）。Pagefind 已从构建脚本临时移除（Windows 路径问题，Phase 9 以 FTS5 正式替换）。
 - Workflow dry-run 端到端验证：已通过并保留为实验/回滚证据；不代表当前生产入口。
-- 生产站点端点验证：https://blogs-wiki.1323593614.workers.dev 首页/博客页/文章页 SSR 从 D1 实时读取；`/api/health`、`/api/sources` 响应正常；`/api/trigger` 返回 410。
-- 文章页 500 修复（`listArticlesByBlog` snake_case→camelCase 映射缺失导致 `relatedArticle.publishedAt` undefined → `toISOString()` 抛错）：已在本地 `wrangler dev --config wrangler.deploy.jsonc` 与生产环境验证 `/articles/anthropic/building-effective-agents/` 与 `/en/` 均 200，正文、日期、分类、相关文章完整渲染。
-- SEO 修复：`astro.config.mjs` 的 `site` 在 `SITE_URL` 缺失时回退到生产域名（原回退 localhost:4321，导致 canonical/og:url 全错）；生产 HTML 实测 canonical 已指向 https://blogs-wiki.1323593614.workers.dev/。
-- SSR 防御加固（防"未来坏数据"触发 500）：`parseDateSafe` 统一安全解析日期（缺失/非法 → 条件渲染，不再 `toISOString()` 崩溃）；markdown 高亮初始化失败降级为无高亮渲染、单代码块高亮失败不影响整页；`[lang]` 路由语言白名单（未知语言段兜底中文）。rehype-katex v7 本身内建错误降级（`throwOnError` 由插件内部管理）。
+- 生产读路径（2026-08-12）：https://blogswiki.dpdns.org/ 首页 200；`/api/health/` → `backend=d1`、`articleCount=29`；`/api/sources/` 24 源；文章页 200。
+- 生产写路径缺口（同日）：`POST /api/trigger/` 仍返回 `{"status":"created","instanceId":...}`（旧 Workflow 部署）；本地源码已改为 410 且 deploy 配置无 workflows binding——**需 push + deploy 后复测**。
+- `origin/main` 截至核对时尚无 `.github/workflows/content-update.yml`（本地 main 超前，含 Actions + free 翻译合并）。
+- 文章页 500 修复、SEO `site` 回退、SSR `parseDateSafe` / markdown 降级等：代码与文档已记录；读路径 live 可用。
 
-以上证据已覆盖本地与远程运行时；GitHub Actions → `/api/content-sync` 的生产全链路仍需配置 Secrets/Variables 后手动跑一次非 dry-run 验证。
+**明确未闭合**：push → deploy → 配置 `CONTENT_SYNC_*` / 翻译 vars → workflow_dispatch 非 dry-run 首跑 → live 验收 content-sync 与 trigger-410。
 
 ---
 
@@ -45,12 +45,13 @@
 
 按以下门禁推进，不跨层并行修改：
 
-1. **组合方案生产门禁**：配置 GitHub Secrets/Variables（`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`TRANSLATION_MODEL`、`CONTENT_SYNC_TOKEN`、`CONTENT_SYNC_URL`），手动运行一次非 dry-run Action，核验报告、分片同步与 D1 文章/版本/分类数据。
-2. **当前主线：Phase 9 搜索切 FTS5**：D1 FTS5 查询稳定后再移除 Pagefind。Pagefind 已因 Windows 路径问题从构建脚本临时移除，Phase 9 用 FTS5 彻底替换。
-3. **最后做 Phase 10**：确认 GitHub Actions 可重跑、同步 API 幂等、D1 为唯一真相、SSR 可读、搜索实时后，才删除 File backend 和文件状态产物。
-4. **收尾清理**：`worker/index.ts` 已不再作为入口（API 迁移到 `src/pages/api/`），`worker-runtime.test.ts` 需适配新架构。SEO canonical/og:url 已修复；剩余 SEO 项是 sitemap 动态化（server 模式下 sitemap-index.xml 不含动态文章 URL，Phase 9 一并处理）。
+1. **发布门禁**：push 本地 main → 远程迁移 apply（若需要）→ `npm run deploy` → 复测 trigger=410、health/sources/文章页。
+2. **组合方案生产门禁**：配置 Worker `CONTENT_SYNC_TOKEN` + GitHub `CONTENT_SYNC_TOKEN`/`CONTENT_SYNC_URL`；`TRANSLATION_PROVIDER` 默认 free；paid 时再配 OPENAI_* Secrets；`workflow_dispatch`（`dry-run=false`、单源、`limit=1`）核验 free → content-sync → D1。
+3. **然后 Phase 9 搜索切 FTS5**：D1 FTS5 稳定后再移除 Pagefind 残留依赖。
+4. **最后 Phase 10**：Actions 可重跑、content-sync 幂等、D1 唯一真相、SSR 可读、搜索实时后，再删 File backend。
+5. **收尾**：`worker-runtime.test.ts` 适配 `src/pages/api/*`；sitemap 动态化。
 
-当前唯一主线是 **先完成 GitHub Actions 非 dry-run 生产门禁，再进入 Phase 9 搜索切 FTS5**。Phase 8 之前"不改 Astro 数据读取"的约束已解除——Astro 已从 D1 实时读取。
+当前唯一主线是 **发布 + Actions 生产首跑门禁，再进入 Phase 9**。
 
 ---
 
@@ -65,9 +66,9 @@
 5. 是否方便未来接入 X Articles、Substack 等新 Source Adapter？
 6. 是否可以替换底层实现，而不破坏上层业务？
 
-**D1、Workflows、Static Assets 是核心。Queues、Browser、R2 等按需求出现，不提前堆。**
+**D1 与 Static Assets 是生产核心；Workflows 仅保留为实验/回滚代码，不作为现役写路径。** Queues、Browser、R2 等按需求出现，不提前堆。
 
-**第一版目标**：1 Worker app + 1 D1 + 1 Workflow + 1 codebase。复杂度必须由真实瓶颈购买（手册 §16）。
+**现役目标（2026-08）**：1 Worker app + 1 D1 + 1 GitHub Actions 写路径 + 1 codebase。历史「1 Workflow」目标已让位于 Free 计划 CPU 限制与 Actions 组合方案；复杂度必须由真实瓶颈购买（手册 §16）。
 
 ---
 
@@ -248,7 +249,9 @@
 
 **涉及文件**：`src/pages/index.astro`、`src/pages/articles/[id].astro`、`src/pages/blogs/[id].astro`、`src/pages/search.astro`、`astro.config.mjs`（adapter + output）、`scripts/inject-worker-entry.js`、`wrangler.jsonc` / `wrangler.deploy.jsonc`。
 
-**完成标准**：文章从 D1 实时读取；新文章发布后立即可访问，无需 rebuild。✅ 网站已上线 https://blogs-wiki.1323593614.workers.dev，`/api/health` `/api/sources` 可用，`/api/trigger` 返回 410。
+**完成标准**：文章从 D1 实时读取；新文章发布后立即可访问，无需 rebuild。✅ 用户域名 https://blogswiki.dpdns.org/ live：`/api/health/` `/api/sources/` 可用。`/api/trigger` 源码 410；**线上是否 410 取决于是否已部署含该改动的 commit**。
+
+**上线前置**（0007 迁移）：部署新 SSR 前必须先对远程 D1 应用迁移，否则 `SELECT v.translated_at` 报 `no such column`，文章页整页 500。顺序：`wrangler d1 migrations apply blogs-wiki --remote` → `npm run deploy`。
 
 **回滚**：Astro adapter 移除，回到 static；旧构建链路与文件 backend 保留至 Phase 10。
 
@@ -272,12 +275,12 @@
 
 **目标**：迁移收尾。移除 FileRepository / `scripts/update/persist.ts` / Pagefind / GitHub Pages remnants。
 
-**前置条件**（手册 §24）：
-- GitHub 只保存源码和人工配置。
-- 新文章：发现 → 抓取 → 翻译 → D1 → 立即可访问，无需 git commit / Astro rebuild / Pagefind rebuild。
-- Workflow 能重试、恢复、记录状态。
+**前置条件**（手册 §24，按现役架构解读）：
+- GitHub 只保存源码和人工配置（正文不入 git）。
+- 新文章：Actions 发现 → 抓取 → 翻译 → content-sync → D1 → 立即可访问，无需 git commit / Astro rebuild / Pagefind rebuild。
+- Actions 可重跑；content-sync 幂等；失败可在 report/source_items 侧追溯。
 - Astro 实时从 D1 获取文章。
-- 搜索实时索引新文章。
+- 搜索实时索引新文章（Phase 9）。
 
 **完成标准**：`STORAGE_BACKEND=d1` 为唯一路径；`scripts/update/` 缩减为薄封装或删除；`.gitignore` 的 `src/content/articles/` 与 `processed-urls.json` 行移除（已不是运行时数据载体）。
 
@@ -295,7 +298,7 @@
 | 翻译模型可追踪 | frontmatter `translation_model` | D1 articles.translation_model |
 | 分类来自受控集合 | `src/config/categories.ts` | D1 categories 表 + classify 校验 |
 | 翻译失败不污染正文 | AST 保护（translation-plan.ts） | 不变（纯函数，跨 backend 复用） |
-| 单来源失败不拖垮全局 | index.ts try/catch per item | Workflow step failure 隔离 |
+| 单来源失败不拖垮全局 | index.ts try/catch per item | Actions runner 内隔离 + content-sync 分片；Workflow 仅实验路径 |
 | 来源发现策略可独立测试 | `audit.ts` + smoke.ts | Worker fetch adapter 独立测试 |
 | 文章结构不依赖来源平台 | frontmatter 字段固定 | D1 articles schema 固定 |
 
@@ -304,12 +307,12 @@
 不是 Worker 返回 200。真正完成需同时满足：
 
 - GitHub 只保存源码和人工配置。
-- 新文章：发现 → 抓取 → 翻译 → D1 → 立即可访问（无需 git commit / rebuild）。
-- Workflow 能重试、恢复、记录状态。
+- 新文章：Actions 发现 → 抓取 → 翻译 → content-sync → D1 → 立即可访问（无需 git commit / rebuild）。
+- 写路径可重跑、幂等、可审计（report artifact + D1 状态）。
 - Astro 实时从 D1 获取文章。
 - 搜索实时索引新文章。
 
-做到这些后，Cloudflare 才真正成为 Blogs Wiki 的运行平台。
+做到这些后，Cloudflare 才真正成为 Blogs Wiki 的运行平台（站点）+ GitHub Actions 成为内容写路径。
 
 ---
 

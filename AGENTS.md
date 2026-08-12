@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Astro SSR + Cloudflare Workers 博客收藏站（**已上线**：`https://blogs-wiki.1323593614.workers.dev`）。内容发现、抓取、翻译由 GitHub Actions 执行，生成的结构化文章通过受保护的 `/api/content-sync` 同步并幂等写入 D1；网站由 Astro SSR 从 D1 实时读取，新文章写入 D1 后立即可访问（无需 rebuild）。Cloudflare Workflow 代码保留为实验/回滚路径，不是当前生产入口。仓库语言为中文，文档与提交信息用中文。
+Astro SSR + Cloudflare Workers 博客收藏站（**用户域名**：`https://blogswiki.dpdns.org/`；CF 默认 `*.workers.dev` 可能因网络不可达）。读路径：Astro SSR 从 D1 实时读，新文章写入 D1 后立即可访问（无需 rebuild）。写路径（**代码已落地，截至 2026-08-12 尚未 push 到 origin、未部署、未生产首跑**）：GitHub Actions 发现/抓取/翻译 → 受保护 `/api/content-sync` 幂等写入 D1。Cloudflare Workflow 代码保留为实验/回滚；本地 `wrangler.deploy.jsonc` 已无 workflows binding，`/api/trigger` 源码返回 410——**线上仍可能是旧部署（仍创建 Workflow）**，以 live 实测为准。仓库语言为中文，文档与提交信息用中文。
 
 ## 命令
 
@@ -13,6 +13,7 @@ npm run check:worker     # tsc 类型检查 worker/ + worker-configuration.d.ts
 npm run test:update      # 离线冒烟测试 Node 更新管线，改 scripts/update/ 后必跑
 npm run test:worker      # worker/ 模块测试（node:test，85 个）
 npm run test:d1          # D1 集成测试（vitest-pool-workers，44 个）
+npm run test:markdown    # SSR Markdown 渲染回归（改 markdown.ts 后必跑）
 npm run build            # astro build + scripts/inject-worker-entry.js（生成 dist/）
 npm run deploy           # npm run build + wrangler deploy --config wrangler.deploy.jsonc
 npm run preview:worker   # npm run build + wrangler dev（本地预览 Worker）
@@ -22,7 +23,14 @@ npm run update -- --source openai --limit 5
 npm run audit:source -- --source langchain   # 只读来源审计，不写文件
 ```
 
-env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚本时需自行加载 `.env`。生产 Secrets（`OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`）用 `npx wrangler secret put` 注入。
+> **部署前置**：先 `wrangler d1 migrations apply blogs-wiki --remote`，再 `npm run deploy`。新 SSR 读 `article_versions.translated_at`，远程 D1 未应用迁移时文章页会因缺列整页 500。API 路径建议带尾斜杠（`/api/health/`），否则可能 301/308。
+
+env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚本时需自行加载 `.env`。
+
+**密钥分层**（勿混用）：
+- **Worker（`wrangler secret put`）**：`CONTENT_SYNC_TOKEN`（保护 `/api/content-sync`）
+- **GitHub Actions Secrets**：paid 回退时的 `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`；以及 `CONTENT_SYNC_TOKEN`（Action 调同步 API）
+- **GitHub Actions Variables**：`CONTENT_SYNC_URL`；`TRANSLATION_PROVIDER`（默认 `free`）；可选 `TRANSLATION_PIPELINE` / `FETCH_BACKEND` / 代理相关
 
 ## 架构（已上线）
 
@@ -48,7 +56,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 **Node 开发路径（scripts/update/）**：`npm run update` / `update:dry` / `audit:source`，用于开发、审计、预演。生产内容以 D1 为准；Node 路径的 `src/content/articles/` 与 `src/data/processed-urls.json` 是本地产物（`.gitignore`），由 Action 生成后通过同步脚本写入 D1。
 
-`POST /api/trigger` 已停用并返回 HTTP 410，避免误触发旧 Workflow 生产路径。Workflow 及 `worker/runtime/update-orchestrator.ts` 暂保留，供未来实验、回滚或付费计划评估，不得作为当前部署和运维依据。
+`POST /api/trigger` **源码**已停用并返回 HTTP 410（避免误触发旧 Workflow）；线上是否生效取决于是否已部署该提交。Workflow 及 `worker/runtime/update-orchestrator.ts` 暂保留，供实验/回滚，不得作为当前运维依据。
 
 **来源配置**（`src/data/sources.json`，打包进 Worker）：
 - 来源必须显式声明 `update_mode`：`"active"` 进完整更新，`"dry-run-only"` 只参与 dry-run。新增来源一律先 `dry-run-only`，人工核验后再改 `active`。
@@ -69,16 +77,15 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 ## Cloudflare 迁移状态
 
-**已完成（Phase 1-8 + 组合方案收尾）**：领域模型 + 接口防火墙 → FileRepository → D1 schema（0001-0007，含 articles/article_versions 拆分与译文时间）→ D1Repository → Node 管线接 repository interface → Worker-compatible fetch（Defuddle 提取器）→ Astro SSR 从 D1（网站上线）→ GitHub Actions 内容更新 → `/api/content-sync` 幂等同步 D1。Workflow 运行时代码保留，但生产 binding 已停用。
+**已完成（Phase 1-8 + 组合方案代码）**：领域模型 → FileRepository → D1 schema（0001-0007）→ D1Repository → 管线接 repository → Worker fetch（Defuddle）→ Astro SSR 从 D1（用户域名 live）→ Actions + content-sync + opencode-free **源码与 workflow 已合入本地 main**。
 
-**待办（Phase 9/10 + 收尾）**：
-- 配置 GitHub Secrets/Variables：`CONTENT_SYNC_TOKEN`、`CONTENT_SYNC_URL`；`TRANSLATION_PROVIDER`（默认 free）；付费回退时再配 `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`。
-- 首跑真实更新验证：workflow_dispatch（`dry_run=false`、`source` 指定单源、`limit=1`）观察 opencode-free 免费通道与 `/api/content-sync` → D1 是否端到端可用；确认报告 artifact 与 D1 统计。
-- Phase 9：Pagefind → D1 FTS5 搜索（Pagefind 目前在 Windows 构建有路径问题，已从 build 脚本移除）。
-- Phase 10：删除旧文件 backend（FileRepository / persist.ts / processed-urls.json）。
-- 清理：`worker/index.ts` 已不再作为 Worker 入口（API 已迁移到 `src/pages/api/`）；`worker/__tests__/d1/worker-runtime.test.ts` 仍测旧 HTTP handler，需适配新架构。
+**未闭合（生产门禁，优先于 Phase 9）**：
+- 本地 `main` 超前 `origin/main`（含 content-update workflow）；需 push。
+- 部署含 trigger-410 / 无 Workflow binding 的 Worker；live 复测 `POST /api/trigger/`。
+- 配置 `CONTENT_SYNC_*` + 可选 free/paid 翻译变量；workflow_dispatch 首跑（`dry-run=false`、单源、`limit=1`）。
+- Phase 9：Pagefind → D1 FTS5；Phase 10：删文件 backend；`worker-runtime.test.ts` 适配新入口。
 
-详见 `docs/migration-to-cloudflare.md` 与 `TODO.md`。
+权威进度与 live 证据见 `TODO.md`；路线图细节见 `docs/migration-to-cloudflare.md`。
 
 ## 搜索、输出与探索委托纪律
 

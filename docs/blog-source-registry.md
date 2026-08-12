@@ -26,9 +26,9 @@
 | `eugene-yan` | 正在适配 | [Eugene Yan](https://eugeneyan.com/writing/) | https://eugeneyan.com/writing/ | Applied ML / LLM / 产品实践 | RSS + Sitemap | 无已知官方中文 | https://eugeneyan.com/writing/ | https://eugeneyan.com/writing/ (排除站外跳转占位) |
 | `jay-alammar` | 已适配 | [Jay Alammar](https://newsletter.languagemodels.co/) | https://newsletter.languagemodels.co/ | LLM 可视化教育 | RSS | 无已知官方中文 | https://newsletter.languagemodels.co/ (/p/) | https://newsletter.languagemodels.co/ (/p/<slug>) |
 | `andrej-karpathy` | 已适配 | [Andrej Karpathy](https://karpathy.github.io/) | https://karpathy.github.io/ | LLM 教育 / 个人思考 | RSS | 无已知官方中文 | https://karpathy.github.io/ (日期路径) | https://karpathy.github.io/ (YYYY/MM/DD/<slug>/) |
-| `keli-wen` | 已适配 | [keli-wen](https://keli-wen.github.io/One-Poem-Suffices/) | https://keli-wen.github.io/One-Poem-Suffices/ | LLM / Agent / Context Engineering | Sitemap | 中文原文，en 双语 | https://keli-wen.github.io/One-Poem-Suffices/ | 博客名按 GitHub 昵称统一为 keli-wen；无 RSS；sitemap 无日期，用 GitHub 提交历史兜底（git_date） |
+| `keli-wen` | 已适配 | [LastWhisper](https://keli-wen.github.io/One-Poem-Suffices/) | https://keli-wen.github.io/One-Poem-Suffices/ | LLM / Agent / Context Engineering | Sitemap | 中文原文，en 双语 | https://keli-wen.github.io/One-Poem-Suffices/ | 来源 ID 为 keli-wen（GitHub 昵称），博客显示名 LastWhisper；无 RSS；sitemap 无日期，用 GitHub 提交历史兜底（git_date） |
 | `moonshot` | 已适配 | [Moonshot](https://www.kimi.com/blog/) | https://www.kimi.com/blog/ | LLM 模型 / Agent / Benchmark | Sitemap | 无官方中文，模型翻译 | https://www.kimi.com/blog/ | 来源 ID 已由 kimi 更名为 moonshot；sitemap-ug-blog.xml 带 lastmod；9 篇全技术内容 |
-| `z-ai` | 候选 | [z.ai](https://z.ai/blog) | https://z.ai/blog | LLM / Agent / AI Coding | 无 | 待核验 | 无（https://z.ai/blog 当前 404；https://z.ai/sitemap.xml 未发现 `/blog/`） | 单篇 `https://z.ai/blog/<slug>` 可访问，但未发现官方可枚举文章入口；保持 dry-run-only，禁止自动更新；不得回退到 https://www.zhipuai.cn/zh/news |
+| `z-ai` | 候选 | [Z.ai](https://z.ai/blog) | https://z.ai/blog | LLM / Agent / AI Coding | 无 | 待核验 | 无（https://z.ai/blog 当前 404；https://z.ai/sitemap.xml 未发现 `/blog/`） | 单篇 `https://z.ai/blog/<slug>` 可访问，但未发现官方可枚举文章入口；保持 dry-run-only，禁止自动更新；不得回退到 https://www.zhipuai.cn/zh/news |
 | `github-engineering` | 已适配 | [GitHub Engineering](https://github.blog/engineering/) | https://github.blog/engineering/ | Developer Platform / Engineering | RSS + Sitemap | 无官方中文，模型翻译 | https://github.blog/engineering/ | /engineering/feed/ + post-sitemap；排除 changelog/news-insights/author/category |
 | `trail-of-bits` | 计划中 | [Trail of Bits](https://blog.trailofbits.com/) | https://blog.trailofbits.com/ | Security / Program Analysis | RSS 待复核 | 待核验 | https://blog.trailofbits.com/ | 安全方向，后续收录 |
 | `tailscale` | 计划中 | [Tailscale Blog](https://tailscale.com/blog/) | https://tailscale.com/blog/ | Networking / Zero Trust | RSS | 待核验 | https://tailscale.com/blog/ | 通用工程来源，后续收录 |
@@ -74,7 +74,7 @@
 3. 正在适配（有正文提取阻碍，保持 dry-run-only）：tencent-cloud（`__NEXT_DATA__` JSON 正文 + Unix 时间戳日期）。
 4. 已适配来源持续运行增量更新并抽检质量。
 
-2026-08-09 的 17 个正在适配来源 dry-run 结果见 [`docs/sources/scaffold-validation-2026-08-09.md`](sources/scaffold-validation-2026-08-09.md)；2026-08-10 逐站审计与 URL 边界核验报告见 [`docs/sources/`](sources/)；2026-08-11 新源探索报告：z.ai / Moonshot、腾讯/阿里、Google Security/Meta Engineering/GitHub Engineering。当前 18 个已适配来源。
+2026-08-09 至 08-11 的逐站审计与 URL 边界核验结论已全部沉淀进本表各来源行（含 Z.ai / Moonshot、腾讯/阿里、Google Security/Meta Engineering/GitHub Engineering 探索）。审计明细曾存于 `docs/sources/`，已随结论沉淀删除，git 历史可查。当前 18 个已适配来源。
 发现、官方中文、图片和翻译分块的 V2 设计与启用门槛见 [`docs/update-pipeline-v2.md`](update-pipeline-v2.md)。
 
 ## 暂缓 / 不纳入
@@ -105,7 +105,7 @@
 - [已完成] 发现层 curl 回退（openai.com TLS 指纹拦截）。
 - 为 Hugging Face 增加 org 投稿过滤落地（已配置 `^/blog/[^/]+$` 单段过滤，待抽检质量）。
 - [脚手架完成] 腾讯云正文 `__NEXT_DATA__` JSON 提取适配。
-- z.ai 暂不建设正文提取器：缺少官方可枚举入口，先完成来源边界核验。
+- Z.ai 暂不建设正文提取器：缺少官方可枚举入口，先完成来源边界核验。
 - [脚手架完成] 处理 `src`、`srcset`、`data-src`、`data-lazy-src`、`data-original` 等图片地址并保留原链。
 - [脚手架完成] 翻译前保护链接和图片 URL，翻译后严格校验并原样恢复。
 - [已完成] 增加来源自动审计命令，输出各发现入口与三篇样本报告。

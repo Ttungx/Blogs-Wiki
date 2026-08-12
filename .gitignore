@@ -12,6 +12,9 @@ dist/
 # 临时 SSR 构建检查产物（astro build --outDir）
 .tmp-ssr-check/
 
+# 本地 CSS/阅读页视觉回归产物
+.css-qa/
+
 # 文章正文与运行状态暂不入库（临时；恢复时删除以下两行）
 src/content/articles/
 src/data/processed-urls.json
