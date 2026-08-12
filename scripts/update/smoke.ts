@@ -17,6 +17,7 @@ import {
   resolveVisibleDate,
   resolveImageUrl,
 } from './fetch';
+import type { CarouselNode } from '../../worker/fetch/carousel-collapse';
 import { resolveGitFilePath } from './git-date';
 import { parseArgs } from './index';
 import {
@@ -285,7 +286,10 @@ async function run() {
         '<button class="carousel-arrow carousel-next">›</button></div></div>' +
         '<footer class="site-footer">© 2026 Example Inc. All rights reserved.</footer></div>',
     ).window.document.getElementById('root')!;
-    collapseCarousels(carouselFragment, 'https://example.com/blog/carousel/');
+    collapseCarousels(
+      carouselFragment as unknown as CarouselNode,
+      'https://example.com/blog/carousel/',
+    );
     removeNoiseBlocks(carouselFragment, 'Smoke Article');
     const keptLogos = [...carouselFragment.querySelectorAll('img')].filter((image) =>
       /logo/i.test(image.getAttribute('alt') ?? ''),

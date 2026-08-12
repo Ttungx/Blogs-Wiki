@@ -21,6 +21,7 @@
  */
 
 import { parseHTML } from 'linkedom';
+import { collapseCarousels, type CarouselNode } from './carousel-collapse';
 
 const MIN_CONTENT_CHARS = 200;
 
@@ -119,6 +120,11 @@ export async function extractArticle(input: ExtractionInput): Promise<Extraction
     img.setAttribute('src', src.replace(/x\.com/gi, X_COM_TOKEN));
     patchedSources = true;
   }
+
+  // 客户证言轮播折叠（与 Node 抓取链共用逻辑）：只保留前 3 条
+  // logo + quote，删除轮播 UI，追加原文指引。必须赶在 Defuddle
+  // 转 Markdown 之前执行，否则 16 张 logo 全部进入正文。
+  collapseCarousels(document.body as unknown as CarouselNode, url);
 
   const DefuddleFull = await getDefuddle();
   const result = new DefuddleFull(document, { url, markdown: true }).parse();

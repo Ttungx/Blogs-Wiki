@@ -135,3 +135,44 @@ test('extractArticle: fbsbx.com 图片不被 embedToMarkdown 规则吞掉', asyn
   assert.match(result.contentMarkdown, /media_id=456/, '第二张图也应保留');
   assert.doesNotMatch(result.contentMarkdown, /x__dot__com/, '占位符不应泄漏');
 });
+
+test('extractArticle: 客户证言轮播折叠为前 3 条并删 UI', async () => {
+  // 复刻 Anthropic 类页面：16 条轮播会渲染成 16 张 logo + 无署名引文。
+  // collapseCarousels 应只保留前 3 条、删除计数器/箭头、追加原文指引。
+  const slide = (name: string, quote: string) => `
+    <div class="carousel-item">
+      <img alt="${name} logo" src="https://example.com/${name.toLowerCase()}.png">
+      <blockquote><p>${quote}</p></blockquote>
+    </div>`;
+  const body = `
+    <p>Customer stories below.</p>
+    <div class="testimonial-carousel">
+      <div class="carousel-track">
+        ${slide('Alpha', 'Alpha quote: we built our system with Claude.')}
+        ${slide('Beta', 'Beta quote: Claude Code leveled the playing field.')}
+        ${slide('Gamma', 'Gamma quote: our team ships ten times faster.')}
+        ${slide('Delta', 'Delta quote: this slide must be collapsed away.')}
+      </div>
+      <span class="carousel-counter">1 / 4</span>
+      <button class="carousel-control-next">Next</button>
+    </div>
+    <p>This closing paragraph ensures the article body is comfortably longer
+    than the two hundred character minimum required by the extractor before it
+    returns a result. Lorem ipsum dolor sit amet consectetur adipiscing elit.</p>
+  `;
+  const result = await extractArticle({ html: fullPageHtml({ body }), url: BASE_URL });
+
+  // 前 3 条 logo 与引文保留
+  assert.match(result.contentMarkdown, /Alpha quote/, '第 1 条证言应保留');
+  assert.match(result.contentMarkdown, /Beta quote/, '第 2 条证言应保留');
+  assert.match(result.contentMarkdown, /Gamma quote/, '第 3 条证言应保留');
+  // 第 4 条折叠掉
+  assert.doesNotMatch(result.contentMarkdown, /Delta quote/, '第 4 条证言应被折叠');
+  assert.doesNotMatch(result.contentMarkdown, /delta\.png/, '第 4 张 logo 不应出现');
+  // 轮播 UI 删除
+  assert.doesNotMatch(result.contentMarkdown, /Next/, '轮播箭头不应输出');
+  assert.doesNotMatch(result.contentMarkdown, /1 \/ 4/, '轮播计数器不应输出');
+  // 原文指引追加
+  assert.match(result.contentMarkdown, /更多客户证言请见/, '应追加折叠指引');
+  assert.match(result.contentMarkdown, /\[原文\]\(https:\/\/example\.com\/posts\/test-article\)/, '指引应链回原文');
+});
