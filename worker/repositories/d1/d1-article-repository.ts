@@ -46,6 +46,7 @@ interface VersionRow {
   provenance: string;
   translation_model: string | null;
   original_alt_url: string | null;
+  translated_at: string | null;
   updated_at: string;
 }
 
@@ -80,8 +81,8 @@ const ARTICLE_VERSION_ORIGINAL_SQL = `
 const ARTICLE_VERSION_UPSERT_SQL = `
   INSERT INTO article_versions (
     article_id, language, title, content_markdown, excerpt, provenance,
-    translation_model, original_alt_url
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    translation_model, original_alt_url, translated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(article_id, language) DO UPDATE SET
     title = excluded.title,
     content_markdown = excluded.content_markdown,
@@ -89,6 +90,7 @@ const ARTICLE_VERSION_UPSERT_SQL = `
     provenance = excluded.provenance,
     translation_model = excluded.translation_model,
     original_alt_url = excluded.original_alt_url,
+    translated_at = COALESCE(article_versions.translated_at, excluded.translated_at),
     updated_at = datetime('now')
 `;
 
@@ -225,6 +227,7 @@ export class D1ArticleRepository implements ArticleRepository {
           input.provenance,
           input.translationModel ?? null,
           input.originalAltUrl ?? null,
+          input.provenance === 'model' ? (input.translatedAt ?? new Date().toISOString()) : null,
         ),
     ];
 
@@ -357,6 +360,7 @@ function rowToVersion(row: VersionRow): ArticleVersionRecord {
     provenance: row.provenance as Provenance,
     ...(row.translation_model ? { translationModel: row.translation_model } : {}),
     ...(row.original_alt_url ? { originalAltUrl: row.original_alt_url } : {}),
+    ...(row.translated_at ? { translatedAt: row.translated_at } : {}),
     updatedAt: row.updated_at,
   };
 }

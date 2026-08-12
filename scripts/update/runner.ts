@@ -237,6 +237,7 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
             contentMarkdown: translation.contentMarkdown,
             provenance: translation.translationStatus ?? 'model',
             translationModel: translation.model,
+            translatedAt: new Date().toISOString(),
             ...(translation.originalZhUrl ? { originalAltUrl: translation.originalZhUrl } : {}),
             categories: translation.categories,
           });

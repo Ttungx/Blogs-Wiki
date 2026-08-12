@@ -181,10 +181,11 @@ export class FileArticleRepository implements ArticleRepository {
       title: input.title,
       contentMarkdown: input.contentMarkdown,
       provenance: input.provenance,
-      updatedAt: new Date().toISOString(),
+      updatedAt: input.translatedAt ?? new Date().toISOString(),
     };
     if (input.translationModel) version.translationModel = input.translationModel;
     if (input.originalAltUrl) version.originalAltUrl = input.originalAltUrl;
+    if (input.provenance === 'model') version.translatedAt = version.updatedAt;
 
     await fs.mkdir(path.dirname(targetFile), { recursive: true });
     const content = buildVersionFileContent(source, article, version);

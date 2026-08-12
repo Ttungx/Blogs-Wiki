@@ -175,6 +175,30 @@ describe("D1ArticleRepository.saveVersion", () => {
     expect(second.created).toBe(false);
   });
 
+  test("模型译文保留首次生成时间，重译不覆盖", async () => {
+    const repo = new D1ArticleRepository(env.DB);
+    const saved = await repo.save(makeSaveInput({ article: { url: uniqueUrl() } }));
+    const firstTranslatedAt = "2026-08-10T01:02:03.000Z";
+    const laterTranslatedAt = "2026-08-12T04:05:06.000Z";
+
+    await repo.saveVersion(
+      makeSaveVersionInput(saved.id, {
+        translatedAt: firstTranslatedAt,
+      }),
+    );
+    await repo.saveVersion(
+      makeSaveVersionInput(saved.id, {
+        title: "重译后的你好世界",
+        translatedAt: laterTranslatedAt,
+      }),
+    );
+
+    const version = await repo.getVersion(saved.id, "zh-cn");
+    expect(version).not.toBeNull();
+    expect((version as ArticleVersionRecord).title).toBe("重译后的你好世界");
+    expect((version as ArticleVersionRecord).translatedAt).toBe(firstTranslatedAt);
+  });
+
   test("不存在的 articleId 抛错", async () => {
     const repo = new D1ArticleRepository(env.DB);
     await expect(

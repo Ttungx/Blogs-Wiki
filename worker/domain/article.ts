@@ -264,6 +264,7 @@ export function parseVersionFile(id: string, fileContent: string): {
     provenance: provenance as Provenance,
     updatedAt: versionAt,
   };
+  if (version.provenance === 'model') version.translatedAt = versionAt;
   if (scalars.excerpt) version.excerpt = scalars.excerpt;
   if (scalars.translation_model) version.translationModel = scalars.translation_model;
   if (scalars.original_alt_url) version.originalAltUrl = scalars.original_alt_url;

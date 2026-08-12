@@ -198,6 +198,8 @@ export interface ArticleVersionRecord {
   translationModel?: string;
   /** 官方中文替代 URL（provenance='official-zh' 时有值）。 */
   originalAltUrl?: string;
+  /** 首次生成模型译文的时间；原文及官方/原生中文版本不设置。 */
+  translatedAt?: string;
   updatedAt: string;
 }
 
@@ -216,6 +218,8 @@ export interface SaveVersionInput {
   provenance: Provenance;
   translationModel?: string;
   originalAltUrl?: string;
+  /** 翻译器完成生成的时间。仅模型译文使用，首次写入后不可被重译覆盖。 */
+  translatedAt?: string;
   /** 翻译带来的分类（更新文章身份的 categories）。 */
   categories?: string[];
 }
