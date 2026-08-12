@@ -1,0 +1,129 @@
+name: Content update
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      source_id:
+        description: 只更新指定来源（留空则全部 active 来源）
+        required: false
+        type: string
+      limit:
+        description: 每来源文章数上限
+        required: false
+        default: "3"
+        type: string
+      dry_run:
+        description: 只发现+抓取，不翻译、不写库（验证 runner 网络/IP）
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: blogs-wiki-content-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: 更新内容（发现/抓取/翻译/入库）
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # schedule 触发时 inputs 为空对象，DRY_RUN 取 false。
+      DRY_RUN: ${{ inputs.dry_run || false }}
+      # vars.TRANSLATION_PROVIDER=paid 时回退付费 secrets；默认 free。
+      TRANSLATION_PROVIDER: ${{ vars.TRANSLATION_PROVIDER || 'free' }}
+      INPUT_SOURCE_ID: ${{ inputs.source_id }}
+      INPUT_LIMIT: ${{ inputs.limit || '3' }}
+      # D1 导入需要仓库级 CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets。
+      HAS_CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # opencode-free 免费层经 ocx（OpenAI 兼容网关，loopback 免认证）接入。
+      # 注意：ocx provider add 只写磁盘 config，不更新运行中进程，必须先 add 再 start。
+      # 不用 `ocx ready --wait`：runner 上无 Codex catalog 时 ready 恒为 false
+      # （"sync failed"），改用端口轮询 /v1/models。
+      - name: 启动 opencodex 免费通道
+        if: env.DRY_RUN == 'false' && env.TRANSLATION_PROVIDER == 'free'
+        shell: bash
+        run: |
+          npm install -g @bitkyc08/opencodex
+          ocx provider add opencode-free
+          nohup ocx start --port 10367 > /tmp/ocx.log 2>&1 &
+          echo "ocx pid: $!"
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:10367/v1/models || true)
+            echo "poll $i: HTTP $code"
+            [[ "$code" = "200" ]] && exit 0
+            sleep 2
+          done
+          echo "ocx 网关未就绪；日志："
+          tail -40 /tmp/ocx.log || true
+          exit 1
+
+      - name: 配置翻译通道（free 默认，paid 回退）
+        if: env.DRY_RUN == 'false'
+        shell: bash
+        env:
+          PAID_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PAID_OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          PAID_TRANSLATION_MODEL: ${{ secrets.TRANSLATION_MODEL }}
+        run: |
+          if [[ "$TRANSLATION_PROVIDER" == "paid" ]]; then
+            echo "OPENAI_API_KEY=${PAID_OPENAI_API_KEY}" >> "$GITHUB_ENV"
+            echo "OPENAI_BASE_URL=${PAID_OPENAI_BASE_URL}" >> "$GITHUB_ENV"
+            echo "TRANSLATION_MODEL=${PAID_TRANSLATION_MODEL}" >> "$GITHUB_ENV"
+            echo "::notice::翻译通道：paid（secrets）"
+          else
+            echo "OPENAI_API_KEY=opencodex-loopback" >> "$GITHUB_ENV"
+            echo "OPENAI_BASE_URL=http://127.0.0.1:10367/v1" >> "$GITHUB_ENV"
+            # 模型名必须带 -free 后缀（runner 实测：无后缀走错 auth 路径 → 401 Missing API key）
+            echo "TRANSLATION_MODEL=opencode-free/deepseek-v4-flash-free" >> "$GITHUB_ENV"
+            echo "TRANSLATION_REASONING_EFFORT=max" >> "$GITHUB_ENV"
+            echo "::notice::翻译通道：opencode-free/deepseek-v4-flash-free（reasoning_effort=max，经 ocx 网关）"
+          fi
+
+      - name: Run content update
+        shell: bash
+        run: |
+          ARGS=()
+          if [[ -n "$INPUT_SOURCE_ID" ]]; then ARGS+=(--source "$INPUT_SOURCE_ID"); fi
+          ARGS+=(--limit "$INPUT_LIMIT")
+          if [[ "$DRY_RUN" == "true" ]]; then
+            npm run update:dry -- "${ARGS[@]}"
+          else
+            npm run update -- "${ARGS[@]}"
+          fi
+
+      # 本地文件产物（src/content/articles/）→ 远程 D1。
+      - name: 导入文章到远程 D1
+        if: env.DRY_RUN == 'false' && env.HAS_CLOUDFLARE_TOKEN == 'true'
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node scripts/import-local-articles.mjs
+          npx wrangler d1 execute blogs-wiki --remote --file .tmp-import-articles.sql
+
+      - name: 停止 opencodex
+        if: always() && env.TRANSLATION_PROVIDER == 'free'
+        shell: bash
+        run: |
+          pkill -f "ocx start" || true

@@ -7,9 +7,28 @@ export interface TranslateOptions {
   model: string;
   timeoutMs?: number;
   fetchImpl?: FetchLike;
+  retryOptions?: RetryOptions;
+  /**
+   * OpenAI/DeepSeek 兼容的 reasoning_effort（如 low/high/max）。
+   * 经 ocx 网关透传；DeepSeek V4 Flash 支持 low/high/max。
+   */
+  reasoningEffort?: string;
+}
+
+export interface RetryOptions {
+  /** 429 最多重试次数（不含首次请求），默认 2。 */
+  maxRetries?: number;
+  /** 无 Retry-After 头时的退避间隔，默认 15s。 */
+  retryDelayMs?: number;
 }
 
 const DEFAULT_TIMEOUT_MS = 300_000;
+const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
+  maxRetries: 2,
+  retryDelayMs: 15_000,
+};
+/** Retry-After 合成退避的上限，避免单个请求拖垮整轮更新。 */
+const MAX_BACKOFF_MS = 60_000;
 const RETRY_JSON_HINT =
   '\n\nYour previous response was not valid JSON. You MUST output only valid JSON matching the required shape, with no extra text.';
 
@@ -23,6 +42,34 @@ export class ModelJsonError extends Error {
     super(`model output is not valid JSON: ${truncate(content, 800)}`);
     this.name = 'ModelJsonError';
   }
+}
+
+/** HTTP 429 限流错误：携带上游要求的重试等待时间（毫秒，可能为 null）。 */
+export class RateLimitError extends Error {
+  readonly retryAfterMs: number | null;
+
+  constructor(message: string, retryAfterMs: number | null = null) {
+    super(message);
+    this.name = 'RateLimitError';
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+function parseRetryAfter(header: string | null): number | null {
+  if (!header) return null;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1000, MAX_BACKOFF_MS);
+  }
+  const dateMs = Date.parse(header);
+  if (Number.isFinite(dateMs)) {
+    return Math.min(Math.max(dateMs - Date.now(), 0), MAX_BACKOFF_MS);
+  }
+  return null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function truncate(value: string, maxLength: number): string {
@@ -139,51 +186,68 @@ export async function requestChatCompletion(
   apiKey: string,
   body: unknown,
   timeoutMs: number,
+  retryOptions: RetryOptions = {},
 ): Promise<string> {
-  let response: Response;
-  try {
-    response = await fetchImpl(endpoint, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeoutMs),
+  const { maxRetries, retryDelayMs } = { ...DEFAULT_RETRY_OPTIONS, ...retryOptions };
+
+  const attempt = async (): Promise<string> => {
+    let response: Response;
+    try {
+      response = await fetchImpl(endpoint, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      const timeoutHint = error instanceof Error && error.name === 'TimeoutError'
+        ? ` (timed out after ${timeoutMs}ms)`
+        : '';
+      throw new Error(`translate request failed (${endpoint}): ${reason}${timeoutHint}`);
+    }
+
+    const rawText = await response.text().catch((error: unknown) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(`translate response read failed (HTTP ${response.status}): ${reason}`);
     });
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    const timeoutHint = error instanceof Error && error.name === 'TimeoutError'
-      ? ` (timed out after ${timeoutMs}ms)`
-      : '';
-    throw new Error(`translate request failed (${endpoint}): ${reason}${timeoutHint}`);
-  }
 
-  const rawText = await response.text().catch((error: unknown) => {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`translate response read failed (HTTP ${response.status}): ${reason}`);
-  });
+    if (!response.ok) {
+      const message =
+        `translate request failed (${endpoint}): HTTP ${response.status} ${response.statusText} — ${truncate(rawText, 500)}`;
+      if (response.status === 429) {
+        throw new RateLimitError(message, parseRetryAfter(response.headers.get('retry-after')));
+      }
+      throw new Error(message);
+    }
 
-  if (!response.ok) {
-    throw new Error(
-      `translate request failed (${endpoint}): HTTP ${response.status} ${response.statusText} — ${truncate(rawText, 500)}`,
-    );
-  }
+    let envelope: unknown;
+    try {
+      envelope = JSON.parse(rawText);
+    } catch {
+      throw new Error(`translate response is not JSON (${endpoint}, HTTP ${response.status}): ${truncate(rawText, 500)}`);
+    }
 
-  let envelope: unknown;
-  try {
-    envelope = JSON.parse(rawText);
-  } catch {
-    throw new Error(`translate response is not JSON (${endpoint}, HTTP ${response.status}): ${truncate(rawText, 500)}`);
-  }
+    const content = extractMessageContent(envelope);
+    if (typeof content !== 'string' || content.trim() === '') {
+      throw new Error(
+        `translate response has no message content (${endpoint}, HTTP ${response.status}): ${truncate(rawText, 500)}`,
+      );
+    }
+    return content;
+  };
 
-  const content = extractMessageContent(envelope);
-  if (typeof content !== 'string' || content.trim() === '') {
-    throw new Error(
-      `translate response has no message content (${endpoint}, HTTP ${response.status}): ${truncate(rawText, 500)}`,
-    );
+  for (let attemptCount = 0; ; attemptCount += 1) {
+    try {
+      return await attempt();
+    } catch (error) {
+      if (!(error instanceof RateLimitError) || attemptCount >= maxRetries) throw error;
+      await sleep(error.retryAfterMs ?? retryDelayMs);
+    }
   }
-  return content;
 }
 
 /**
@@ -197,6 +261,8 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
   const endpoint = `${options.baseUrl.replace(/\/+$/, '').replace(/\/chat\/completions$/i, '')}/chat/completions`;
   const model = options.model;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const retryOptions = options.retryOptions ?? {};
+  const reasoningEffort = options.reasoningEffort?.trim() || undefined;
   const fetchImpl = options.fetchImpl ?? fetch;
 
   return async (article, categories) => {
@@ -209,12 +275,13 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
       ];
 
       const run = async (messages: ChatMessage[]): Promise<Record<string, unknown>> => {
-        const body = {
+        const body: Record<string, unknown> = {
           model,
           messages,
           response_format: { type: 'json_object' },
         };
-        const content = await requestChatCompletion(fetchImpl, endpoint, apiKey, body, timeoutMs);
+        if (reasoningEffort) body.reasoning_effort = reasoningEffort;
+        const content = await requestChatCompletion(fetchImpl, endpoint, apiKey, body, timeoutMs, retryOptions);
         return parseModelJson(content);
       };
 

@@ -103,10 +103,11 @@ function buildTranslator(
     );
   }
 
+  const reasoningEffort = (process.env.TRANSLATION_REASONING_EFFORT ?? '').trim() || undefined;
   const pipeline = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase();
   return pipeline === 'v2'
-    ? createTranslateV2Client({ apiKey, baseUrl, model, fetchImpl })
-    : createTranslateClient({ apiKey, baseUrl, model, fetchImpl });
+    ? createTranslateV2Client({ apiKey, baseUrl, model, fetchImpl, reasoningEffort })
+    : createTranslateClient({ apiKey, baseUrl, model, fetchImpl, reasoningEffort });
 }
 
 function selectSources(

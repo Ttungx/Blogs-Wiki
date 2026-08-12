@@ -40,7 +40,8 @@
 
 # 内容更新架构 TODO：
 
-- [ ] 调整为 Cloudflare Worker + GitHub Actions 组合架构
-- [ ] Cloudflare Worker 保留线上站点、API 与 D1 访问职责
-- [ ] GitHub Actions 承担内容更新管线执行职责
-- [ ] 暂不启用 Cloudflare Workflow 承担重计算内容管线
+- [x] 调整为 Cloudflare Worker + GitHub Actions 组合架构（`.github/workflows/content-update.yml` 落地，opencode-free 免费翻译通道经 ocx 网关接入，runner 实测端到端可用）
+- [x] Cloudflare Worker 保留线上站点、API 与 D1 访问职责
+- [x] GitHub Actions 承担内容更新管线执行职责
+- [x] 暂不启用 Cloudflare Workflow 承担重计算内容管线
+- [ ] 首跑真实更新验证：workflow_dispatch（`dry_run=false`、单源、`limit=1`）+ 配置 `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets 后 D1 导入

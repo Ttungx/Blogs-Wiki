@@ -635,9 +635,40 @@ async function run() {
     const body = JSON.parse(String(calls[0].init.body)) as {
       model: string;
       response_format: { type: string };
+      reasoning_effort?: string;
     };
     assert.equal(body.model, 'test-model');
     assert.deepEqual(body.response_format, { type: 'json_object' });
+    assert.equal(body.reasoning_effort, undefined);
+
+    // translate: reasoning_effort 透传到 chat/completions 请求体
+    const effortCalls: Array<{ body: string }> = [];
+    const effortFetch: FetchLike = async (input, init) => {
+      void input;
+      effortCalls.push({ body: String(init?.body ?? '') });
+      return jsonResponse(
+        JSON.stringify({
+          translated_title: '推理标题',
+          categories: ['ai'],
+          content_markdown: '正文',
+        }),
+      );
+    };
+    const effortClient = createTranslateClient({
+      apiKey: 'test-key',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'opencode-free/deepseek-v4-flash-free',
+      fetchImpl: effortFetch,
+      reasoningEffort: 'max',
+    });
+    await effortClient(article, CATEGORIES);
+    assert.equal(effortCalls.length, 1);
+    const effortBody = JSON.parse(effortCalls[0].body) as {
+      model: string;
+      reasoning_effort: string;
+    };
+    assert.equal(effortBody.model, 'opencode-free/deepseek-v4-flash-free');
+    assert.equal(effortBody.reasoning_effort, 'max');
 
     // translate: base URL already ending in /chat/completions must not double-suffix
     const endpointCalls: string[] = [];
@@ -696,6 +727,64 @@ async function run() {
       fetchImpl: emptyFetch,
     });
     await assert.rejects(emptyClient(article, CATEGORIES), /empty content_markdown/);
+
+    // translate: 429 限流退避重试（尊重 Retry-After，覆盖默认退避）
+    let rateCalls = 0;
+    const rateFetch: FetchLike = async () => {
+      rateCalls += 1;
+      if (rateCalls <= 2) {
+        return new Response('rate limited', { status: 429, headers: { 'retry-after': '0' } });
+      }
+      return jsonResponse(
+        JSON.stringify({
+          translated_title: '限流后成功',
+          categories: ['ai'],
+          content_markdown: '正文',
+        }),
+      );
+    };
+    const rateClient = createTranslateClient({
+      apiKey: 'test-key',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'test-model',
+      fetchImpl: rateFetch,
+      retryOptions: { maxRetries: 2, retryDelayMs: 5_000 },
+    });
+    const rateResult = await rateClient(article, CATEGORIES);
+    assert.equal(rateCalls, 3);
+    assert.equal(rateResult.translatedTitle, '限流后成功');
+
+    // translate: 429 无 Retry-After 时用默认退避，重试耗尽后抛出错误
+    let exhaustedCalls = 0;
+    const exhaustedFetch: FetchLike = async () => {
+      exhaustedCalls += 1;
+      return new Response('rate limited', { status: 429 });
+    };
+    const exhaustedClient = createTranslateClient({
+      apiKey: 'test-key',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'test-model',
+      fetchImpl: exhaustedFetch,
+      retryOptions: { maxRetries: 1, retryDelayMs: 0 },
+    });
+    await assert.rejects(exhaustedClient(article, CATEGORIES), /HTTP 429/);
+    assert.equal(exhaustedCalls, 2);
+
+    // translate: 非 429 错误不重试
+    let serverErrorCalls = 0;
+    const serverErrorFetch: FetchLike = async () => {
+      serverErrorCalls += 1;
+      return new Response('boom', { status: 500 });
+    };
+    const serverErrorClient = createTranslateClient({
+      apiKey: 'test-key',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'test-model',
+      fetchImpl: serverErrorFetch,
+      retryOptions: { maxRetries: 2, retryDelayMs: 0 },
+    });
+    await assert.rejects(serverErrorClient(article, CATEGORIES), /HTTP 500/);
+    assert.equal(serverErrorCalls, 1);
 
     console.log('smoke: all update-pipeline checks passed');
   } finally {

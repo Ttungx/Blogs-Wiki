@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Astro SSR + Cloudflare Workers 博客收藏站（**已上线**：`https://blogs-wiki.1323593614.workers.dev`）。内容发现、抓取、翻译、分类、持久化由 Cloudflare Workflow 在边缘运行并写入 D1；网站由 Astro SSR 从 D1 实时读取，新文章写入 D1 后立即可访问（无需 rebuild）。仓库语言为中文，文档与提交信息用中文。
+Astro SSR + Cloudflare Workers 博客收藏站（**已上线**：`https://blogs-wiki.1323593614.workers.dev`）。内容发现、抓取、翻译、分类、持久化由 GitHub Actions 组合架构执行（Node 管线 → 导入 D1）；网站由 Astro SSR 从 D1 实时读取，新文章写入 D1 后立即可访问（无需 rebuild）。仓库语言为中文，文档与提交信息用中文。
 
 ## 命令
 
@@ -17,7 +17,7 @@ npm run build            # astro build + scripts/inject-worker-entry.js（生成
 npm run deploy           # npm run build + wrangler deploy --config wrangler.deploy.jsonc
 npm run preview:worker   # npm run build + wrangler dev（本地预览 Worker）
 npm run update:dry       # Node 开发路径预演：真实网络发现+抓取，不翻译、不写文件
-npm run update           # Node 开发路径完整增量更新，写文章与状态（生产走 Workflow，见下）
+npm run update           # Node 开发路径完整增量更新，写文章与状态（生产走 GitHub Actions，见下）
 npm run update -- --source openai --limit 5
 npm run audit:source -- --source langchain   # 只读来源审计，不写文件
 ```
@@ -45,7 +45,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 ## 内容更新（两条路径）
 
-**生产路径（Cloudflare Workflow）**：`POST /api/trigger`（body：`{ sourceId?, limit?, dryRun? }`）或 Cron schedules 触发 `UpdateWorkflow` → per-source `step.do()`（retry + timeout）→ `worker/runtime/update-orchestrator.ts` 编排 discover → fetch → translate → persist。单文章/单来源失败不拖垮全局，状态记录在 `source_runs`（运行级）+ `source_items`（文章级状态机）。
+**生产路径（GitHub Actions，组合架构）**：`.github/workflows/content-update.yml`（cron `17 2 * * *` 即 02:17 UTC + `workflow_dispatch` 手动触发）在 GitHub 托管 runner 上执行 Node 管线（发现/抓取/翻译/分类）→ 写本地文件（`src/content/articles/`）→ `scripts/import-local-articles.mjs` 生成 SQL → `wrangler d1 execute --remote` 导入 D1。Cloudflare Workflow（`POST /api/trigger`）暂不启用。单文章/单来源失败不拖垮全局（runner 内 try/catch 隔离），D1 状态记录在 `source_runs`（运行级）+ `source_items`（文章级状态机）。注意：runner 每次全新 checkout，`processed-urls.json` 本地状态不保留，重复导入由 articles 表 UPSERT 幂等兜底。
 
 **Node 开发路径（scripts/update/）**：`npm run update` / `update:dry` / `audit:source`，用于开发、审计、预演。生产内容以 D1 为准，Node 路径的 `src/content/articles/` 与 `src/data/processed-urls.json` 是本地产物（`.gitignore`），不要手工编辑后指望提交。
 
@@ -53,7 +53,11 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 - 来源必须显式声明 `update_mode`：`"active"` 进完整更新，`"dry-run-only"` 只参与 dry-run。新增来源一律先 `dry-run-only`，人工核验后再改 `active`。
 - 每源默认 3 篇（`--limit` 可调）。无发布日期的来源（如 Paul Graham）无法生成文章，不要加入自动更新来源。
 - 分类只能从 `src/config/categories` 预定义集合选。
-- 翻译必填三个 Secrets；本地网络受限时 `USE_PROXY=true` + `PROXY_URL`（默认 `http://127.0.0.1:7897`）。个别站点（openai.com）拦截 Node TLS 指纹，抓取自动回退系统 `curl`（Node 侧通过 `worker/fetch/curl-runner.ts` 注册，Worker 运行时无 curl 则跳过回退）。
+- **翻译通道**（`TRANSLATION_PROVIDER`，GitHub Action 用仓库 `vars` 控制，默认 `free`）：
+  - `free`（默认，翻译零成本）：经本机 ocx 网关（`npm i -g @bitkyc08/opencodex`）走 **opencode-free** 免费层，env 为 `OPENAI_BASE_URL=http://127.0.0.1:10367/v1`、`TRANSLATION_MODEL=opencode-free/deepseek-v4-flash-free`、`TRANSLATION_REASONING_EFFORT=max`、`OPENAI_API_KEY=任意非空`（loopback 免认证）。模型名必须带 `-free` 后缀（GitHub runner 实测：`opencode-free/deepseek-v4-flash` 无后缀走错 auth 路径 → 401 Missing API key）。客户端在 chat/completions 请求体顶层传 `reasoning_effort`（DeepSeek V4 Flash 支持 low/high/max；ocx inbound 透传）。⚠️ `ocx provider add opencode-free` 只写磁盘 config、**不更新运行中进程**，顺序必须「先 add 再 `ocx start --port 10367`」。免费层约 200 请求/5 小时、15-20 RPM，429 常无 Retry-After——客户端已内置退避重试（尊重 Retry-After，无则 ~15s，最多 2 次）。prompt 可能被留存训练，只传公开内容。
+  - `paid`（回退）：三个 Secrets（`OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`）。
+  - **mimo-free 已官方下线**（`free-api-sunset.ts`：`FREE_API_SUNSET_AT = 2026-07-26T10:00Z`，返回 `Unsupported model mimo-auto`），不要接入。
+- 本地网络受限时 `USE_PROXY=true` + `PROXY_URL`（默认 `http://127.0.0.1:7897`）。个别站点（openai.com）拦截 Node TLS 指纹，抓取自动回退系统 `curl`（Node 侧通过 `worker/fetch/curl-runner.ts` 注册，Worker 运行时无 curl 则跳过回退）。
 
 ## 路书（docs/，先读再动手）
 
@@ -67,7 +71,8 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 **已完成（Phase 1-8）**：领域模型 + 接口防火墙 → FileRepository → D1 schema（0001-0005，含 articles/article_versions 拆分）→ D1Repository → Node 管线接 repository interface → Worker-compatible fetch（Defuddle 提取器）→ Workflow 运行时（dry-run 端到端验证）→ Astro SSR 从 D1（网站上线）。
 
 **待办（Phase 9/10 + 收尾）**：
-- 注入生产 Secrets 并全量运行 Workflow（真实翻译，D1 填充文章）。
+- 首跑真实更新验证：workflow_dispatch 触发（`dry_run=false`、`source_id` 指定单源、`limit=1`）观察 opencode-free 免费通道与 D1 导入是否端到端可用。
+- 注入付费回退 Secrets（`OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`，仅 `TRANSLATION_PROVIDER=paid` 时使用）。
 - 启用 Cron schedules（`wrangler.deploy.jsonc` 的 workflows binding 加 `"schedules": ["17 2 * * *"]`，对应原 CI 的 02:17 UTC）。
 - Phase 9：Pagefind → D1 FTS5 搜索（Pagefind 目前在 Windows 构建有路径问题，已从 build 脚本移除）。
 - Phase 10：删除旧文件 backend（FileRepository / persist.ts / processed-urls.json）。
