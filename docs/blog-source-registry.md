@@ -1,6 +1,6 @@
 # 博客适配开发登记表
 
-所有博客的审核、适配阶段、阻碍与后续顺序以本表为准。最后更新：2026-08-11。
+所有博客的审核、适配阶段、阻碍与后续顺序以本表为准。最后更新：2026-08-12。
 
 | ID | 适配状态 | 来源 | 来源地址 | 方向 | 已验证发现入口 | 中文 / 本地化 | 收录文章索引 URL 来源 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -36,6 +36,7 @@
 | `meta-engineering` | 已适配 | [Meta Engineering](https://engineering.fb.com/) | https://engineering.fb.com/ | Large-scale Engineering | RSS + Sitemap | 无官方中文，模型翻译 | https://engineering.fb.com/ | sitemap_index 仅取 post-sitemap；排除 meta-tech-podcast |
 | `google-security` | 已适配 | [Google Security](https://blog.google/security/) | https://blog.google/security/ | Security | RSS + Sitemap | 无官方中文，模型翻译 | https://blog.google/security/ | en-us sitemap /security/ 58 条；勿用全站 /rss/ |
 | `tencent-cloud` | 正在适配 | [腾讯云开发者社区](https://cloud.tencent.com/developer/) | https://cloud.tencent.com/developer/ | AI / LLM / 云工程（UGC） | 列表页 | 官方简体中文原生 | https://cloud.tencent.com/developer/ | 正文在 `__NEXT_DATA__` JSON 需提取适配；日期为 Unix 时间戳；限定技术工程专栏/混元专区子入口 |
+| `dan-koe` | 已适配 | [Dan Koe](https://letters.thedankoe.com/) | https://letters.thedankoe.com/ | 个人成长 / AI 时代技能 / 创作 | RSS + Sitemap | 无已知官方中文 | https://letters.thedankoe.com/ (/p/<slug>) | Substack（future/proof）；RSS 20 条 + sitemap 90 条，3 篇样本审计通过；已转 active，6 篇（3 en + 3 zh）全量链路验证通过 |
 | `mozilla-hacks` | 计划中 | [Mozilla Hacks](https://hacks.mozilla.org/) | https://hacks.mozilla.org/ | Web Platform | RSS | 待核验 | https://hacks.mozilla.org/ | 可能存在 WAF 抓取障碍 |
 | `datadog-engineering` | 计划中 | [Datadog Engineering](https://www.datadoghq.com/blog/engineering/) | https://www.datadoghq.com/blog/engineering/ | Observability / Infrastructure | RSS | 待核验 | https://www.datadoghq.com/blog/engineering/ | 通用工程来源，后续收录 |
 | `shopify-engineering` | 计划中 | [Shopify Engineering](https://shopify.engineering/) | https://shopify.engineering/ | Backend / Commerce Infrastructure | Feed 待复核 | 待核验 | https://shopify.engineering/ | 通用工程来源，后续收录 |

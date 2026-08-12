@@ -554,5 +554,19 @@
       "^/developer/column",
       "^/developer/zone"
     ]
+  },
+  {
+    "id": "dan-koe",
+    "name": "Dan Koe",
+    "type": "personal",
+    "homepage_url": "https://thedankoe.com/",
+    "blog_url": "https://letters.thedankoe.com/",
+    "domain": "letters.thedankoe.com",
+    "rss_url": "https://letters.thedankoe.com/feed",
+    "sitemap_url": "https://letters.thedankoe.com/sitemap.xml",
+    "update_mode": "active",
+    "article_paths": [
+      "/p"
+    ]
   }
 ]
