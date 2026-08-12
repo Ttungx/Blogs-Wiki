@@ -25,7 +25,7 @@ const blog = blogs.find((b) => b.id === blogId);
 if (!blog) return new Response('Not Found', { status: 404 });
 
 // 渲染 markdown（D1 中的 content_markdown）
-const html = await renderMarkdown(articleData.contentMarkdown);
+const html = await renderMarkdown(articleData.contentMarkdown, { baseUrl: articleData.originalUrl });
 
 // 原版标题：有 en 版本时显示，否则不显示
 const enArticle = await getArticle(db, blogId, slug, 'en');
@@ -40,17 +40,14 @@ const relatedArticles = (await listArticlesByBlog(db, blogId, 'zh-cn'))
 const availableLanguages = await getAvailableLanguages(db, blogId, slug);
 
 const publishedDate = parseDateSafe(articleData.publishedAt);
-// ArticleDetail 未提供版本时间，暂时以原文发表日期作为"译于"时间
-const versionDate = publishedDate;
+const translatedDate = parseDateSafe(articleData.translatedAt);
+const versionDate = parseDateSafe(articleData.versionUpdatedAt);
+const secondaryDate = translatedDate ?? versionDate;
+const secondaryLabel = translatedDate ? '译文生成' : '收录更新';
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
-});
-const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
 });
 ---
 
@@ -98,33 +95,20 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
               )}
             </strong>
           </div>
-          <div>
-            <span>译于</span>
-            <strong>
-              {versionDate && (
-                <time datetime={versionDate.toISOString()}>{dateFormatter.format(versionDate)}</time>
-              )}
-            </strong>
-          </div>
+          {secondaryDate && (
+            <div>
+              <span>{secondaryLabel}</span>
+              <strong>
+                <time datetime={secondaryDate.toISOString()}>{dateFormatter.format(secondaryDate)}</time>
+              </strong>
+            </div>
+          )}
           <div>
             <span>分类</span>
             <p>
               {articleData.categories.map((category) => <CategoryPill label={category} />)}
             </p>
           </div>
-          {articleData.translationModel && (
-            <div>
-              <span>翻译模型</span>
-              <strong>{articleData.translationModel}</strong>
-            </div>
-          )}
-          <div>
-            <span>原文语言</span>
-            <strong>{articleData.originalLanguage.toUpperCase()}</strong>
-          </div>
-          <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
-            查看原文 <span aria-hidden="true">↗</span>
-          </a>
         </div>
       </header>
 
@@ -152,9 +136,7 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
                     <strong>{relatedArticle.title}</strong>
                   </span>
                   {relatedDate && (
-                    <time datetime={relatedDate.toISOString()}>
-                      {compactDateFormatter.format(relatedDate)}
-                    </time>
+                    <time datetime={relatedDate.toISOString()}>{dateFormatter.format(relatedDate)}</time>
                   )}
                   <i aria-hidden="true">↗</i>
                 </a>

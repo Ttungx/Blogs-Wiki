@@ -14,12 +14,23 @@ const { availableLanguages, currentLanguage, blogId, slug } = Astro.props;
 const base = `articles/${blogId}/${slug}/`;
 const langHref = (lang: string): string =>
   lang === 'zh-cn' ? sitePath(base) : sitePath(`${base}${lang}/`);
-const langLabel = (lang: string): string => (lang === 'zh-cn' ? '中文' : 'English');
+// 页面语言决定切换器自身文案：en 页不出现中文，zh 页保持中文
+const isEnglishPage = currentLanguage === 'en';
+const navLabel = isEnglishPage ? 'Reading language' : '阅读语言';
+const langLabel = (lang: string): string => {
+  if (lang === 'zh-cn') return isEnglishPage ? 'Chinese' : '中文';
+  return isEnglishPage ? 'English' : 'EN';
+};
 ---
 {availableLanguages.length > 1 && (
-  <nav class="reader-langs" aria-label="语言切换">
+  <nav class="reader-langs" aria-label={navLabel}>
     {availableLanguages.map((lang) => (
-      <a href={langHref(lang)} class={lang === currentLanguage ? 'active' : ''} lang={lang}>
+      <a
+        href={langHref(lang)}
+        class={lang === currentLanguage ? 'active' : ''}
+        aria-current={lang === currentLanguage ? 'page' : undefined}
+        lang={lang}
+      >
         {langLabel(lang)}
       </a>
     ))}

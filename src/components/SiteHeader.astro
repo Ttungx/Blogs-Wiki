@@ -1,24 +1,30 @@
 ---
 import { sitePath } from '../lib/urls';
 
+interface Props {
+  lang?: string;
+}
+
 const currentPath = Astro.url.pathname;
 const searchActive = currentPath.includes('/search');
 const githubUrl = 'https://github.com/Ttungx/Blogs-Wiki';
+const { lang = 'zh-CN' } = Astro.props as Props;
+const isEnglish = lang.toLowerCase().startsWith('en');
 ---
 
 <header class="site-header">
   <div class="header-inner shell">
-    <a class="wordmark" href={sitePath()} aria-label="Blogs Wiki 首页">
+    <a class="wordmark" href={sitePath()} aria-label={isEnglish ? 'Blogs Wiki home' : 'Blogs Wiki 首页'}>
       <span>Blogs Wiki</span>
     </a>
 
-    <nav class="site-nav" aria-label="主导航">
+    <nav class="site-nav" aria-label={isEnglish ? 'Primary navigation' : '主导航'}>
       <a href={sitePath('search/')} aria-current={searchActive ? 'page' : undefined}>
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <circle cx="8.5" cy="8.5" r="5.75"></circle>
           <path d="m13 13 4 4"></path>
         </svg>
-        搜索
+        {isEnglish ? 'Search' : '搜索'}
       </a>
       <a href={githubUrl} target="_blank" rel="noreferrer">
         <svg class="github-icon" viewBox="0 0 24 24" aria-hidden="true">

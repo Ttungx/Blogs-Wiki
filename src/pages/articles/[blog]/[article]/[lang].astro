@@ -27,10 +27,11 @@ const blog = blogs.find((b) => b.id === blogId);
 if (!blog) return new Response('Not Found', { status: 404 });
 
 // 渲染 markdown（D1 中的 content_markdown）
-const html = await renderMarkdown(articleData.contentMarkdown);
+const html = await renderMarkdown(articleData.contentMarkdown, { baseUrl: articleData.originalUrl });
 
-// 相关文章：同来源其他文章（zh-cn 版本，链接到中文默认路由）
-const relatedArticles = (await listArticlesByBlog(db, blogId, 'zh-cn'))
+const relatedLanguage = targetLang === 'en' ? 'en' : 'zh-cn';
+// 相关文章优先跟随当前阅读语言，避免 en 页首屏英文、列表突然回落中文。
+const relatedArticles = (await listArticlesByBlog(db, blogId, relatedLanguage))
   .filter((a) => a.id !== articleData.id)
   .slice(0, 3);
 
@@ -38,24 +39,47 @@ const relatedArticles = (await listArticlesByBlog(db, blogId, 'zh-cn'))
 const availableLanguages = await getAvailableLanguages(db, blogId, slug);
 
 const publishedDate = parseDateSafe(articleData.publishedAt);
-// ArticleDetail 未提供版本时间，暂时以原文发表日期作为"版本"时间
-const versionDate = publishedDate;
-const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
+const translatedDate = parseDateSafe(articleData.translatedAt);
+const versionDate = parseDateSafe(articleData.versionUpdatedAt);
+const secondaryDate = translatedDate ?? versionDate;
+const locale = targetLang === 'en' ? 'en-US' : 'zh-CN';
+const t = {
+  from: targetLang === 'en' ? 'From' : '来自',
+  published: targetLang === 'en' ? 'Published' : '原文发表于',
+  updated:
+    targetLang === 'en'
+      ? translatedDate
+        ? 'Translation generated'
+        : 'Catalog updated'
+      : '收录更新',
+  categories: targetLang === 'en' ? 'Categories' : '分类',
+  readNextEyebrow: targetLang === 'en' ? 'Read next' : 'Read next · 延伸阅读',
+  readNextTitle: targetLang === 'en' ? 'More articles' : '继续阅读',
+  viewAll: targetLang === 'en' ? 'View all articles' : '查看全部文章',
+  copyright:
+    targetLang === 'en'
+      ? 'Copyright remains with the original author and source site.'
+      : '原文版权归原作者与来源网站所有。',
+  continueOriginal: targetLang === 'en' ? 'Continue to original' : '继续阅读原文',
+  backToCollection: targetLang === 'en' ? 'Back to collection' : `返回 ${blog.data.name} 收藏册`,
+};
+// meta description 分隔符跟随页面语言（en 页不用全角冒号）
+const description =
+  targetLang === 'en'
+    ? `${blog.data.name}: ${articleData.title}`
+    : `${blog.data.name}：${articleData.title}`;
+const dateFormatter = new Intl.DateTimeFormat(locale, {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
-});
-const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
 });
 ---
 
 <BaseLayout
   title={articleData.title}
-  description={`${blog.data.name}：${articleData.title}`}
+  description={description}
   pageClass="reader-page"
+  lang={targetLang === 'en' ? 'en' : 'zh-CN'}
 >
   <main id="main-content" data-pagefind-body>
     <article class="reader">
@@ -70,7 +94,7 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
             size="small"
           />
           <span>
-            <small>来自</small>
+            <small>{t.from}</small>
             <strong data-pagefind-filter="blog">{blog.data.name}</strong>
           </span>
           <i aria-hidden="true">↗</i>
@@ -88,40 +112,27 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
 
         <div class="reader-meta-grid">
           <div>
-            <span>原文发表于</span>
+            <span>{t.published}</span>
             <strong>
               {publishedDate && (
                 <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
               )}
             </strong>
           </div>
+          {secondaryDate && (
+            <div>
+              <span>{t.updated}</span>
+              <strong>
+                <time datetime={secondaryDate.toISOString()}>{dateFormatter.format(secondaryDate)}</time>
+              </strong>
+            </div>
+          )}
           <div>
-            <span>版本</span>
-            <strong>
-              {versionDate && (
-                <time datetime={versionDate.toISOString()}>{dateFormatter.format(versionDate)}</time>
-              )}
-            </strong>
-          </div>
-          <div>
-            <span>分类</span>
+            <span>{t.categories}</span>
             <p>
               {articleData.categories.map((category) => <CategoryPill label={category} />)}
             </p>
           </div>
-          {articleData.translationModel && (
-            <div>
-              <span>翻译模型</span>
-              <strong>{articleData.translationModel}</strong>
-            </div>
-          )}
-          <div>
-            <span>原文语言</span>
-            <strong>{articleData.originalLanguage.toUpperCase()}</strong>
-          </div>
-          <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
-            查看原文 <span aria-hidden="true">↗</span>
-          </a>
         </div>
       </header>
 
@@ -133,25 +144,29 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
         <section class="reader-related shell" aria-labelledby="reader-related-title">
           <header class="reader-related-heading">
             <div>
-              <p class="eyebrow">Read next · 延伸阅读</p>
-              <h2 id="reader-related-title">继续阅读</h2>
+              <p class="eyebrow">{t.readNextEyebrow}</p>
+              <h2 id="reader-related-title">{t.readNextTitle}</h2>
             </div>
-            <a href={sitePath(`blogs/${blog.id}/`)}>查看全部文章 ↗</a>
+            <a href={sitePath(`blogs/${blog.id}/`)}>{t.viewAll} ↗</a>
           </header>
           <div class="reader-related-list">
             {relatedArticles.map((relatedArticle, index) => {
               const relatedDate = parseDateSafe(relatedArticle.publishedAt);
               const relatedSlug = relatedArticle.id.split('/').slice(1).join('/');
               return (
-                <a href={sitePath(`articles/${relatedArticle.sourceId}/${relatedSlug}/`)}>
+                <a
+                  href={sitePath(
+                    relatedLanguage === 'en'
+                      ? `articles/${relatedArticle.sourceId}/${relatedSlug}/en/`
+                      : `articles/${relatedArticle.sourceId}/${relatedSlug}/`,
+                  )}
+                >
                   <span class="reader-related-number">{String(index + 1).padStart(2, '0')}</span>
                   <span class="reader-related-copy">
                     <strong>{relatedArticle.title}</strong>
                   </span>
                   {relatedDate && (
-                    <time datetime={relatedDate.toISOString()}>
-                      {compactDateFormatter.format(relatedDate)}
-                    </time>
+                    <time datetime={relatedDate.toISOString()}>{dateFormatter.format(relatedDate)}</time>
                   )}
                   <i aria-hidden="true">↗</i>
                 </a>
@@ -163,12 +178,12 @@ const compactDateFormatter = new Intl.DateTimeFormat('zh-CN', {
 
       <footer class="reader-end shell">
         <div>
-          <p>原文版权归原作者与来源网站所有。</p>
-          <a href={articleData.originalUrl} target="_blank" rel="noreferrer">继续阅读原文 ↗</a>
+          <p>{t.copyright}</p>
+          <a href={articleData.originalUrl} target="_blank" rel="noreferrer">{t.continueOriginal} ↗</a>
         </div>
         <a class="back-to-collection" href={sitePath(`blogs/${blog.id}/`)}>
           <span aria-hidden="true">←</span>
-          返回 {blog.data.name} 收藏册
+          {t.backToCollection}
         </a>
       </footer>
     </article>

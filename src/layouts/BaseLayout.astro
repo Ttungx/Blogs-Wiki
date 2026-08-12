@@ -9,6 +9,7 @@ interface Props {
   description?: string;
   image?: string;
   pageClass?: string;
+  lang?: string;
 }
 
 const {
@@ -16,14 +17,16 @@ const {
   description = 'A curated wiki of translated blogs.',
   image,
   pageClass = '',
+  lang = 'zh-CN',
 } = Astro.props;
 
 const pageTitle = title === 'Blogs Wiki' ? title : `${title} — Blogs Wiki`;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin);
+const isEnglish = lang.toLowerCase().startsWith('en');
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -42,9 +45,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin);
     <title>{pageTitle}</title>
   </head>
   <body class={pageClass}>
-    <a class="skip-link" href="#main-content">跳到正文</a>
-    <SiteHeader />
+    <a class="skip-link" href="#main-content">{isEnglish ? 'Skip to content' : '跳到正文'}</a>
+    <SiteHeader lang={lang} />
     <slot />
-    <SiteFooter />
+    <SiteFooter lang={lang} />
   </body>
 </html>

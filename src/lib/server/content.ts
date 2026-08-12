@@ -23,6 +23,8 @@ export interface ArticleDetail {
   provenance: string;
   translationModel: string | null;
   originalAltUrl: string | null;
+  translatedAt: string | null;
+  versionUpdatedAt: string;
   categories: string[];
 }
 
@@ -53,6 +55,8 @@ interface ArticleJoinRow {
   provenance: string;
   translation_model: string | null;
   original_alt_url: string | null;
+  translated_at: string | null;
+  updated_at: string;
 }
 
 /** 从 blogId + slug 构造 D1 article id。 */
@@ -68,10 +72,17 @@ export function blogIdFromArticleId(articleId: string): string {
 /**
  * 安全解析日期文本。缺失或无法解析时返回 null，
  * 调用方负责条件渲染，避免 `new Date(bad).toISOString()` 抛 RangeError 导致整页 500。
+ *
+ * D1 的 `datetime('now')` 返回 `YYYY-MM-DD HH:mm:ss`（UTC，无时区后缀）。
+ * JS 引擎会把无时区字符串按本地时区解析，东八区等环境可能错一天，
+ * 因此这种格式统一补 `Z` 按 UTC 解析；ISO 8601 / 纯日期等其余格式保持既有行为。
  */
 export function parseDateSafe(value: string | null | undefined): Date | null {
   if (!value) return null;
-  const date = new Date(value);
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(value)
+    ? `${value}Z`
+    : value;
+  const date = new Date(normalized);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -92,7 +103,7 @@ export async function getArticle(
       `SELECT a.id, a.source_id, a.original_url, a.original_language, a.published_at,
               a.image_url, a.author, a.source_domain,
               v.title, v.content_markdown, v.excerpt, v.provenance,
-              v.translation_model, v.original_alt_url
+              v.translation_model, v.original_alt_url, v.translated_at, v.updated_at
        FROM articles a
        JOIN article_versions v ON v.article_id = a.id AND v.language = ?
        WHERE a.id = ?`,
@@ -119,6 +130,8 @@ export async function getArticle(
     provenance: row.provenance,
     translationModel: row.translation_model,
     originalAltUrl: row.original_alt_url,
+    translatedAt: row.translated_at,
+    versionUpdatedAt: row.updated_at,
     categories,
   };
 }
