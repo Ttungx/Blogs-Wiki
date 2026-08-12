@@ -104,51 +104,48 @@
     line-height: 1.72;
   }
 
-  /* ── 表格：横向滚动容器 + 编辑式表格（markdown.ts 包裹 .table-scroll） ──
-     旧版用 --line(#e9e6df) 做边框，在 paper 上几乎不可见 → 视觉上「没结构」。
-     改为：容器/表头用 --line-strong，行间用斑马纹（不依赖细边可见性）保证可读。 */
+  /* ── 表格：结构化正文，非 dashboard 卡片 ──
+     保留 .table-scroll 做移动端横滑；去掉外框/圆角/斑马/表头底色。 */
   .prose.blogs-wiki-prose .table-scroll {
     width: 100%;
     margin-block: 2em;
     overflow-x: auto;
-    border: 1px solid var(--line-strong);
-    border-radius: 8px;
-    background: var(--paper);
     -webkit-overflow-scrolling: touch;
   }
 
   .prose.blogs-wiki-prose .table-scroll table {
     width: 100%;
     margin: 0;
-    border-collapse: separate;
-    border-spacing: 0;
+    border-collapse: collapse;
     font-family: var(--sans);
-    font-size: 13.5px;
-    line-height: 1.6;
+    font-size: inherit;
+    line-height: 1.65;
+  }
+
+  .prose.blogs-wiki-prose .table-scroll thead {
+    border-bottom: 1px solid var(--line-strong);
   }
 
   .prose.blogs-wiki-prose .table-scroll thead th {
-    background: var(--paper-soft);
+    background: transparent;
     color: var(--text-primary);
     font-weight: 600;
-    border-bottom: 1px solid var(--line-strong);
     white-space: nowrap;
+  }
+
+  .prose.blogs-wiki-prose .table-scroll tbody tr {
+    border-bottom: 1px solid var(--line);
   }
 
   .prose.blogs-wiki-prose .table-scroll th,
   .prose.blogs-wiki-prose .table-scroll td {
-    padding: 11px 15px;
-    border-bottom: 1px solid var(--line);
+    padding: 0.7rem 0.85rem;
+    background: transparent;
     text-align: left;
     vertical-align: top;
   }
 
-  /* 斑马纹：偶数行轻底色，让行清晰可辨 */
-  .prose.blogs-wiki-prose .table-scroll tbody tr:nth-child(even) td {
-    background: color-mix(in srgb, var(--paper-soft) 50%, var(--paper));
-  }
-
-  .prose.blogs-wiki-prose .table-scroll tbody tr:last-child td {
+  .prose.blogs-wiki-prose .table-scroll tbody tr:last-child {
     border-bottom: 0;
   }
 
