@@ -1,5 +1,6 @@
 import { categoryPrompt, normalizeCategories } from './classify';
-import { createTranslationPlan } from './translation-plan';
+import { assertMathIntegrity } from './content-integrity';
+import { createTranslationPlan, restoreMarkdown } from './translation-plan';
 import {
   ModelJsonError,
   parseModelJson,
@@ -195,35 +196,20 @@ export function createTranslateV2Client(options: TranslateV2Options): TranslateA
     const translatedBodies: string[] = [];
     for (const chunk of plan.chunks) {
       const translated = await translateChunk(options, endpoint, chunk.source, chunk.headingPath);
-      const restored = restoreChunk(translated, chunk.spans.map((span) => span));
+      const restored = restoreMarkdown(translated, chunk.spans);
       translatedBodies.push(restored);
     }
+
+    const contentMarkdown = translatedBodies.join('\n\n');
+    assertMathIntegrity(article.contentMarkdown, contentMarkdown);
 
     return {
       translatedTitle,
       categories: classified,
-      contentMarkdown: translatedBodies.join('\n\n'),
+      contentMarkdown,
       model: options.model,
       translationStatus: 'model',
       ...(article.officialZhUrl ? { originalZhUrl: article.officialZhUrl } : {}),
     };
   };
-}
-
-function restoreChunk(text: string, spans: Array<{ token: string; value: string }>): string {
-  let restored = text;
-  for (const span of spans) {
-    const occurrences = restored.split(span.token).length - 1;
-    if (occurrences !== 1) {
-      throw new Error(
-        `restore failed: token ${span.token} appears ${occurrences} times after translation, expected exactly 1 (model may have dropped or duplicated protected content)`,
-      );
-    }
-    restored = restored.split(span.token).join(span.value);
-  }
-  const leftover = restored.match(/\{\{BW:(?:url|code|inline-code|html):\d+\}\}/g);
-  if (leftover) {
-    throw new Error(`restore failed: unexpected leftover token "${leftover[0]}"`);
-  }
-  return restored;
 }
