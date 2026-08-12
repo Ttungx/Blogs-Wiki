@@ -196,6 +196,24 @@
     white-space: nowrap;
   }
 
+  /* ── 行内 code：与代码块卡片风格呼应，区别于 Typography 通用灰色 pill ──
+     :not(pre) > code 排除 Shiki pre 内的 code（pre code 已单独归零）。 */
+  .prose.blogs-wiki-prose :not(pre) > code {
+    padding: 0.12em 0.38em;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--paper-soft);
+    color: var(--text-primary);
+    font-family: var(--mono);
+    font-size: 0.82em;
+    overflow-wrap: anywhere;
+  }
+
+  /* ── 图片：圆角与表格/证言/代码块一致；证言 logo 已单独归零不受影响 ── */
+  .prose.blogs-wiki-prose :not(.reader-testimonial-logo) > img {
+    border-radius: 6px;
+  }
+
   /* ── 移动端（≤640px）：证言卡片与代码块收紧 ── */
   @media (max-width: 640px) {
     .prose.blogs-wiki-prose .reader-testimonial {
