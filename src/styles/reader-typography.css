@@ -6,6 +6,8 @@
  * - 显式不引入 Tailwind Preflight（全站 reset 由 src/styles/global.css 负责），
  *   避免污染 Header / 首页 / 收藏册 / 搜索等非阅读页。
  * - 仅在文章路由（src/pages/articles/**）引入本文件，缩窄 CSS 作用域。
+ * - 只覆盖 Typography 不提供、或 Blogs Wiki 特有的结构；其余（p / 标题节奏 /
+ *   行内 code / hr / blockquote / img / list）一律信 Typography 默认。
  *
  * 生成的 CSS 为构建期静态产物，不向 Worker 打包运行时 JS / WASM。
  */
@@ -18,11 +20,9 @@
 @plugin "@tailwindcss/typography";
 
 /**
- * Blogs Wiki 品牌 token 映射 —— 把 Typography 的 --tw-prose-* 变量
- * 指向项目既有设计 token（global.css :root），不造第二套颜色。
- *
- * 用复合选择器 .prose.blogs-wiki-prose（specificity 0,2,0）压过 Typography
- * 默认的 .prose（0,1,0），无论层级先后都稳定生效。
+ * Blogs Wiki 品牌 token 映射 + 自定义结构覆盖。
+ * 复合选择器 .prose.blogs-wiki-prose（specificity 0,2,0 起）压过 Typography
+ * 默认的 .prose / .prose :where(...)（至多 0,1,0），无论层级先后都稳定生效。
  */
 @layer components {
   .prose.blogs-wiki-prose {
@@ -46,8 +46,185 @@
     font-family: var(--sans);
   }
 
-  /* 标题沿用编辑性字体（与全站标题一致）。 */
+  /* 标题沿用编辑性字体，与全站标题一致。 */
   .prose.blogs-wiki-prose :is(h2, h3, h4) {
     font-family: var(--editorial);
+  }
+
+  /* 锚点滚动：sticky header 下跳转不留白（Typography 不设 scroll-margin）。 */
+  .prose.blogs-wiki-prose :is(h2, h3, h4, h5, h6),
+  .prose.blogs-wiki-prose :is(ul, ol, blockquote, pre, .table-scroll) {
+    scroll-margin-top: 40px;
+  }
+
+  /* ── 证言卡片：logo 段 + 引用 → 双栏 figure（markdown.ts wrapTestimonialFigures 生成） ── */
+  .prose.blogs-wiki-prose .reader-testimonial {
+    display: grid;
+    grid-template-columns: 108px minmax(0, 1fr);
+    overflow: hidden;
+    margin: 2.4em 0 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper-soft);
+  }
+
+  .prose.blogs-wiki-prose .reader-testimonial + .reader-testimonial {
+    margin-top: 3em;
+  }
+
+  .prose.blogs-wiki-prose .reader-testimonial-logo {
+    display: flex;
+    min-height: 158px;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    border-right: 1px solid var(--line);
+  }
+
+  .prose.blogs-wiki-prose .reader-testimonial-logo img {
+    width: auto;
+    max-width: 84px;
+    max-height: 54px;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    object-fit: contain;
+    object-position: center;
+  }
+
+  .prose.blogs-wiki-prose .reader-testimonial-quote {
+    min-height: 158px;
+    margin: 0;
+    padding: 18px;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.86em;
+    line-height: 1.72;
+  }
+
+  /* ── 表格：横向滚动容器 + Blogs Wiki 表格风格（markdown.ts 包裹 .table-scroll） ── */
+  .prose.blogs-wiki-prose .table-scroll {
+    width: 100%;
+    margin-block: 2em;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--paper) 94%, var(--paper-soft));
+  }
+
+  .prose.blogs-wiki-prose .table-scroll table {
+    width: 100%;
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: var(--sans);
+    font-size: 13px;
+  }
+
+  .prose.blogs-wiki-prose .table-scroll th {
+    background: color-mix(in srgb, var(--paper-soft) 55%, var(--paper));
+    font-weight: 600;
+  }
+
+  .prose.blogs-wiki-prose .table-scroll th,
+  .prose.blogs-wiki-prose .table-scroll td {
+    padding: 10px 13px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .prose.blogs-wiki-prose .table-scroll thead th {
+    border-bottom: 1px solid var(--line-strong);
+  }
+
+  .prose.blogs-wiki-prose .table-scroll tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  /* ── Shiki 代码块：保留语言标签 + 浅色卡片框；配色/背景由 Shiki 内联决定 ── */
+  .prose.blogs-wiki-prose pre {
+    position: relative;
+    margin-block: 2.2em;
+    padding: 20px;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .prose.blogs-wiki-prose pre[data-language] {
+    padding-top: 38px;
+  }
+
+  .prose.blogs-wiki-prose pre[data-language]::before {
+    position: absolute;
+    top: 13px;
+    left: 20px;
+    color: var(--text-secondary);
+    content: attr(data-language);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .prose.blogs-wiki-prose pre code {
+    background: transparent;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  /* ── KaTeX：与正文节奏协调，长公式移动端可横滑 ── */
+  .prose.blogs-wiki-prose .katex {
+    font-size: 1.05em;
+  }
+
+  .prose.blogs-wiki-prose .katex-display {
+    display: block;
+    margin-block: 1.8em;
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-align: center;
+  }
+
+  .prose.blogs-wiki-prose .katex-display > .katex {
+    white-space: nowrap;
+  }
+
+  /* ── 移动端（≤640px）：证言卡片与代码块收紧 ── */
+  @media (max-width: 640px) {
+    .prose.blogs-wiki-prose .reader-testimonial {
+      grid-template-columns: 76px minmax(0, 1fr);
+      margin-top: 2em;
+    }
+
+    .prose.blogs-wiki-prose .reader-testimonial + .reader-testimonial {
+      margin-top: 2.6em;
+    }
+
+    .prose.blogs-wiki-prose .reader-testimonial-logo,
+    .prose.blogs-wiki-prose .reader-testimonial-quote {
+      min-height: 132px;
+      padding: 12px;
+    }
+
+    .prose.blogs-wiki-prose .reader-testimonial-logo img {
+      max-width: 56px;
+      max-height: 40px;
+    }
+
+    .prose.blogs-wiki-prose .reader-testimonial-quote {
+      font-size: 0.88em;
+    }
+
+    .prose.blogs-wiki-prose pre {
+      margin-block: 1.95em;
+      padding-inline: 16px;
+    }
   }
 }

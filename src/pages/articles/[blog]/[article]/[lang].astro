@@ -150,9 +150,7 @@ const dateFormatter = new Intl.DateTimeFormat(locale, {
         </div>
       </header>
 
-      <div class="reader-content prose">
-        <div set:html={html} />
-      </div>
+      <div class="reader-content prose max-w-none blogs-wiki-prose" set:html={html} />
 
       {relatedArticles.length > 0 && (
         <section class="reader-related shell" aria-labelledby="reader-related-title">
