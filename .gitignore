@@ -5,7 +5,7 @@ dist/
 .DS_Store
 *.log
 .zcode/
-
+workflow-backup/
 # 并行 worktree（多 agent 独立工作树）
 worktree/
 
