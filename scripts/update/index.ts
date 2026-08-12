@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runUpdate } from './runner';
+import { writeFailureReport, writeUpdateReport } from './report';
 
 const DEFAULT_LIMIT_PER_SOURCE = 3;
 
@@ -8,6 +9,8 @@ interface CliOptions {
   dryRun: boolean;
   sourceId?: string;
   limit?: number;
+  /** 非空时把可审计报告（report.json + report.md）写入该目录。 */
+  reportDir?: string;
 }
 
 function parseLimit(value: string | undefined): number {
@@ -45,6 +48,18 @@ export function parseArgs(argv: string[]): CliOptions {
         i += 1;
         options.limit = parseLimit(argv[i]);
       }
+    } else if (arg === '--report' || arg.startsWith('--report=')) {
+      let value: string | undefined;
+      if (arg.startsWith('--report=')) {
+        value = arg.slice('--report='.length);
+      } else {
+        i += 1;
+        value = argv[i];
+      }
+      if (!value || value.startsWith('-')) {
+        throw new Error('--report requires a directory path');
+      }
+      options.reportDir = path.resolve(value);
     } else if (arg === '--help' || arg === '-h') {
       console.log(`Usage: npm run update -- [options]
 
@@ -53,6 +68,8 @@ Options:
                         model and do not write any files.
   --source <id>         Update a single source by id (default: all sources).
   --limit <n>           Max new articles per source (default: ${DEFAULT_LIMIT_PER_SOURCE}; 0 = unlimited).
+  --report <dir>        Write an auditable report (report.json + report.md)
+                        to the given directory; also written on fatal errors.
   -h, --help            Show this help.
 
 Environment:
@@ -73,17 +90,38 @@ Environment:
 async function run() {
   const options = parseArgs(process.argv.slice(2));
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-  await runUpdate({
+  const summary = await runUpdate({
     rootDir,
     dryRun: options.dryRun,
     sourceId: options.sourceId,
     limit: options.limit,
   });
+  if (options.reportDir) {
+    const { jsonPath, mdPath } = await writeUpdateReport(options.reportDir, {
+      dryRun: options.dryRun,
+      sourceId: options.sourceId,
+      limit: options.limit,
+    }, summary);
+    console.log(`Report written: ${jsonPath} ${mdPath}`);
+  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  run().catch((error) => {
-    console.error(`fatal: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
+  run().catch(async (error) => {
+    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    console.error(`fatal: ${message}`);
+    try {
+      const options = parseArgs(process.argv.slice(2));
+      if (options.reportDir) {
+        const { jsonPath, mdPath } = await writeFailureReport(
+          options.reportDir,
+          error instanceof Error ? error : new Error(String(error)),
+        );
+        console.error(`Failure report written: ${jsonPath} ${mdPath}`);
+      }
+    } catch {
+      // 报告写入失败不应掩盖原始错误或改变退出码。
+    }
     process.exit(1);
   });
 }

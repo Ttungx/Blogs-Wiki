@@ -12,31 +12,32 @@
 | Phase | 状态 | 说明 |
 |---|---|---|
 | 1. domain types + repository interfaces | ✅ 完成 | `worker/domain/`、`worker/repositories/` 接口定义 |
-| 2. FileRepository（与旧行为字节对齐） | ✅ 完成 | `worker/repositories/file/`，66 个 Node 测试全绿 |
+| 2. FileRepository（与旧行为字节对齐） | ✅ 完成 | `worker/repositories/file/`，85 个 Node 测试全绿 |
 | 3. D1 schema + migrations | ✅ 完成 | `worker/migrations/0001-0005`（initial schema / seed categories / seed sources / drop source_runs FK / articles 拆分 article_versions），本地数据库当前无待应用迁移 |
-| 4. D1Repository | ✅ 完成 | `D1ArticleRepository` / `D1SourceStateRepository`，真实 Miniflare D1 binding 测试 28/28 通过 |
+| 4. D1Repository | ✅ 完成 | `D1ArticleRepository` / `D1SourceStateRepository`，真实 Miniflare D1 binding 测试 44/44 通过 |
 | 5. 管线接 repository interface | ✅ 完成 | `runUpdate()` 支持依赖注入；Node 默认 `STORAGE_BACKEND=file`，Worker `env.DB` → D1 repository 注入；File/D1 后端可替换 |
 | 6. Worker-compatible fetch path | ✅ 完成 | `FETCH_BACKEND=node|worker` 已接入；Workflow dry-run 已用真实来源验证抓取链路（RSS 发现 20 篇 → Defuddle 抓取） |
-| 7. Workflow 运行时 | ✅ 完成 | UpdateWorkflow 已实现并部署；dry-run 端到端验证通过（source_runs/source_items 状态记录）；`POST /api/trigger` 手动触发；Cron schedules 待启用 |
-| 8. Astro 切 D1 | ✅ 完成 | 网站已上线 https://blogs-wiki.1323593614.workers.dev；首页/博客页/文章页 SSR 从 D1 实时读取；`/api/health` `/api/sources` `/api/trigger` 可用 |
+| 7. Workflow 运行时 | ✅ 保留 | UpdateWorkflow 与 orchestrator 已实现并通过 dry-run 验证，但因 Free 计划 CPU 限制不作为生产重计算入口；生产 binding 已停用 |
+| 8. Astro 切 D1 | ✅ 完成 | 网站已上线 https://blogs-wiki.1323593614.workers.dev；首页/博客页/文章页 SSR 从 D1 实时读取；`/api/health` `/api/sources` 可用，`/api/trigger` 已停用 |
+| 8A. GitHub Actions 内容更新 | ✅ 完成 | Action 执行 discover → Defuddle fetch → translate，生成 JSON 分片并调用受保护 `/api/content-sync` 幂等写入 D1 |
 | 9. 搜索切 FTS5 | ⬜ | Pagefind → D1 FTS5 |
 | 10. 删除旧文件 backend | ⬜ | 移除 FileRepository / persist.ts / Pagefind |
 
 ## 当前验证证据
 
 - `npm run check:worker`：通过。
-- `npm run test:worker`：66/66 通过（domain 纯函数 + FileRepository + fetch backend）。
-- `npm run test:d1`：5 个测试文件、28 个测试通过（真实 Miniflare D1 binding + Worker runtime）。
+- `npm run test:worker`：85/85 通过（domain 纯函数 + FileRepository + fetch backend + content-sync 校验）。
+- `npm run test:d1`：6 个测试文件、44 个测试通过（真实 Miniflare D1 binding + Worker runtime + content-sync）。
 - `npm run test:update`：更新编排集成测试与旧 smoke 通过。
 - `npm run check`（astro check）：0 errors；现有 deprecation/hint 仍存在。
-- `npm run build`：`astro build && node scripts/inject-worker-entry.js` 通过，产出 `dist/client`（静态资源）+ `dist/server/_entry.mjs`（re-export Astro handler + UpdateWorkflow）。Pagefind 已从构建脚本临时移除（Windows 路径问题，Phase 9 以 FTS5 正式替换）。
-- Workflow dry-run 端到端验证：真实 Workflow invocation 通过——RSS 发现 20 篇 → Defuddle 抓取 → source_runs / source_items 状态记录。
-- 生产站点端点验证：https://blogs-wiki.1323593614.workers.dev 首页/博客页/文章页 SSR 从 D1 实时读取；`/api/health`、`/api/sources`、`/api/trigger` 响应正常。
+- `npm run build`：`astro build && node scripts/inject-worker-entry.js` 通过，产出 `dist/client`（静态资源）+ `dist/server/_entry.mjs`（只 re-export Astro handler）。Pagefind 已从构建脚本临时移除（Windows 路径问题，Phase 9 以 FTS5 正式替换）。
+- Workflow dry-run 端到端验证：已通过并保留为实验/回滚证据；不代表当前生产入口。
+- 生产站点端点验证：https://blogs-wiki.1323593614.workers.dev 首页/博客页/文章页 SSR 从 D1 实时读取；`/api/health`、`/api/sources` 响应正常；`/api/trigger` 返回 410。
 - 文章页 500 修复（`listArticlesByBlog` snake_case→camelCase 映射缺失导致 `relatedArticle.publishedAt` undefined → `toISOString()` 抛错）：已在本地 `wrangler dev --config wrangler.deploy.jsonc` 与生产环境验证 `/articles/anthropic/building-effective-agents/` 与 `/en/` 均 200，正文、日期、分类、相关文章完整渲染。
 - SEO 修复：`astro.config.mjs` 的 `site` 在 `SITE_URL` 缺失时回退到生产域名（原回退 localhost:4321，导致 canonical/og:url 全错）；生产 HTML 实测 canonical 已指向 https://blogs-wiki.1323593614.workers.dev/。
 - SSR 防御加固（防"未来坏数据"触发 500）：`parseDateSafe` 统一安全解析日期（缺失/非法 → 条件渲染，不再 `toISOString()` 崩溃）；markdown 高亮初始化失败降级为无高亮渲染、单代码块高亮失败不影响整页；`[lang]` 路由语言白名单（未知语言段兜底中文）。rehype-katex v7 本身内建错误降级（`throwOnError` 由插件内部管理）。
 
-以上证据已覆盖本地与远程运行时，但全量翻译链路（真实翻译 → D1 文章数据填充）尚未验证，Cron schedules 也未启用。
+以上证据已覆盖本地与远程运行时；GitHub Actions → `/api/content-sync` 的生产全链路仍需配置 Secrets/Variables 后手动跑一次非 dry-run 验证。
 
 ---
 
@@ -44,12 +45,12 @@
 
 按以下门禁推进，不跨层并行修改：
 
-1. **收尾 Phase 7/8 生产就绪**：注入生产 Secrets（OPENAI_API_KEY / OPENAI_BASE_URL / TRANSLATION_MODEL，`wrangler secret put`）；触发全量 Workflow 验证（真实翻译 → D1 填充文章数据）；最后启用 Cron schedules（`wrangler.deploy.jsonc` workflows binding 加 `"schedules": ["17 2 * * *"]`，对应原 CI 的 02:17 UTC），保留手动触发和 Node 回滚路径。
+1. **组合方案生产门禁**：配置 GitHub Secrets/Variables（`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`TRANSLATION_MODEL`、`CONTENT_SYNC_TOKEN`、`CONTENT_SYNC_URL`），手动运行一次非 dry-run Action，核验报告、分片同步与 D1 文章/版本/分类数据。
 2. **当前主线：Phase 9 搜索切 FTS5**：D1 FTS5 查询稳定后再移除 Pagefind。Pagefind 已因 Windows 路径问题从构建脚本临时移除，Phase 9 用 FTS5 彻底替换。
-3. **最后做 Phase 10**：确认 D1 唯一真相、Workflow 可恢复、SSR 可读、搜索实时后，才删除 File backend 和文件状态产物。
+3. **最后做 Phase 10**：确认 GitHub Actions 可重跑、同步 API 幂等、D1 为唯一真相、SSR 可读、搜索实时后，才删除 File backend 和文件状态产物。
 4. **收尾清理**：`worker/index.ts` 已不再作为入口（API 迁移到 `src/pages/api/`），`worker-runtime.test.ts` 需适配新架构。SEO canonical/og:url 已修复；剩余 SEO 项是 sitemap 动态化（server 模式下 sitemap-index.xml 不含动态文章 URL，Phase 9 一并处理）。
 
-当前唯一主线是 **Phase 9 搜索切 FTS5**（前置门禁：全量 Workflow 验证通过）。Phase 8 之前"不改 Astro 数据读取"的约束已解除——Astro 已从 D1 实时读取。
+当前唯一主线是 **先完成 GitHub Actions 非 dry-run 生产门禁，再进入 Phase 9 搜索切 FTS5**。Phase 8 之前"不改 Astro 数据读取"的约束已解除——Astro 已从 D1 实时读取。
 
 ---
 
@@ -96,7 +97,7 @@
 - `worker/repositories/file/file-article-repository.ts` —— `FileArticleRepository`，幂等 save（复刻 persist.ts:152-165）、slug 冲突解决、无 publishedAt 抛错、目录扫描读方法。
 - `worker/repositories/file/file-source-state-repository.ts` —— `FileSourceStateRepository`，新版 `{version,updated_at,blogs}` 与旧版扁平 `{blogId:[urls]}` 兼容（复刻 persist.ts:19-43）、幂等 markProcessed、reconcile 语义复刻 index.ts:106-135。
 - `worker/repositories/file/paths.ts` —— 路径常量（与 persist.ts:11-13 一致）。
-- `worker/__tests__/` —— 66 个 Node Worker 测试：纯函数黄金输出（锚定与 persist.ts 字节一致）+ Repository 与 fetch backend 覆盖。
+- `worker/__tests__/` —— 85 个 Node Worker 测试：纯函数黄金输出（锚定与 persist.ts 字节一致）+ Repository、fetch backend 与 content-sync 覆盖。
 
 **关键纪律**：
 - `scripts/update/` 零改动（git diff 该目录为空）。
@@ -191,7 +192,7 @@
 
 ---
 
-### Phase 7：Workflow 运行时 ✅
+### Phase 7：Workflow 运行时（保留实验/回滚路径） ✅
 
 **目标**：业务逻辑可以脱离 Cloudflare 单独测试；Workflow 只负责编排/重试/超时/恢复（手册 §8）。
 
@@ -201,7 +202,7 @@
 - `worker/runtime/source-config.ts` —— JSON import 打包 sources.json。
 - `worker/domain/mappers.ts` —— to-domain 纯函数（Node / Worker 共用）。
 - `worker/migrations/0003_seed_sources.sql`（seed sources）+ `0004_drop_source_runs_fk.sql`。
-- `POST /api/trigger` 手动触发入口；Cron Trigger（替代已删除的 `.github/workflows/pages.yml` 的 `02:17 UTC`）——schedule 尚未启用。
+- 原 `POST /api/trigger` 手动触发入口已停用并返回 410；生产调度改由 `.github/workflows/content-update.yml` 的定时/手动运行承担。
 
 **前期基础层（状态机与运行记录）**：
 - `worker/domain/types.ts`：补齐 `SourceItemStatus`、`SourceItemRecord`、`SourceRunRecord` 及创建/更新输入。
@@ -218,11 +219,11 @@
 
 **Failure 处理**（手册 §19）：单文章失败不拖垮全局。Article A success / B failed / C success → Workflow completed with recorded failure。失败写 source_items.status + last_error + attempt_count。
 
-**涉及文件**：`worker/workflows/`、`wrangler.deploy.jsonc`（workflows binding + schedules）。
+**涉及文件**：`worker/workflows/`、`wrangler.deploy.jsonc`（当前不启用 workflows binding；如未来恢复 Workflow，再单独评估 binding 与 schedules）。
 
-**完成标准**：真实 Workflow invocation 验证通过——dry-run 端到端（RSS 发现 20 篇 → Defuddle 抓取 → source_runs / source_items 状态记录），source_runs 表能回答手册 §20 的 observability 问题。待办：全量翻译链路验证、启用 Cron schedules。
+**完成标准**：Workflow dry-run 端到端（RSS 发现 20 篇 → Defuddle 抓取 → source_runs / source_items 状态记录）已验证；全量翻译不再放入 Free 计划 Workflow。生产验证改由 GitHub Actions → `/api/content-sync` 完成。
 
-**回滚**：Cron 关闭，手动触发 Node 管线（Phase 5 路径仍可用）或 `POST /api/trigger`。
+**回滚**：停用 Action 定时，手动运行 Node 管线（Phase 5 路径仍可用）；如未来付费计划允许，再重新启用 Workflow binding 与 `/api/trigger`。
 
 ---
 
@@ -235,8 +236,8 @@
 - SSR 页面用 `import { env } from 'cloudflare:workers'` 访问 binding（Astro v6+ 移除了 `locals.runtime.env`）。
 - `worker-configuration.d.ts`（`wrangler types` 生成）。
 - `src/lib/server/content.ts`（D1 内容服务）+ `src/lib/server/markdown.ts`（独立 Markdown 渲染器）。
-- 自定义 Worker 入口：`scripts/inject-worker-entry.js` 生成 `dist/server/_entry.mjs`（re-export Astro handler + UpdateWorkflow 导出）。
-- 双 wrangler 配置：`wrangler.jsonc`（dev/build，无 workflows binding）+ `wrangler.deploy.jsonc`（部署，含 workflows binding + main → `dist/server/_entry.mjs`）。
+- 自定义 Worker 入口：`scripts/inject-worker-entry.js` 生成 `dist/server/_entry.mjs`（只 re-export Astro handler）。
+- 双 wrangler 配置：`wrangler.jsonc`（dev/build）+ `wrangler.deploy.jsonc`（部署，不含 workflows binding，`main` → `dist/server/_entry.mjs`）。
 - Node-only 依赖解耦：`scripts/update/proxy.ts`（纯代理函数）、`scripts/update/git-date.ts`（纯 GitHub 日期解析）、`worker/fetch/curl-runner.ts` + `curl.ts`（注入式 curl 回退）。
 - `worker/migrations/0005_article_versions.sql`（articles 拆分为身份 + article_versions 多语言版本）。
 
@@ -247,7 +248,7 @@
 
 **涉及文件**：`src/pages/index.astro`、`src/pages/articles/[id].astro`、`src/pages/blogs/[id].astro`、`src/pages/search.astro`、`astro.config.mjs`（adapter + output）、`scripts/inject-worker-entry.js`、`wrangler.jsonc` / `wrangler.deploy.jsonc`。
 
-**完成标准**：文章从 D1 实时读取；新文章发布后立即可访问，无需 rebuild。✅ 网站已上线 https://blogs-wiki.1323593614.workers.dev，`/api/health` `/api/sources` `/api/trigger` 可用。
+**完成标准**：文章从 D1 实时读取；新文章发布后立即可访问，无需 rebuild。✅ 网站已上线 https://blogs-wiki.1323593614.workers.dev，`/api/health` `/api/sources` 可用，`/api/trigger` 返回 410。
 
 **回滚**：Astro adapter 移除，回到 static；旧构建链路与文件 backend 保留至 Phase 10。
 

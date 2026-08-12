@@ -19,11 +19,4 @@
       "migrations_dir": "worker/migrations"
     }
   ],
-  "workflows": [
-    {
-      "binding": "UPDATE_WORKFLOW",
-      "name": "update-workflow",
-      "class_name": "UpdateWorkflow"
-    }
-  ]
 }

@@ -1,0 +1,715 @@
+/**
+ * GitHub Actions → Worker 内容同步桥接（POST /api/content-sync）。
+ *
+ * 职责边界（与 UpdateWorkflow / /api/trigger 完全隔离，互不调用）：
+ * - GitHub Actions 在 CI 里执行内容更新管线（discover → fetch → translate），
+ *   产出结构化文章数据后经本端点上传；Worker 侧只做校验 + D1 幂等写入。
+ * - 本模块不触发 Workflow，不读取翻译 Secrets，不感知前端页面。
+ *
+ * 认证与限制：
+ * - `Authorization: Bearer <CONTENT_SYNC_TOKEN>`（secret，生产用
+ *   `wrangler secret put CONTENT_SYNC_TOKEN` 注入；本地 dev 需在
+ *   wrangler.jsonc 的 vars 或测试 env 里提供）。缺失/不匹配一律 401，
+ *   比较用 SHA-256 摘要常数时间比对。
+ * - body 上限 MAX_BODY_BYTES（先查 content-length，再按实际字节数兜底）。
+ * - 仅接受 POST + application/json。
+ *
+ * 幂等与原子性：
+ * - articles 身份行 ON CONFLICT(source_id, original_url) 更新；版本行
+ *   ON CONFLICT(article_id, language) 更新；分类先 DELETE 再 INSERT。
+ *   同一 payload 重复提交结果不变（第二次 created=0）。
+ * - 可选字段（image_url / author / excerpt / translation_model /
+ *   original_alt_url）省略时保留现值（COALESCE），不覆盖。
+ * - 全部语句经 db.batch() 执行；D1 单批上限 100 条，超过则按批拆分
+ *   （每批原子，请求级原子性按批边界）。
+ *
+ * 两种载荷格式（可同时提交，同一事务序列内执行）：
+ * 1. `sources` / `articles`：结构化 JSON，Worker 全量校验后映射到五张表。
+ * 2. `sql`: string | string[]，DML-only 白名单（INSERT/REPLACE/UPDATE/DELETE），
+ *    拒绝 DDL/DQL/事务控制与内嵌分号；幂等性由上传方保证（如 ON CONFLICT）。
+ */
+
+import { excerptFromMarkdown } from '../domain/article';
+import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
+
+// ── 限制常量 ──────────────────────────────────────────
+
+/** body 上限（字节）。 */
+export const MAX_BODY_BYTES = 5 * 1024 * 1024;
+/** 单次请求最多文章数。 */
+export const MAX_ARTICLES = 200;
+/** 单次请求最多来源数。 */
+export const MAX_SOURCES = 200;
+/** 单次请求最多 SQL 语句数。 */
+export const MAX_SQL_STATEMENTS = 200;
+/** D1 batch 单批语句上限（Cloudflare 文档限制）。 */
+export const D1_BATCH_LIMIT = 100;
+
+// ── 领域类型（桥接契约） ─────────────────────────────
+
+/** 上传的来源注册表条目（articles 外键依赖）。 */
+export interface SyncSource {
+  id: string;
+  name: string;
+  type: 'company' | 'personal';
+  homepageUrl: string;
+  blogUrl: string;
+  domain: string;
+  rssUrl?: string;
+  sitemapUrl?: string;
+  logo?: string;
+  avatar?: string;
+}
+
+/** 上传的语言版本（article_versions 行）。 */
+export interface SyncVersion {
+  language: string;
+  title: string;
+  contentMarkdown: string;
+  excerpt?: string;
+  provenance: 'original' | 'official-zh' | 'native-zh' | 'model';
+  translationModel?: string;
+  originalAltUrl?: string;
+  translatedAt?: string;
+}
+
+/** 上传的文章（articles 身份 + versions + categories）。 */
+export interface SyncArticle {
+  id: string;
+  sourceId: string;
+  originalUrl: string;
+  originalLanguage: string;
+  publishedAt: string;
+  imageUrl?: string;
+  author?: string;
+  sourceDomain: string;
+  /** 省略 = 不触碰现有分类；提供（含空数组）= 整体替换。 */
+  categories?: string[];
+  versions: SyncVersion[];
+}
+
+/** 请求载荷：sources/articles（结构化）与 sql（DML 直通）可并存。 */
+export interface SyncPayload {
+  sources: SyncSource[];
+  articles: SyncArticle[];
+  sql: string[];
+}
+
+/** 处理成功后的统计。 */
+export interface ContentSyncResult {
+  ok: true;
+  articles: {
+    received: number;
+    /** 本次新建的文章数。 */
+    created: number;
+    /** 本次已存在、被刷新（含版本/分类更新）的文章数。 */
+    updated: number;
+  };
+  sql: {
+    statements: number;
+    executed: number;
+  };
+  /** 实际执行的 D1 batch 数（每批 ≤ D1_BATCH_LIMIT 条）。 */
+  batches: number;
+}
+
+/** 端点 env：D1 + Bearer secret（secret 未注入时端点拒绝服务）。 */
+export interface ContentSyncEnv {
+  DB: D1Database;
+  CONTENT_SYNC_TOKEN?: string;
+}
+
+/** 载荷校验失败（400）；消息面向调用方（GitHub Actions），不泄露内部细节。 */
+export class SyncPayloadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SyncPayloadError';
+  }
+}
+
+const PROVENANCES = new Set(['original', 'official-zh', 'native-zh', 'model']);
+const SOURCE_TYPES = new Set(['company', 'personal']);
+
+// ── 纯校验函数 ───────────────────────────────────────
+
+function requireString(value: unknown, field: string, where: string, max = 2048): string {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new SyncPayloadError(`missing or invalid ${field} in ${where}`);
+  }
+  if (value.length > max) {
+    throw new SyncPayloadError(`${field} in ${where} exceeds ${max} chars`);
+  }
+  return value;
+}
+
+function optionalString(value: unknown, field: string, where: string, max = 2048): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string') {
+    throw new SyncPayloadError(`invalid ${field} in ${where}: expected string`);
+  }
+  if (value.length > max) {
+    throw new SyncPayloadError(`${field} in ${where} exceeds ${max} chars`);
+  }
+  return value;
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function parseSource(value: unknown, index: number): SyncSource {
+  const where = `sources[${index}]`;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new SyncPayloadError(`${where} must be an object`);
+  }
+  const obj = value as Record<string, unknown>;
+  const type = requireString(obj.type, 'type', where, 16);
+  if (!SOURCE_TYPES.has(type)) {
+    throw new SyncPayloadError(`invalid type in ${where}: expected 'company' or 'personal'`);
+  }
+  const source: SyncSource = {
+    id: requireString(obj.id, 'id', where, 256),
+    name: requireString(obj.name, 'name', where, 256),
+    type: type as SyncSource['type'],
+    homepageUrl: requireString(obj.homepageUrl, 'homepageUrl', where),
+    blogUrl: requireString(obj.blogUrl, 'blogUrl', where),
+    domain: requireString(obj.domain, 'domain', where, 255),
+  };
+  const rssUrl = optionalString(obj.rssUrl, 'rssUrl', where);
+  const sitemapUrl = optionalString(obj.sitemapUrl, 'sitemapUrl', where);
+  const logo = optionalString(obj.logo, 'logo', where);
+  const avatar = optionalString(obj.avatar, 'avatar', where);
+  if (rssUrl !== undefined) source.rssUrl = rssUrl;
+  if (sitemapUrl !== undefined) source.sitemapUrl = sitemapUrl;
+  if (logo !== undefined) source.logo = logo;
+  if (avatar !== undefined) source.avatar = avatar;
+  return source;
+}
+
+function parseVersion(value: unknown, articleIndex: number, versionIndex: number): SyncVersion {
+  const where = `articles[${articleIndex}].versions[${versionIndex}]`;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new SyncPayloadError(`${where} must be an object`);
+  }
+  const obj = value as Record<string, unknown>;
+  const provenance = requireString(obj.provenance, 'provenance', where, 16);
+  if (!PROVENANCES.has(provenance)) {
+    throw new SyncPayloadError(
+      `invalid provenance in ${where}: expected one of ${[...PROVENANCES].join(', ')}`,
+    );
+  }
+  const version: SyncVersion = {
+    language: requireString(obj.language, 'language', where, 16),
+    title: requireString(obj.title, 'title', where),
+    contentMarkdown: requireString(obj.contentMarkdown, 'contentMarkdown', where, 2_000_000),
+    provenance: provenance as SyncVersion['provenance'],
+  };
+  const excerpt = optionalString(obj.excerpt, 'excerpt', where, 1000);
+  const translationModel = optionalString(obj.translationModel, 'translationModel', where, 256);
+  const originalAltUrl = optionalString(obj.originalAltUrl, 'originalAltUrl', where);
+  const translatedAt = optionalString(obj.translatedAt, 'translatedAt', where, 64);
+  if (excerpt !== undefined) version.excerpt = excerpt;
+  if (translationModel !== undefined) version.translationModel = translationModel;
+  if (originalAltUrl !== undefined) version.originalAltUrl = originalAltUrl;
+  if (translatedAt !== undefined) version.translatedAt = translatedAt;
+  return version;
+}
+
+function parseArticle(value: unknown, index: number): SyncArticle {
+  const where = `articles[${index}]`;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new SyncPayloadError(`${where} must be an object`);
+  }
+  const obj = value as Record<string, unknown>;
+
+  const originalUrl = requireString(obj.originalUrl, 'originalUrl', where);
+  if (!isValidHttpUrl(originalUrl)) {
+    throw new SyncPayloadError(`invalid originalUrl in ${where}: must be an absolute http(s) URL`);
+  }
+
+  if (!Array.isArray(obj.versions) || obj.versions.length === 0) {
+    throw new SyncPayloadError(`${where} must contain a non-empty versions array`);
+  }
+  const versions = obj.versions.map((v, vi) => parseVersion(v, index, vi));
+
+  const article: SyncArticle = {
+    id: requireString(obj.id, 'id', where, 512),
+    sourceId: requireString(obj.sourceId, 'sourceId', where, 256),
+    originalUrl,
+    originalLanguage: requireString(obj.originalLanguage, 'originalLanguage', where, 16),
+    publishedAt: requireString(obj.publishedAt, 'publishedAt', where, 64),
+    sourceDomain: requireString(obj.sourceDomain, 'sourceDomain', where, 255),
+    versions,
+  };
+
+  const imageUrl = optionalString(obj.imageUrl, 'imageUrl', where);
+  const author = optionalString(obj.author, 'author', where, 256);
+  if (imageUrl !== undefined) article.imageUrl = imageUrl;
+  if (author !== undefined) article.author = author;
+
+  if (obj.categories !== undefined) {
+    if (!Array.isArray(obj.categories)) {
+      throw new SyncPayloadError(`invalid categories in ${where}: expected array`);
+    }
+    const categories: string[] = [];
+    for (const [ci, cat] of obj.categories.entries()) {
+      categories.push(requireString(cat, `categories[${ci}]`, where, 64));
+    }
+    article.categories = categories;
+  }
+  return article;
+}
+
+/**
+ * SQL 语句白名单：仅允许 DML（INSERT/REPLACE/UPDATE/DELETE）开头。
+ * 拒绝 DDL/DQL/事务控制/ATTACH 等，以及内嵌分号（防止多语句走私）。
+ * 尾部分号容忍；空语句忽略。
+ */
+export function isAllowedSqlStatement(statement: string): boolean {
+  const trimmed = statement.trim();
+  if (trimmed === '') return true; // 空语句由调用方过滤
+  if (!/^(INSERT|REPLACE|UPDATE|DELETE)\b/i.test(trimmed)) return false;
+  // 去掉尾部 ';' 后不允许再出现 ';'
+  const body = trimmed.replace(/;\s*$/, '');
+  return !body.includes(';');
+}
+
+/** 归一化 sql 载荷：string（按 ';' 拆分）或 string[] → 非空语句数组。 */
+export function normalizeSqlStatements(sql: unknown): string[] {
+  let raw: string[];
+  if (typeof sql === 'string') {
+    raw = sql.split(';');
+  } else if (Array.isArray(sql)) {
+    raw = sql;
+  } else {
+    throw new SyncPayloadError('sql must be a string or an array of strings');
+  }
+  if (raw.length > MAX_SQL_STATEMENTS) {
+    throw new SyncPayloadError(`too many sql statements: ${raw.length} (max ${MAX_SQL_STATEMENTS})`);
+  }
+  const statements: string[] = [];
+  for (const [i, item] of raw.entries()) {
+    if (typeof item !== 'string') {
+      throw new SyncPayloadError(`sql[${i}] must be a string`);
+    }
+    const trimmed = item.trim();
+    if (trimmed === '') continue;
+    if (!isAllowedSqlStatement(trimmed)) {
+      throw new SyncPayloadError(
+        `sql[${i}] rejected: only single INSERT/REPLACE/UPDATE/DELETE statements are allowed`,
+      );
+    }
+    statements.push(trimmed.replace(/;\s*$/, ''));
+  }
+  return statements;
+}
+
+/**
+ * 解析并校验请求体 JSON → SyncPayload。
+ * 所有结构/取值问题抛 SyncPayloadError（调用方转 400）。
+ */
+export function parseSyncPayload(raw: string): SyncPayload {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new SyncPayloadError('body is not valid JSON');
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new SyncPayloadError('payload must be a JSON object');
+  }
+  const obj = parsed as Record<string, unknown>;
+
+  const sources: SyncSource[] = [];
+  if (obj.sources !== undefined) {
+    if (!Array.isArray(obj.sources)) {
+      throw new SyncPayloadError('sources must be an array');
+    }
+    if (obj.sources.length > MAX_SOURCES) {
+      throw new SyncPayloadError(`too many sources: ${obj.sources.length} (max ${MAX_SOURCES})`);
+    }
+    sources.push(...obj.sources.map((s, i) => parseSource(s, i)));
+  }
+
+  const articles: SyncArticle[] = [];
+  if (obj.articles !== undefined) {
+    if (!Array.isArray(obj.articles)) {
+      throw new SyncPayloadError('articles must be an array');
+    }
+    if (obj.articles.length > MAX_ARTICLES) {
+      throw new SyncPayloadError(`too many articles: ${obj.articles.length} (max ${MAX_ARTICLES})`);
+    }
+    articles.push(...obj.articles.map((a, i) => parseArticle(a, i)));
+  }
+
+  const sql = obj.sql !== undefined ? normalizeSqlStatements(obj.sql) : [];
+
+  if (articles.length === 0 && sql.length === 0 && sources.length === 0) {
+    throw new SyncPayloadError('payload must contain articles, sources or sql');
+  }
+
+  // 载荷内重复检查（避免同一请求内互相打架）
+  const ids = new Set<string>();
+  for (const [i, a] of articles.entries()) {
+    if (ids.has(a.id)) {
+      throw new SyncPayloadError(`duplicate article id in articles[${i}]: ${a.id}`);
+    }
+    ids.add(a.id);
+  }
+  const urls = new Set<string>();
+  for (const [i, a] of articles.entries()) {
+    const key = `${a.sourceId}\u0000${a.originalUrl}`;
+    if (urls.has(key)) {
+      throw new SyncPayloadError(
+        `duplicate (sourceId, originalUrl) in articles[${i}]: ${a.sourceId} / ${a.originalUrl}`,
+      );
+    }
+    urls.add(key);
+  }
+  const sourceIds = new Set<string>();
+  for (const [i, s] of sources.entries()) {
+    if (sourceIds.has(s.id)) {
+      throw new SyncPayloadError(`duplicate source id in sources[${i}]: ${s.id}`);
+    }
+    sourceIds.add(s.id);
+  }
+
+  return { sources, articles, sql };
+}
+
+// ── 写入语句构建（幂等 upsert，语义与 D1ArticleRepository 一致） ──
+
+const SOURCE_UPSERT_SQL = `
+  INSERT INTO sources (
+    id, name, type, homepage_url, blog_url, domain, rss_url, sitemap_url, logo, avatar, config
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    name = excluded.name,
+    type = excluded.type,
+    homepage_url = excluded.homepage_url,
+    blog_url = excluded.blog_url,
+    domain = excluded.domain,
+    rss_url = excluded.rss_url,
+    sitemap_url = excluded.sitemap_url,
+    logo = excluded.logo,
+    avatar = excluded.avatar,
+    updated_at = datetime('now')
+`;
+
+const ARTICLE_UPSERT_SQL = `
+  INSERT INTO articles (
+    id, source_id, original_url, original_language, published_at,
+    image_url, author, source_domain
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(source_id, original_url) DO UPDATE SET
+    id = excluded.id,
+    original_language = excluded.original_language,
+    published_at = excluded.published_at,
+    image_url = COALESCE(excluded.image_url, articles.image_url),
+    author = COALESCE(excluded.author, articles.author),
+    source_domain = excluded.source_domain,
+    updated_at = datetime('now')
+`;
+
+const VERSION_UPSERT_SQL = `
+  INSERT INTO article_versions (
+    article_id, language, title, content_markdown, excerpt, provenance,
+    translation_model, original_alt_url, translated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(article_id, language) DO UPDATE SET
+    title = excluded.title,
+    content_markdown = excluded.content_markdown,
+    excerpt = COALESCE(excluded.excerpt, article_versions.excerpt),
+    provenance = excluded.provenance,
+    translation_model = COALESCE(excluded.translation_model, article_versions.translation_model),
+    original_alt_url = COALESCE(excluded.original_alt_url, article_versions.original_alt_url),
+    translated_at = COALESCE(excluded.translated_at, article_versions.translated_at),
+    updated_at = datetime('now')
+`;
+
+function sourceUpsert(db: D1Database, source: SyncSource): D1PreparedStatement {
+  return db
+    .prepare(SOURCE_UPSERT_SQL)
+    .bind(
+      source.id,
+      source.name,
+      source.type,
+      source.homepageUrl,
+      source.blogUrl,
+      source.domain,
+      source.rssUrl ?? null,
+      source.sitemapUrl ?? null,
+      source.logo ?? null,
+      source.avatar ?? null,
+      '{}',
+    );
+}
+
+function articleUpsert(db: D1Database, article: SyncArticle): D1PreparedStatement {
+  return db
+    .prepare(ARTICLE_UPSERT_SQL)
+    .bind(
+      article.id,
+      article.sourceId,
+      article.originalUrl,
+      article.originalLanguage,
+      article.publishedAt,
+      article.imageUrl ?? null,
+      article.author ?? null,
+      article.sourceDomain,
+    );
+}
+
+function versionUpsert(db: D1Database, articleId: string, version: SyncVersion): D1PreparedStatement {
+  const excerpt = version.excerpt ?? (excerptFromMarkdown(version.contentMarkdown) || null);
+  return db
+    .prepare(VERSION_UPSERT_SQL)
+    .bind(
+      articleId,
+      version.language,
+      version.title,
+      version.contentMarkdown,
+      excerpt,
+      version.provenance,
+      version.translationModel ?? null,
+      version.originalAltUrl ?? null,
+      version.provenance === 'model' ? (version.translatedAt ?? new Date().toISOString()) : null,
+    );
+}
+
+function articleKey(article: SyncArticle): string {
+  return `${article.sourceId}\u0000${article.originalUrl}`;
+}
+
+/** 预检：articles 引用的来源必须已存在（payload.sources 或 DB），避免 FK 失败。 */
+async function ensureSourcesExist(db: D1Database, payload: SyncPayload): Promise<void> {
+  const provided = new Set(payload.sources.map((s) => s.id));
+  const needed = new Set(payload.articles.map((a) => a.sourceId));
+  const missing: string[] = [];
+  for (const id of needed) {
+    if (provided.has(id)) continue;
+    const row = await db
+      .prepare('SELECT 1 AS hit FROM sources WHERE id = ? LIMIT 1')
+      .bind(id)
+      .first();
+    if (!row) missing.push(id);
+  }
+  if (missing.length > 0) {
+    throw new SyncPayloadError(
+      `articles reference unknown sources: ${missing.join(', ')}; include them in payload.sources or seed them first`,
+    );
+  }
+}
+
+/** 预检：按 (source_id, original_url) 分类已存在文章，用于统计 created/updated。 */
+async function findExistingArticleKeys(
+  db: D1Database,
+  articles: SyncArticle[],
+): Promise<Set<string>> {
+  const existing = new Set<string>();
+  for (let i = 0; i < articles.length; i += D1_BATCH_LIMIT) {
+    const chunk = articles.slice(i, i + D1_BATCH_LIMIT);
+    const results = await db.batch(
+      chunk.map((a) =>
+        db
+          .prepare('SELECT 1 AS hit FROM articles WHERE source_id = ? AND original_url = ? LIMIT 1')
+          .bind(a.sourceId, a.originalUrl),
+      ),
+    );
+    results.forEach((result, j) => {
+      if (result && result.results && result.results.length > 0) {
+        existing.add(articleKey(chunk[j]!));
+      }
+    });
+  }
+  return existing;
+}
+
+/**
+ * 构建全部写入语句并分类 created/updated。
+ * 语句顺序：sources upsert → 每篇 (article upsert → versions upsert →
+ * categories 整体替换) → sql 直通语句。同一 batch 内保持该顺序。
+ */
+async function prepareSyncWrite(
+  db: D1Database,
+  payload: SyncPayload,
+): Promise<{ statements: D1PreparedStatement[]; created: number; updated: number }> {
+  await ensureSourcesExist(db, payload);
+
+  const statements: D1PreparedStatement[] = [];
+  for (const source of payload.sources) {
+    statements.push(sourceUpsert(db, source));
+  }
+
+  const existingKeys = await findExistingArticleKeys(db, payload.articles);
+  let created = 0;
+  let updated = 0;
+
+  for (const article of payload.articles) {
+    if (existingKeys.has(articleKey(article))) {
+      updated += 1;
+    } else {
+      created += 1;
+    }
+
+    statements.push(articleUpsert(db, article));
+    for (const version of article.versions) {
+      statements.push(versionUpsert(db, article.id, version));
+    }
+    if (article.categories !== undefined) {
+      statements.push(db.prepare('DELETE FROM article_categories WHERE article_id = ?').bind(article.id));
+      for (const category of article.categories) {
+        statements.push(
+          db
+            .prepare('INSERT INTO categories (name) VALUES (?) ON CONFLICT(name) DO NOTHING')
+            .bind(category),
+        );
+        statements.push(
+          db
+            .prepare('INSERT INTO article_categories (article_id, category_name) VALUES (?, ?)')
+            .bind(article.id, category),
+        );
+      }
+    }
+  }
+
+  for (const statement of payload.sql) {
+    statements.push(db.prepare(statement));
+  }
+
+  return { statements, created, updated };
+}
+
+/** 执行同步：分批 db.batch() 写入，返回统计。 */
+export async function executeContentSync(
+  db: D1Database,
+  payload: SyncPayload,
+): Promise<ContentSyncResult> {
+  const { statements, created, updated } = await prepareSyncWrite(db, payload);
+
+  let batches = 0;
+  for (let i = 0; i < statements.length; i += D1_BATCH_LIMIT) {
+    await db.batch(statements.slice(i, i + D1_BATCH_LIMIT));
+    batches += 1;
+  }
+
+  return {
+    ok: true,
+    articles: {
+      received: payload.articles.length,
+      created,
+      updated,
+    },
+    sql: {
+      statements: payload.sql.length,
+      executed: payload.sql.length,
+    },
+    batches,
+  };
+}
+
+// ── HTTP 契约 ────────────────────────────────────────
+
+/** SHA-256 摘要后逐字节比较，避免时序侧信道。 */
+async function secureEquals(a: string, b: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [digestA, digestB] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(a)),
+    crypto.subtle.digest('SHA-256', encoder.encode(b)),
+  ]);
+  if (digestA.byteLength !== digestB.byteLength) return false;
+  const viewA = new Uint8Array(digestA);
+  const viewB = new Uint8Array(digestB);
+  let diff = 0;
+  for (let i = 0; i < viewA.length; i += 1) {
+    diff |= viewA[i]! ^ viewB[i]!;
+  }
+  return diff === 0;
+}
+
+function json(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      ...extraHeaders,
+    },
+  });
+}
+
+/**
+ * POST /api/content-sync 完整请求处理：方法 → 认证 → 媒体类型 →
+ * body 大小 → 解析校验 → 写入。供 Astro APIRoute 与测试直接调用。
+ */
+export async function handleContentSync(
+  request: Request,
+  env: ContentSyncEnv,
+): Promise<Response> {
+  if (request.method !== 'POST') {
+    return json({ error: 'method not allowed' }, 405, { allow: 'POST' });
+  }
+
+  const expectedToken = env.CONTENT_SYNC_TOKEN;
+  if (!expectedToken) {
+    return json({ error: 'CONTENT_SYNC_TOKEN not configured' }, 503);
+  }
+  const authorization = request.headers.get('authorization') ?? '';
+  if (!authorization.startsWith('Bearer ')) {
+    return json({ error: 'unauthorized' }, 401);
+  }
+  const providedToken = authorization.slice('Bearer '.length).trim();
+  if (!(await secureEquals(providedToken, expectedToken))) {
+    return json({ error: 'unauthorized' }, 401);
+  }
+
+  const contentType = request.headers.get('content-type') ?? '';
+  if (!contentType.toLowerCase().includes('application/json')) {
+    return json({ error: 'content-type must be application/json' }, 415);
+  }
+
+  const declaredLength = Number(request.headers.get('content-length') ?? '0');
+  if (declaredLength > MAX_BODY_BYTES) {
+    return json({ error: 'request body too large' }, 413);
+  }
+
+  let body: ArrayBuffer;
+  try {
+    body = await request.arrayBuffer();
+  } catch {
+    return json({ error: 'failed to read request body' }, 400);
+  }
+  if (body.byteLength > MAX_BODY_BYTES) {
+    return json({ error: 'request body too large' }, 413);
+  }
+  if (body.byteLength === 0) {
+    return json({ error: 'empty request body' }, 400);
+  }
+
+  let payload: SyncPayload;
+  try {
+    payload = parseSyncPayload(new TextDecoder().decode(body));
+  } catch (error) {
+    return json(
+      { error: error instanceof SyncPayloadError ? error.message : 'invalid payload' },
+      400,
+    );
+  }
+
+  try {
+    const result = await executeContentSync(env.DB, payload);
+    return json(result);
+  } catch (error) {
+    if (error instanceof SyncPayloadError) {
+      return json({ error: error.message }, 400);
+    }
+    return json(
+      { error: error instanceof Error ? error.message : String(error) },
+      500,
+    );
+  }
+}
