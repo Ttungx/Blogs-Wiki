@@ -45,7 +45,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 **密钥分层**（勿混用）：
 - Worker（`wrangler secret put`）：`CONTENT_SYNC_TOKEN`
 - Actions Secrets：paid 回退的 `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`；`CONTENT_SYNC_TOKEN`
-- Actions Variables：`CONTENT_SYNC_URL`；`TRANSLATION_PROVIDER`（默认 `free`）；可选 `TRANSLATION_PIPELINE` / `FETCH_BACKEND` / 代理相关
+- Actions Variables：`CONTENT_SYNC_URL`；`TRANSLATION_PROVIDER`（默认 `free`）；可选 `TRANSLATION_PIPELINE` / `MODEL_REASONING_EFFORT` / `FETCH_BACKEND` / 代理相关
 
 ## 架构（已上线）
 
@@ -77,14 +77,14 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 - 来源必须声明 `update_mode`：`"active"` 进完整更新，`"dry-run-only"` 只参与 dry-run；新增来源先 `dry-run-only`，人工核验后转 `active`。
 - 每源默认 3 篇（`--limit` 可调）。无发布日期的来源（如 Paul Graham）无法生成文章，不要加入自动更新。分类只能从 `src/config/categories.ts` 预定义集合选。
 - **翻译通道**（`TRANSLATION_PROVIDER`，默认 `free`）：
-  - `free`：本机 ocx 网关（`npm i -g @bitkyc08/opencodex`）走 **opencode-free**：`OPENAI_BASE_URL=http://127.0.0.1:10367/v1`、`TRANSLATION_MODEL=opencode-free/deepseek-v4-flash-free`、`OPENAI_API_KEY=任意非空`（loopback 免认证）。模型名必须带 `-free` 后缀（无后缀实测 401）；请求体顶层传 `reasoning_effort`（`MODEL_REASONING_EFFORT` env，默认 max）。⚠️ 顺序必须「先 `ocx provider add opencode-free` 再 `ocx start --port 10367`」（add 只写磁盘 config）。免费层约 200 请求/5 小时，429 常无 Retry-After，客户端已内置退避（最多 2 次）。prompt 可能被留存训练，只传公开内容。
+  - `free`（默认）：OpenAI 兼容网关（loopback 或免费层）。env 配 `OPENAI_BASE_URL` / `TRANSLATION_MODEL` / `MODEL_REASONING_EFFORT`（请求体顶层传 `reasoning_effort`；用 `low`——`high` 会因 reasoning 占满 max_tokens 致翻译输出空）。实测 `deepseek-v4-flash` + `low` ≈ 14s/篇（~27000 字符/min）。客户端已内置 429 退避（最多 2 次）。prompt 可能被留存训练，只传公开内容。
   - `paid`（回退）：三个 Secrets（`OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`）。
 - 本地网络受限时 `USE_PROXY=true` + `PROXY_URL`（默认 `http://127.0.0.1:7897`）。个别站点（openai.com）拦截 Node TLS 指纹，抓取自动回退系统 `curl`（Node 侧经 `worker/fetch/curl-runner.ts`；Worker 运行时无 curl 则跳过）。
 
 ## 路书（docs/，先读再动手）
 
 - `docs/blog-source-registry.md`：来源适配状态登记表，唯一权威。改来源适配前必读。
-- `docs/update-pipeline-v2.md`：V2 管线（官方中文优先、AST 保护翻译）。分块翻译执行器需 `TRANSLATION_PIPELINE=v2` 显式启用，默认仍 V1。
+- `docs/update-pipeline-v2.md`：V2 管线（官方中文优先、AST 保护翻译）。默认 V1 整篇一次；`TRANSLATION_PIPELINE=v2` 显式启用分块；单篇 >100K 字符自动兜底 V2。
 - `docs/migration-to-cloudflare.md`：迁移路线图（Phase 1-8 完成，9/10 待做）。改 `worker/` 前必读。
 - 来源审计结论直接沉淀进 registry 备注，不留独立报告文件（明细可查 git 历史）。
 
