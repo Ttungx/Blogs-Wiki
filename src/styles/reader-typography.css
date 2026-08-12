@@ -218,27 +218,11 @@
     overflow-wrap: anywhere;
   }
 
-  /* ── 图片：圆角与表格/证言/代码块一致；证言 logo 已单独归零不受影响 ── */
+  /* ── 图片：圆角与表格/证言/代码块一致；窄图在列内居中（复刻 legacy）。
+     证言 logo 已单独归零不受影响。 ── */
   .prose.blogs-wiki-prose :not(.reader-testimonial-logo) > img {
     border-radius: 6px;
-  }
-
-  /* ── 宽媒体（第二阶段）：技术图/宽表格在 ≥1000px 视口突破正文列到 920px ──
-     实测 harness 有多张 1400–3200px 源宽技术图被压在 760px 列宽，标签难读。
-     窄源图（< 列宽）保持自然宽并在突破区内居中，不受影响。 */
-  @media (min-width: 1000px) {
-    .prose.blogs-wiki-prose > p:has(> img),
-    .prose.blogs-wiki-prose > .table-scroll {
-      width: min(920px, calc(100vw - 48px));
-      max-width: none;
-      margin-left: 50%;
-      transform: translateX(-50%);
-    }
-
-    /* 窄源图在变宽的 p 里仍居中（img 是 block，不设则靠左） */
-    .prose.blogs-wiki-prose > p:has(> img) > img {
-      margin-inline: auto;
-    }
+    margin-inline: auto;
   }
 
   /* ── 移动端（≤640px）：证言卡片与代码块收紧 ── */
