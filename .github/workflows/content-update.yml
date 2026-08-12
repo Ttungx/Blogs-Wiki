@@ -100,8 +100,8 @@ jobs:
             echo "OPENAI_BASE_URL=http://127.0.0.1:10367/v1" >> "$GITHUB_ENV"
             # 模型名必须带 -free 后缀（runner 实测：无后缀走错 auth 路径 → 401 Missing API key）
             echo "TRANSLATION_MODEL=opencode-free/deepseek-v4-flash-free" >> "$GITHUB_ENV"
-            echo "TRANSLATION_REASONING_EFFORT=max" >> "$GITHUB_ENV"
-            echo "::notice::翻译通道：opencode-free/deepseek-v4-flash-free（reasoning_effort=max，经 ocx 网关）"
+            echo "MODEL_REASONING_EFFORT=${{ vars.MODEL_REASONING_EFFORT || 'low' }}" >> "$GITHUB_ENV"
+            echo "::notice::翻译通道：opencode-free/deepseek-v4-flash-free（reasoning_effort=${{ vars.MODEL_REASONING_EFFORT || 'low' }}，经 ocx 网关）"
           fi
 
       - name: 运行内容更新

@@ -3,6 +3,31 @@ import { assertMathIntegrity } from './content-integrity';
 import { protectMarkdown, restoreMarkdown } from './translation-plan';
 import type { ExtractedArticle, FetchLike, TranslateArticle } from './types';
 
+/**
+ * 超长兜底阈值：单篇正文 >100K 字符（≈25K token）时改走 V2 分块，防止 V1
+ * 整篇塞入触发空输出（V2 引入动机，见 commit 215814d）。其余一律 V1 整篇
+ * 一次——吞吐远高于分块（V2 实测 3000-3600 字符/分钟，V1 单次调用）。
+ */
+export const SUPER_LONG_THRESHOLD = 100_000;
+
+/**
+ * 包装 V1/V2 客户端为按篇幅路由的单一 translator（runner 与 batch-translate 共用，
+ * 单一来源防漂移）。
+ * - `forceV2`（TRANSLATION_PIPELINE=v2）显式强制全部分块
+ * - 单篇 contentMarkdown > SUPER_LONG_THRESHOLD 兜底走 V2 分块
+ * - 其余一律 V1 整篇一次
+ */
+export function routeTranslator(
+  v1: TranslateArticle,
+  v2: TranslateArticle,
+  forceV2: boolean,
+): TranslateArticle {
+  return (article, categories) =>
+    forceV2 || article.contentMarkdown.length > SUPER_LONG_THRESHOLD
+      ? v2(article, categories)
+      : v1(article, categories);
+}
+
 export interface TranslateOptions {
   apiKey: string;
   baseUrl: string;

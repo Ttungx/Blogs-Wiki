@@ -77,7 +77,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 - 来源必须声明 `update_mode`：`"active"` 进完整更新，`"dry-run-only"` 只参与 dry-run；新增来源先 `dry-run-only`，人工核验后转 `active`。
 - 每源默认 3 篇（`--limit` 可调）。无发布日期的来源（如 Paul Graham）无法生成文章，不要加入自动更新。分类只能从 `src/config/categories.ts` 预定义集合选。
 - **翻译通道**（`TRANSLATION_PROVIDER`，默认 `free`）：
-  - `free`：本机 ocx 网关（`npm i -g @bitkyc08/opencodex`）走 **opencode-free**：`OPENAI_BASE_URL=http://127.0.0.1:10367/v1`、`TRANSLATION_MODEL=opencode-free/deepseek-v4-flash-free`、`OPENAI_API_KEY=任意非空`（loopback 免认证）。模型名必须带 `-free` 后缀（无后缀实测 401）；请求体顶层传 `reasoning_effort`（`TRANSLATION_REASONING_EFFORT` env，默认 max）。⚠️ 顺序必须「先 `ocx provider add opencode-free` 再 `ocx start --port 10367`」（add 只写磁盘 config）。免费层约 200 请求/5 小时，429 常无 Retry-After，客户端已内置退避（最多 2 次）。prompt 可能被留存训练，只传公开内容。
+  - `free`：本机 ocx 网关（`npm i -g @bitkyc08/opencodex`）走 **opencode-free**：`OPENAI_BASE_URL=http://127.0.0.1:10367/v1`、`TRANSLATION_MODEL=opencode-free/deepseek-v4-flash-free`、`OPENAI_API_KEY=任意非空`（loopback 免认证）。模型名必须带 `-free` 后缀（无后缀实测 401）；请求体顶层传 `reasoning_effort`（`MODEL_REASONING_EFFORT` env，默认 max）。⚠️ 顺序必须「先 `ocx provider add opencode-free` 再 `ocx start --port 10367`」（add 只写磁盘 config）。免费层约 200 请求/5 小时，429 常无 Retry-After，客户端已内置退避（最多 2 次）。prompt 可能被留存训练，只传公开内容。
   - `paid`（回退）：三个 Secrets（`OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`）。
 - 本地网络受限时 `USE_PROXY=true` + `PROXY_URL`（默认 `http://127.0.0.1:7897`）。个别站点（openai.com）拦截 Node TLS 指纹，抓取自动回退系统 `curl`（Node 侧经 `worker/fetch/curl-runner.ts`；Worker 运行时无 curl 则跳过）。
 
