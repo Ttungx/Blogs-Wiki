@@ -10,6 +10,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { sitePath } from '../../../lib/urls';
 import { getArticle, getAvailableLanguages, listArticlesByBlog, parseDateSafe } from '../../../lib/server/content';
 import { renderMarkdown } from '../../../lib/server/markdown';
+import '../../../styles/reader-typography.css';
 
 const { blog: blogId, article: slug } = Astro.params;
 if (!blogId || !slug) return new Response('Not Found', { status: 404 });
@@ -87,43 +88,45 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
         </div>
 
         <div class="reader-meta-grid">
-          <div>
-            <span>原文发表于</span>
-            <strong>
-              {publishedDate && (
-                <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
-              )}
-            </strong>
-          </div>
-          {secondaryDate && (
+          <div class="reader-meta-row">
             <div>
-              <span>{secondaryLabel}</span>
+              <span>原文发表于</span>
               <strong>
-                <time datetime={secondaryDate.toISOString()}>{dateFormatter.format(secondaryDate)}</time>
+                {publishedDate && (
+                  <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
+                )}
               </strong>
             </div>
-          )}
-          <div>
-            <span>分类</span>
-            <p>
-              {articleData.categories.map((category) => <CategoryPill label={category} />)}
-            </p>
-          </div>
-          {articleData.translationModel && (
+            {secondaryDate && (
+              <div>
+                <span>{secondaryLabel}</span>
+                <strong>
+                  <time datetime={secondaryDate.toISOString()}>{dateFormatter.format(secondaryDate)}</time>
+                </strong>
+              </div>
+            )}
             <div>
-              <span>翻译模型</span>
-              <strong>{articleData.translationModel}</strong>
+              <span>分类</span>
+              <p>
+                {articleData.categories.map((category) => <CategoryPill label={category} />)}
+              </p>
             </div>
-          )}
-          <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
-            阅读原文 <span aria-hidden="true">↗</span>
-          </a>
+          </div>
+          <div class="reader-meta-row">
+            {articleData.translationModel && (
+              <div>
+                <span>翻译模型</span>
+                <strong>{articleData.translationModel}</strong>
+              </div>
+            )}
+            <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
+              阅读原文 <span aria-hidden="true">↗</span>
+            </a>
+          </div>
         </div>
       </header>
 
-      <div class="reader-content prose">
-        <div set:html={html} />
-      </div>
+      <div class="reader-content prose max-w-none blogs-wiki-prose" set:html={html} />
 
       {relatedArticles.length > 0 && (
         <section class="reader-related shell" aria-labelledby="reader-related-title">

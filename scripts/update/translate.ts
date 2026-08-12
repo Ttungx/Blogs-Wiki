@@ -1,4 +1,6 @@
 import { categoryPrompt, normalizeCategories } from './classify';
+import { assertMathIntegrity } from './content-integrity';
+import { protectMarkdown, restoreMarkdown } from './translation-plan';
 import type { ExtractedArticle, FetchLike, TranslateArticle } from './types';
 
 export interface TranslateOptions {
@@ -267,8 +269,14 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
 
   return async (article, categories) => {
     try {
+      // TeX/code/URL are opaque: protect before the model sees the body.
+      const protectedBody = protectMarkdown(article.contentMarkdown);
+      const protectedArticle: ExtractedArticle = {
+        ...article,
+        contentMarkdown: protectedBody.text,
+      };
       const systemPrompt = buildSystemPrompt(categories);
-      const userMessage = buildUserMessage(article);
+      const userMessage = buildUserMessage(protectedArticle);
       const baseMessages: ChatMessage[] = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage },
@@ -304,10 +312,13 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
         : article.title;
 
       const rawContent = parsed.content_markdown;
-      const contentMarkdown = typeof rawContent === 'string' ? rawContent : '';
-      if (contentMarkdown.trim() === '') {
+      const protectedContent = typeof rawContent === 'string' ? rawContent : '';
+      if (protectedContent.trim() === '') {
         throw new Error('model returned an empty content_markdown');
       }
+
+      const contentMarkdown = restoreMarkdown(protectedContent, protectedBody.spans);
+      assertMathIntegrity(article.contentMarkdown, contentMarkdown);
 
       return {
         translatedTitle,

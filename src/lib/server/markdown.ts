@@ -333,15 +333,51 @@ export interface RenderMarkdownOptions {
   baseUrl?: string;
 }
 
-/** 将 Markdown 渲染为 HTML 字符串。 */
-export async function renderMarkdown(
+export interface RenderMarkdownWarning {
+  reason: string;
+  ruleId?: string;
+  message: string;
+  line?: number;
+  column?: number;
+}
+
+export interface RenderMarkdownResult {
+  html: string;
+  warnings: RenderMarkdownWarning[];
+}
+
+/** 将 Markdown 渲染为 HTML，并附带 VFile 诊断（含 KaTeX 失败）。 */
+export async function renderMarkdownDetailed(
   markdown: string,
   options: RenderMarkdownOptions = {},
-): Promise<string> {
+): Promise<RenderMarkdownResult> {
   const processor = await processorPromise;
   const file = await processor.process({
     value: markdown,
     data: { baseUrl: options.baseUrl },
   });
-  return String(file);
+  const warnings: RenderMarkdownWarning[] = (file.messages ?? []).map((entry) => ({
+    reason: entry.reason,
+    ...(entry.ruleId ? { ruleId: entry.ruleId } : {}),
+    message: entry.message,
+    ...(typeof entry.line === 'number' ? { line: entry.line } : {}),
+    ...(typeof entry.column === 'number' ? { column: entry.column } : {}),
+  }));
+  return { html: String(file), warnings };
+}
+
+/** 将 Markdown 渲染为 HTML 字符串。 */
+export async function renderMarkdown(
+  markdown: string,
+  options: RenderMarkdownOptions = {},
+): Promise<string> {
+  const { html, warnings } = await renderMarkdownDetailed(markdown, options);
+  for (const warning of warnings) {
+    const where =
+      warning.line !== undefined
+        ? ` @${warning.line}${warning.column !== undefined ? `:${warning.column}` : ''}`
+        : '';
+    console.warn(`[markdown]${where} ${warning.message}`);
+  }
+  return html;
 }

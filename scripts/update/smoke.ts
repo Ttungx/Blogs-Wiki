@@ -26,6 +26,7 @@ import {
   selectOfficialChineseAlternate,
 } from './localization';
 import { loadProxySettings, proxyUrlFor } from './network';
+import { assertMathIntegrity, collectMathInventory } from './content-integrity';
 import { createTranslateClient } from './translate';
 import { createTranslateV2Client } from './translate-v2';
 import { fetchArticleWithLocalization } from './fetch';
@@ -449,6 +450,65 @@ async function run() {
       () => restoreMarkdown(protectedMarkdown.text.replace(protectedMarkdown.spans[0].token, ''), protectedMarkdown.spans),
       /expected exactly 1/,
     );
+
+    // math fidelity: TeX is protected (never sent as prose) and restored byte-identical
+    const mathSource = [
+      'Loss scales as $N_\\text{opt} \\propto C^{0.73}$.',
+      '',
+      '$$',
+      '\\begin{align}',
+      'L(D,N) &= \\frac{A}{N^{\\alpha}} + \\frac{B}{D^{\\beta}} + E \\\\',
+      '\\end{align}',
+      '$$',
+    ].join('\n');
+    const protectedMath = protectMarkdown(mathSource);
+    assert.equal(protectedMath.spans.some((span) => span.kind === 'inline-math'), true);
+    assert.equal(protectedMath.spans.some((span) => span.kind === 'math'), true);
+    assert.doesNotMatch(protectedMath.text, /N_\\text\{opt\}/);
+    assert.doesNotMatch(protectedMath.text, /\\begin\{align\}/);
+    assert.match(protectedMath.text, /\{\{BW:inline-math:\d+\}\}/);
+    assert.match(protectedMath.text, /\{\{BW:math:\d+\}\}/);
+    const restoredMath = restoreMarkdown(protectedMath.text, protectedMath.spans);
+    assertMathIntegrity(mathSource, restoredMath);
+    const inventory = collectMathInventory(restoredMath);
+    assert.equal(inventory.length, 2);
+    assert.equal(inventory[0].kind, 'inlineMath');
+    assert.equal(inventory[0].value, 'N_\\text{opt} \\propto C^{0.73}');
+    assert.equal(inventory[1].kind, 'math');
+    assert.match(inventory[1].value, /\\begin\{align\}/);
+
+    // V1 translate path: model never sees raw TeX; tokens restored + integrity pass
+    const mathArticle = { ...article, contentMarkdown: mathSource };
+    let mathModelBody = '';
+    const mathFetch: FetchLike = async (_input, init) => {
+      const body = JSON.parse(String(init?.body ?? '')) as {
+        messages: Array<{ role: string; content: string }>;
+      };
+      mathModelBody = body.messages.find((message) => message.role === 'user')?.content ?? '';
+      const payload = JSON.parse(mathModelBody) as { content_markdown: string };
+      return jsonResponse(
+        JSON.stringify({
+          translated_title: '缩放律',
+          categories: ['ai'],
+          // Echo protected body — tokens must survive for restore.
+          content_markdown: payload.content_markdown,
+        }),
+      );
+    };
+    const mathClient = createTranslateClient({
+      apiKey: 'test-key',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'test-model',
+      fetchImpl: mathFetch,
+    });
+    const mathResult = await mathClient(mathArticle, CATEGORIES);
+    assert.doesNotMatch(mathModelBody, /N_\\text\{opt\}/);
+    assert.doesNotMatch(mathModelBody, /\\begin\{align\}/);
+    assert.match(mathModelBody, /\{\{BW:inline-math:\d+\}\}/);
+    assert.match(mathModelBody, /\{\{BW:math:\d+\}\}/);
+    assertMathIntegrity(mathSource, mathResult.contentMarkdown);
+    assert.match(mathResult.contentMarkdown, /N_\\text\{opt\} \\propto C\^\{0\.73\}/);
+    assert.match(mathResult.contentMarkdown, /\\begin\{align\}/);
     const tick = '`';
     const trickyCode = `${tick.repeat(4)}md\ninside ${tick.repeat(3)} fence\n${tick.repeat(4)}\n\nUse ${tick.repeat(2)}a ${tick} b${tick.repeat(2)}.`;
     const protectedTrickyCode = protectMarkdown(trickyCode);

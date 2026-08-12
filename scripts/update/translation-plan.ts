@@ -4,9 +4,9 @@
  *
  * Responsibilities:
  *  - Parse Markdown into a remark (mdast) AST (GFM enabled).
- *  - Protect link/image/definition URLs, code, inline code, and raw HTML
- *    with deterministic tokens, then strictly restore them after a model
- *    translation pass.
+ *  - Protect link/image/definition URLs, code, inline code, raw HTML, and
+ *    math (display + inline, via remark-math) with deterministic tokens,
+ *    then strictly restore them after a model translation pass.
  *  - Split body content into chunks at heading / top-level block boundaries
  *    without ever cutting through a structural block (code fence, table,
  *    list, blockquote, ...).
@@ -22,13 +22,14 @@ import { createHash } from 'node:crypto';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import remarkStringify from 'remark-stringify';
 
 /** Which pipeline action the plan prescribes. */
 export type TranslationMode = 'official-zh' | 'native-zh' | 'translate';
 
 /** What a protected span stands for in the original Markdown. */
-export type SpanKind = 'url' | 'code' | 'inline-code' | 'html';
+export type SpanKind = 'url' | 'code' | 'inline-code' | 'html' | 'math' | 'inline-math';
 
 /** A value removed from the text sent to the model, keyed by its token. */
 export interface ProtectedSpan {
@@ -114,7 +115,11 @@ export const DEFAULT_MAX_TOKENS = 6000;
 export const DEFAULT_MAX_CHUNKS = 64;
 
 /** Reserved token pattern; source text containing it fails fast instead of corrupting. */
-const TOKEN_PATTERN = /\{\{BW:(?:url|code|inline-code|html):\d+\}\}/g;
+const TOKEN_PATTERN = /\{\{BW:(?:url|code|inline-code|html|math|inline-math):\d+\}\}/g;
+
+function parseMarkdown(markdown: string): MdNode {
+  return unified().use(remarkParse).use(remarkGfm).use(remarkMath).parse(markdown) as unknown as MdNode;
+}
 
 // Minimal structural node shape; avoids a hard dependency on @types/mdast.
 interface MdNode {
@@ -236,6 +241,12 @@ function collectSpans(
     case 'html':
       protect('html', 'value', node);
       break;
+    case 'math':
+      protect('math', 'value', node);
+      break;
+    case 'inlineMath':
+      protect('inline-math', 'value', node);
+      break;
     default:
       break;
   }
@@ -254,7 +265,7 @@ export function protectMarkdown(
   stringify?: StringifySettings,
 ): { text: string; spans: ProtectedSpan[] } {
   assertNoReservedTokens(markdown);
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown) as unknown as MdNode;
+  const tree = parseMarkdown(markdown);
   const spans: ProtectedSpan[] = [];
   const blockSpans: ProtectedSpan[][] = (tree.children ?? []).map(() => []);
   const counter = { value: 0 };
@@ -304,6 +315,7 @@ function serializeTree(tree: MdNode, stringify?: StringifySettings): string {
   return unified()
     .use(remarkParse)
     .use(remarkGfm)
+    .use(remarkMath)
     .use(remarkStringify, {
       bullet: '-',
       fence: '`',
@@ -349,7 +361,7 @@ export function chunkMarkdown(
   const maxChunks = options.maxChunks ?? DEFAULT_MAX_CHUNKS;
   assertNoReservedTokens(markdown);
 
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown) as unknown as MdNode;
+  const tree = parseMarkdown(markdown);
   const roots = tree.children ?? [];
   const blockSpans: ProtectedSpan[][] = roots.map(() => []);
   const spans: ProtectedSpan[] = [];
