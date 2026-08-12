@@ -111,7 +111,9 @@ export interface TranslationPlan {
 }
 
 export const DEFAULT_CJK_THRESHOLD = 0.5;
-export const DEFAULT_MAX_TOKENS = 6000;
+// step-3.7 等思考型模型在超大 chunk 上会把预算花在推理上导致 content 空；
+// 1200 token 的 chunk 能让模型快速产出译文（经验值，见 backfill-handoff）。
+export const DEFAULT_MAX_TOKENS = 1200;
 export const DEFAULT_MAX_CHUNKS = 64;
 
 /** Reserved token pattern; source text containing it fails fast instead of corrupting. */

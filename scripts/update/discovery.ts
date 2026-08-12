@@ -1,5 +1,6 @@
 import type { DiscoveredArticle, FetchLike, SourceConfig } from './types';
 import { canonicalizeUrl, isLikelyArticleUrl, uniqueCanonicalUrls } from './urls';
+import { DEFAULT_MAX_CHILD_SITEMAPS } from './constants';
 import { proxyUrlFor } from './proxy';
 import { getCurlRunner } from '../../worker/fetch/curl-runner';
 
@@ -44,7 +45,7 @@ function stripTags(value: string): string {
 }
 
 export function isCandidateArticle(url: string, source: SourceConfig): boolean {
-  if (!isLikelyArticleUrl(url, source.domain)) return false;
+  if (!isLikelyArticleUrl(url, source.domain, { allowNonArticlePaths: source.allow_non_article_paths })) return false;
   const pathname = new URL(url).pathname.replace(/\/+$/, '');
   const excluded = source.exclude_paths?.some((prefix) => {
     if (prefix.startsWith('^')) {
@@ -153,11 +154,11 @@ export function parseSitemap(xml: string, sitemapUrl: string): SitemapEntry[] {
   });
 }
 
-export function parseListing(html: string, listingUrl: string, sourceDomain: string): DiscoveredArticle[] {
+export function parseListing(html: string, listingUrl: string, source: SourceConfig): DiscoveredArticle[] {
   const anchors = [...html.matchAll(/<a\b([^>]*?)\bhref=["']([^"'#]+)["']([^>]*)>([\s\S]*?)<\/a>/gi)];
   return uniqueCanonicalUrls(anchors.flatMap((match) => {
     const url = canonicalizeUrl(match[2], listingUrl);
-    if (!url || !isLikelyArticleUrl(url, sourceDomain)) return [];
+    if (!url || !isLikelyArticleUrl(url, source.domain, { allowNonArticlePaths: source.allow_non_article_paths })) return [];
     return [{ url, title: stripTags(match[4]) }];
   }), listingUrl);
 }
@@ -165,7 +166,7 @@ export function parseListing(html: string, listingUrl: string, sourceDomain: str
 async function fromFeed(source: SourceConfig, fetchImpl: FetchLike): Promise<DiscoveredArticle[]> {
   if (!source.rss_url) return [];
   return parseFeed(await fetchText(fetchImpl, source.rss_url, `${source.id} RSS`), source.rss_url)
-    .filter((item) => isLikelyArticleUrl(item.url, source.domain));
+    .filter((item) => isLikelyArticleUrl(item.url, source.domain, { allowNonArticlePaths: source.allow_non_article_paths }));
 }
 
 interface SitemapCollectResult {
@@ -189,7 +190,7 @@ async function collectSitemapEntries(source: SourceConfig, fetchImpl: FetchLike)
         return false;
       }
     })
-    .slice(0, 10);
+    .slice(0, source.max_child_sitemaps ?? DEFAULT_MAX_CHILD_SITEMAPS);
 
   if (!childSitemaps.length) {
     return { entries: rootEntries, rawCount: rootEntries.length };
@@ -208,12 +209,12 @@ async function collectSitemapEntries(source: SourceConfig, fetchImpl: FetchLike)
 async function fromSitemap(source: SourceConfig, fetchImpl: FetchLike): Promise<DiscoveredArticle[]> {
   if (!source.sitemap_url) return [];
   const { entries } = await collectSitemapEntries(source, fetchImpl);
-  return entries.filter((item) => isLikelyArticleUrl(item.url, source.domain));
+  return entries.filter((item) => isLikelyArticleUrl(item.url, source.domain, { allowNonArticlePaths: source.allow_non_article_paths }));
 }
 
 async function fromListing(source: SourceConfig, fetchImpl: FetchLike): Promise<DiscoveredArticle[]> {
   const html = await fetchText(fetchImpl, source.blog_url, `${source.id} listing`);
-  return parseListing(html, source.blog_url, source.domain);
+  return parseListing(html, source.blog_url, source);
 }
 
 function dotPath(value: unknown, path: string): unknown {
@@ -402,7 +403,7 @@ export async function diagnoseSourceDiscovery(
     runPath('listing', Boolean(source.blog_url), async () => {
       const listingUrl = source.blog_url as string;
       const html = await fetchText(fetchImpl, listingUrl, `${source.id} listing`);
-      const entries = parseListing(html, listingUrl, source.domain);
+      const entries = parseListing(html, listingUrl, source);
       return {
         rawCount: entries.length,
         candidates: entries.filter((item) => isCandidateArticle(item.url, source)),

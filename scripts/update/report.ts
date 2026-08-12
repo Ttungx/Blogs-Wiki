@@ -123,7 +123,7 @@ function renderMarkdown(report: UpdateReport | UpdateFailureReport): string {
   );
 
   const errors = summary.sources.flatMap((source) =>
-    source.errors.map((message) => `- [${escapeCell(source.sourceId)}] ${escapeCell(message)}`),
+    source.errors.map((err) => `- [${escapeCell(source.sourceId)}] ${escapeCell(err.url)}: ${escapeCell(err.message)}${err.code ? ` (${escapeCell(err.code)})` : ''}`),
   );
   if (errors.length > 0) {
     lines.push('## 失败明细', '', ...errors, '');

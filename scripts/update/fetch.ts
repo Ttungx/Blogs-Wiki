@@ -5,6 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { proxyUrlFor } from './network';
 import { USER_AGENT, normalizeDate, resolveGitDate, resolveGitFilePath } from './git-date';
+import { urlDateFromPattern } from './url-date';
 import { findOfficialChineseUrl, mapToOfficialZhPath } from './localization';
 import type { DiscoveredArticle, ExtractedArticle, FetchLike, SourceConfig } from './types';
 // 轮播折叠逻辑与 Worker/Defuddle 抓取链共享（worker/fetch/carousel-collapse.ts），
@@ -15,10 +16,12 @@ export { collapseCarousels };
 
 const execFileAsync = promisify(execFile);
 
+import { DEFAULT_MIN_CONTENT_CHARS as MIN_CONTENT_CHARS } from './constants';
+import { extractMetaRefreshUrl } from './meta-refresh';
+
 const FETCH_TIMEOUT_MS = 30_000;
 const RETRY_STATUSES = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
 const RETRY_DELAY_MS = 2_000;
-const MIN_CONTENT_CHARS = 200;
 
 class HttpStatusError extends Error {
   constructor(readonly status: number, statusText: string) {
@@ -64,6 +67,16 @@ async function fetchHtml(fetchImpl: FetchLike, url: string, source: SourceConfig
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
       if (!response.ok) throw new HttpStatusError(response.status, response.statusText);
+      // 跨域重定向告警（如文章迁移到新域）：不阻塞提取，但暴露 URL 与内容域不一致，
+      // 便于人工判断是否加 exclude 或换源。
+      if (response.redirected) {
+        try {
+          const finalHost = new URL(response.url).hostname.replace(/^www\./, '');
+          if (finalHost !== source.domain && !finalHost.endsWith(`.${source.domain}`)) {
+            console.warn(`[${source.id}] ${url} redirected cross-domain to ${response.url} (possible migration)`);
+          }
+        } catch { /* ignore URL parse failure */ }
+      }
       return response.text();
     };
 
@@ -520,7 +533,13 @@ export async function fetchArticle(
     return fetchApiArticle(source, discovered, articleUrl, fetchImpl);
   }
 
-  const html = await fetchHtml(fetchImpl, articleUrl, source);
+  let html = await fetchHtml(fetchImpl, articleUrl, source);
+  // meta-refresh 壳页跟随（如 deepmind → antigravity.google 迁移壳）：
+  // 壳页只含 <meta http-equiv="refresh">，提取必然过短；跟随目标重抓一次。
+  const refreshTarget = extractMetaRefreshUrl(html, articleUrl);
+  if (refreshTarget) {
+    html = await fetchHtml(fetchImpl, refreshTarget, source);
+  }
   const dom = new JSDOM(html, { url: articleUrl });
   const { document } = dom.window;
 
@@ -550,7 +569,9 @@ export async function fetchArticle(
   // Fall back to a visible publish date when the page exposes none in
   // meta/JSON-LD (ai.meta.com, keli-wen.github.io). Runs on the extracted
   // body text so footer copyrights and nav dates are out of scope.
+  // 配置了 url_date_pattern 的源（simonwillison.net）以 URL 路径日期为准。
   const publishedAt =
+    (source.url_date_pattern ? urlDateFromPattern(source.url_date_pattern, articleUrl) : '') ||
     resolvePublishedAt(document, discovered) ||
     headingDate ||
     resolveVisibleDate(parsed.textContent ?? '') ||
@@ -570,9 +591,10 @@ export async function fetchArticle(
     headImageUrl ?? absoluteHttpUrl(contentNode.querySelector('img[src]')?.getAttribute('src') ?? undefined, articleUrl);
 
   const textLength = (parsed.textContent ?? '').replace(/\s+/g, ' ').trim().length;
-  if (textLength < MIN_CONTENT_CHARS) {
+  const minContentChars = source.min_content_chars ?? MIN_CONTENT_CHARS;
+  if (textLength < minContentChars) {
     throw new Error(
-      `${source.id} ${articleUrl}: extracted content too short (${textLength} chars, minimum ${MIN_CONTENT_CHARS})`,
+      `${source.id} ${articleUrl}: extracted content too short (${textLength} chars, minimum ${minContentChars})`,
     );
   }
 
@@ -703,9 +725,10 @@ export async function fetchApiArticle(
     throw new Error(`${source.id} ${articleUrl}: api detail returned no content`);
   }
   const contentMarkdown = normalizeArticleMarkdown(content.trim());
-  if (!contentMarkdown || contentMarkdown.replace(/\s+/g, ' ').length < MIN_CONTENT_CHARS) {
+  const minContentChars = source.min_content_chars ?? MIN_CONTENT_CHARS;
+  if (!contentMarkdown || contentMarkdown.replace(/\s+/g, ' ').length < minContentChars) {
     throw new Error(
-      `${source.id} ${articleUrl}: api content too short (minimum ${MIN_CONTENT_CHARS} chars)`,
+      `${source.id} ${articleUrl}: api content too short (minimum ${minContentChars} chars)`,
     );
   }
   const resolvedTitle =

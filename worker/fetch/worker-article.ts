@@ -3,18 +3,25 @@ import { findOfficialChineseUrl, mapToOfficialZhPath } from './worker-localizati
 import { getCurlRunner } from './curl-runner';
 import { proxyUrlFor } from '../../scripts/update/proxy';
 import { resolveGitDate } from '../../scripts/update/git-date';
+import { urlDateFromPattern } from '../../scripts/update/url-date';
 import type { SourceConfig } from '../../scripts/update/types';
+import { DEFAULT_MIN_CONTENT_CHARS as MIN_CONTENT_CHARS } from '../../scripts/update/constants';
+import { extractMetaRefreshUrl } from '../../scripts/update/meta-refresh';
 
 export interface WorkerArticleSource {
   id: string;
   homepageUrl: string;
   preferOfficialZh?: boolean;
+  /** 从 URL 路径推断发布日期的正则（simonwillison.net 等）。 */
+  urlDatePattern?: string;
   /** en URL 前缀 → 官方简体中文前缀映射（cursor / qwen，无 hreflang 时探测）。 */
   zhPathMap?: Record<string, string>;
   /** GitHub 提交历史日期兜底（无机器可读日期的 GitHub Pages 博客）。 */
   gitDate?: SourceConfig['git_date'];
   /** JSON-API 来源配置（腾讯混元等 React SPA）。 */
   api?: SourceConfig['api'];
+  /** 正文最小纯文本字符数；未设则用 DEFAULT_MIN_CONTENT_CHARS。 */
+  minContentChars?: number;
 }
 
 export interface WorkerDiscoveredArticle {
@@ -283,8 +290,8 @@ async function fetchWorkerApiArticle(
     throw new Error(`${source.id} ${articleUrl}: api detail returned no content`);
   }
   const contentMarkdown = content.trim();
-  if (contentMarkdown.replace(/\s+/g, ' ').length < 200) {
-    throw new Error(`${source.id} ${articleUrl}: api content too short (minimum 200 chars)`);
+  if (contentMarkdown.replace(/\s+/g, ' ').length < MIN_CONTENT_CHARS) {
+    throw new Error(`${source.id} ${articleUrl}: api content too short (minimum ${MIN_CONTENT_CHARS} chars)`);
   }
   const resolvedTitle = typeof title === 'string' && title.trim()
     ? title.trim()
@@ -328,15 +335,23 @@ export async function fetchWorkerArticle(
     return fetchWorkerApiArticle(source, discovered, articleUrl, fetchImpl);
   }
 
-  const html = await fetchHtml(fetchImpl, articleUrl, source.id);
-  const extracted = await extractArticle({ html, url: articleUrl });
+  let html = await fetchHtml(fetchImpl, articleUrl, source.id);
+  // meta-refresh 壳页跟随（与 Node 抓取链一致）。
+  const refreshTarget = extractMetaRefreshUrl(html, articleUrl);
+  if (refreshTarget) {
+    html = await fetchHtml(fetchImpl, refreshTarget, source.id);
+  }
+  const extracted = await extractArticle({ html, url: articleUrl, minContentChars: source.minContentChars });
   const title = extracted.title || discovered.title?.trim() || '';
   if (!title) {
     throw new Error(`${source.id} ${articleUrl}: no title found`);
   }
   // Defuddle 拿不到机器可读日期时回退到可见正文日期（ai.meta.com、
   // keli-wen.github.io）。正文文本比整页文本干净，页脚版权不在范围内。
+  // 配置了 url_date_pattern 的源（simonwillison.net）以 URL 路径日期为准：
+  // 页面正文常引用更早年份（如 "Turbo Pascal 1986"），Defuddle 会误取。
   const publishedAt =
+    (source.urlDatePattern ? urlDateFromPattern(source.urlDatePattern, articleUrl) : '') ||
     extracted.publishedAt ||
     discovered.publishedAt?.trim() ||
     resolveVisibleDate(extracted.contentMarkdown) ||

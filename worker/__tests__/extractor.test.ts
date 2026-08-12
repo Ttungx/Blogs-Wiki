@@ -218,3 +218,53 @@ test('extractArticle: 正文外 header 轮播不折叠、不注入证言指引',
   assert.doesNotMatch(result.contentMarkdown, /更多客户证言请见/, 'header 轮播不应注入证言折叠指引');
   assert.doesNotMatch(result.contentMarkdown, /Hero D/, 'header 轮播不应被错误地折叠进正文');
 });
+
+test('extractArticle: 相对图片/链接 URL 绝对化', async () => {
+  const body = `
+    <p>Relative asset demo for the article.</p>
+    <img src="back_arrow.png" alt="Back">
+    <img src="golden_lantern.png" alt="Golden Lantern">
+    <p><a href="/docs/guide">Guide</a> and <a href="relative/page">Relative page</a>.</p>
+    <p>This paragraph provides the extra length required to pass the extractor
+    minimum content length gate. Lorem ipsum dolor sit amet consectetur
+    adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore.</p>
+  `;
+  const result = await extractArticle({ html: fullPageHtml({ body }), url: BASE_URL });
+
+  assert.match(result.contentMarkdown, /!\[Back\]\(https:\/\/example\.com\/posts\/back_arrow\.png\)/);
+  assert.match(result.contentMarkdown, /!\[Golden Lantern\]\(https:\/\/example\.com\/posts\/golden_lantern\.png\)/);
+  assert.match(result.contentMarkdown, /\[Guide\]\(https:\/\/example\.com\/docs\/guide\)/);
+  assert.match(result.contentMarkdown, /\[Relative page\]\(https:\/\/example\.com\/posts\/relative\/page\)/);
+  // 绝对 URL / 协议相对链接不应被改写
+  assert.doesNotMatch(result.contentMarkdown, /\(javascript:/i);
+});
+
+test('extractArticle: 逗号拼接的多时间戳取第一段（github.blog）', async () => {
+  const body = `
+    <p>This is a GitHub Engineering article with enough body text to pass the
+    minimum content length check of the extractor module. Lorem ipsum dolor
+    sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut
+    labore et dolore magna aliqua.</p>
+  `;
+  // Defuddle 会把 JSON-LD 中两个等价 datePublished 拼成 "A, B"。
+  const html = `<!DOCTYPE html><html lang="en"><head><title>Stack PR</title>
+  <script type="application/ld+json">{"datePublished":"2026-08-04T09:47:18-07:00, 2026-08-04T16:47:18+00:00"}</script>
+  </head><body><article><h1>Stack PR</h1>${body}</article></body></html>`;
+  const result = await extractArticle({ html, url: 'https://github.blog/engineering/stack-pr/' });
+  assert.match(result.publishedAt, /^2026-08-04T09:47:18-07:00$/, '应取第一段时间戳');
+});
+
+test('extractArticle: Next.js _createdAt 日期回退（anthropic research）', async () => {
+  const body = `
+    <p>This is an Anthropic Research article with enough body text to pass the
+    minimum content length check of the extractor module. Lorem ipsum dolor
+    sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut
+    labore et dolore magna aliqua.</p>
+  `;
+  const html = `<!DOCTYPE html><html lang="en"><head><title>Riemann</title></head>
+  <body><article><h1>Riemann</h1>${body}</article>
+  <script>self.__next_f.push([1,"6:[\\"$\\",{\\"post\\":{\\"_createdAt\\":\\"2026-08-06T20:38:02Z\\"}]])</script>
+  </body></html>`;
+  const result = await extractArticle({ html, url: 'https://www.anthropic.com/research/riemann-zeta' });
+  assert.match(result.publishedAt, /^2026-08-06T20:38:02Z$/, '应回退到 _createdAt');
+});

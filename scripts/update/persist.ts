@@ -16,8 +16,13 @@ export function emptyProcessedState(): ProcessedUrlState {
   return { version: 1, updated_at: null, blogs: {} };
 }
 
-export async function loadProcessedState(rootDir: string): Promise<ProcessedUrlState> {
-  const file = path.join(rootDir, ...DATA_DIR, PROCESSED_FILE);
+export async function loadProcessedState(
+  rootDir: string,
+  stateFile?: string,
+): Promise<ProcessedUrlState> {
+  const file = stateFile
+    ? path.resolve(rootDir, stateFile)
+    : path.join(rootDir, ...DATA_DIR, PROCESSED_FILE);
   try {
     const raw = await fs.readFile(file, 'utf8');
     const parsed = JSON.parse(raw) as Record<string, unknown>;
@@ -42,8 +47,14 @@ export async function loadProcessedState(rootDir: string): Promise<ProcessedUrlS
   return emptyProcessedState();
 }
 
-export async function saveProcessedState(rootDir: string, state: ProcessedUrlState): Promise<void> {
-  const file = path.join(rootDir, ...DATA_DIR, PROCESSED_FILE);
+export async function saveProcessedState(
+  rootDir: string,
+  state: ProcessedUrlState,
+  stateFile?: string,
+): Promise<void> {
+  const file = stateFile
+    ? path.resolve(rootDir, stateFile)
+    : path.join(rootDir, ...DATA_DIR, PROCESSED_FILE);
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
 }

@@ -8,6 +8,9 @@ export interface TranslateOptions {
   baseUrl: string;
   model: string;
   timeoutMs?: number;
+  /** chat/completions 的 max_tokens。思考型模型（如 step-3.7）会把大量
+   * 预算用于推理，长文翻译不设上限可能思考到超时；设大预算保证 JSON 输出。 */
+  maxTokens?: number;
   fetchImpl?: FetchLike;
   retryOptions?: RetryOptions;
   /**
@@ -25,6 +28,7 @@ export interface RetryOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 300_000;
+const DEFAULT_MAX_TOKENS = 16_000;
 const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
   maxRetries: 2,
   retryDelayMs: 15_000,
@@ -263,6 +267,7 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
   const endpoint = `${options.baseUrl.replace(/\/+$/, '').replace(/\/chat\/completions$/i, '')}/chat/completions`;
   const model = options.model;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
   const retryOptions = options.retryOptions ?? {};
   const reasoningEffort = options.reasoningEffort?.trim() || undefined;
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -287,6 +292,7 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
           model,
           messages,
           response_format: { type: 'json_object' },
+          max_tokens: maxTokens,
         };
         if (reasoningEffort) body.reasoning_effort = reasoningEffort;
         const content = await requestChatCompletion(fetchImpl, endpoint, apiKey, body, timeoutMs, retryOptions);

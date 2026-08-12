@@ -3,7 +3,12 @@ import { fileURLToPath } from 'node:url';
 import { loadSources } from './config';
 import { diagnoseSourceDiscovery } from './discovery';
 import { fetchArticle } from './fetch';
+import { checkArticleIntegrity } from './backfill-integrity';
 import { createFetchImpl } from './network';
+// 触发 curl 回退注册（fetch-backend 顶层 import '../../worker/fetch/curl'）。
+// 否则 audit 对 openai.com 等 TLS 指纹拦截的站点会因无 curl 回退而假 FAIL，
+// 与真实 runner（index 路径，已 import fetch-backend）行为不一致。
+import './fetch-backend';
 import type { DiscoveredArticle, Logger, SourceConfig } from './types';
 
 const DEFAULT_SAMPLES = 3;
@@ -99,7 +104,12 @@ async function auditSample(
   try {
     const article = await fetchArticle(source, discovered, fetchImpl);
     const images = inlineImageUrls(article.contentMarkdown);
-    const issues: string[] = [];
+    // 质量门禁（与增量/backfill 共用 checkArticleIntegrity）：audit 准入标准
+    // 不只「抓到 + 有日期」，模板页 / 导航列表 / 无标题 / 内容过短 也判 FAIL，
+    // 作为新源 dry-run-only → active 的自动化准入门禁。
+    const issues = checkArticleIntegrity(article, source).issues
+      .filter((item) => item.severity === 'error')
+      .map((item) => item.code);
     if (!article.publishedAt) issues.push('missing-published-date');
     return {
       url: article.url,

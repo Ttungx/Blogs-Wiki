@@ -88,6 +88,46 @@ export interface SourceConfig {
   article_paths?: string[];
   /** Optional pathname prefixes to reject regardless of `article_paths`. */
   exclude_paths?: string[];
+  /**
+   * 从 URL 路径推断发布日期的正则（页面无机器可读日期、sitemap 无 lastmod
+   * 时用，如 simonwillison.net 的 /2026/Jul/9/slug/ 路径）。必须含年份捕获
+   * 组，可选月/日捕获组。
+   */
+  url_date_pattern?: string;
+  /** 正文最小纯文本字符数；未设则用 DEFAULT_MIN_CONTENT_CHARS。
+   *  短新闻源可调低、长 essay 源可调高，避免单一阈值误杀/漏放。 */
+  min_content_chars?: number;
+  /** 启用促销/直播/placeholder 严格内容过滤（原 backfill-policy 的 qualityFilter，
+   *  现统一为源级开关，增量与回填共用）。 */
+  quality_filter?: boolean;
+  /** 为 true 时跳过全局 NON_ARTICLE_PATHS 黑名单，让 article_paths 白名单完全
+   *  决定收录范围。用于博客路径含 /press /media /tag 等被全局黑名单段的公司站。 */
+  allow_non_article_paths?: boolean;
+  /** 每次增量更新的篇数上限；未设则用 DEFAULT_LIMIT_PER_SOURCE。CLI `--limit` 仍可全局覆盖。 */
+  limit?: number;
+  /** 发现策略：`auto`（默认）首个非空发现源即返回；`merge` 四路并集去重（覆盖更全，略慢）。 */
+  discovery_strategy?: 'auto' | 'merge';
+  /** 子 sitemap 抓取上限；未设则用 DEFAULT_MAX_CHILD_SITEMAPS。 */
+  max_child_sitemaps?: number;
+  /** 回填策略（`npm run backfill` 消费）。未设则用 backfill-policy 兜底默认。 */
+  backfill?: {
+    /** `all` 收录窗口内全部；`since` 只收 since 之后。默认 `all`。 */
+    mode?: 'all' | 'since';
+    /** mode='since' 时的起始日期（YYYY-MM-DD）。 */
+    since?: string;
+    /** 单源回填篇数上限（保护阀）。 */
+    max_articles?: number;
+    /** 回填期是否启用促销/placeholder 严格过滤；未设则回退 source.quality_filter。 */
+    quality_filter?: boolean;
+  };
+}
+
+/** 增量管线结构化错误（取代原先的字符串数组，便于按类型聚合分析）。 */
+export interface ArticleError {
+  url: string;
+  kind: 'fetch' | 'integrity' | 'translate' | 'redirect' | 'fatal';
+  code?: string;
+  message: string;
 }
 
 export interface ProcessedUrlState {
@@ -144,7 +184,7 @@ export interface SourceUpdateResult {
   pending: number;
   processed: number;
   failed: number;
-  errors: string[];
+  errors: ArticleError[];
 }
 
 export interface UpdateSummary {
