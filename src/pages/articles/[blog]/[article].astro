@@ -88,37 +88,41 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
         </div>
 
         <div class="reader-meta-grid">
-          <div>
-            <span>原文发表于</span>
-            <strong>
-              {publishedDate && (
-                <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
-              )}
-            </strong>
-          </div>
-          {secondaryDate && (
+          <div class="reader-meta-row">
             <div>
-              <span>{secondaryLabel}</span>
+              <span>原文发表于</span>
               <strong>
-                <time datetime={secondaryDate.toISOString()}>{dateFormatter.format(secondaryDate)}</time>
+                {publishedDate && (
+                  <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
+                )}
               </strong>
             </div>
-          )}
-          <div>
-            <span>分类</span>
-            <p>
-              {articleData.categories.map((category) => <CategoryPill label={category} />)}
-            </p>
-          </div>
-          {articleData.translationModel && (
+            {secondaryDate && (
+              <div>
+                <span>{secondaryLabel}</span>
+                <strong>
+                  <time datetime={secondaryDate.toISOString()}>{dateFormatter.format(secondaryDate)}</time>
+                </strong>
+              </div>
+            )}
             <div>
-              <span>翻译模型</span>
-              <strong>{articleData.translationModel}</strong>
+              <span>分类</span>
+              <p>
+                {articleData.categories.map((category) => <CategoryPill label={category} />)}
+              </p>
             </div>
-          )}
-          <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
-            阅读原文 <span aria-hidden="true">↗</span>
-          </a>
+          </div>
+          <div class="reader-meta-row">
+            {articleData.translationModel && (
+              <div>
+                <span>翻译模型</span>
+                <strong>{articleData.translationModel}</strong>
+              </div>
+            )}
+            <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
+              阅读原文 <span aria-hidden="true">↗</span>
+            </a>
+          </div>
         </div>
       </header>
 

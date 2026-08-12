@@ -104,14 +104,17 @@
     line-height: 1.72;
   }
 
-  /* ── 表格：横向滚动容器 + Blogs Wiki 表格风格（markdown.ts 包裹 .table-scroll） ── */
+  /* ── 表格：横向滚动容器 + 编辑式表格（markdown.ts 包裹 .table-scroll） ──
+     旧版用 --line(#e9e6df) 做边框，在 paper 上几乎不可见 → 视觉上「没结构」。
+     改为：容器/表头用 --line-strong，行间用斑马纹（不依赖细边可见性）保证可读。 */
   .prose.blogs-wiki-prose .table-scroll {
     width: 100%;
     margin-block: 2em;
     overflow-x: auto;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--paper) 94%, var(--paper-soft));
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    background: var(--paper);
+    -webkit-overflow-scrolling: touch;
   }
 
   .prose.blogs-wiki-prose .table-scroll table {
@@ -120,32 +123,37 @@
     border-collapse: separate;
     border-spacing: 0;
     font-family: var(--sans);
-    font-size: 13px;
+    font-size: 13.5px;
+    line-height: 1.6;
   }
 
-  .prose.blogs-wiki-prose .table-scroll th {
-    background: color-mix(in srgb, var(--paper-soft) 55%, var(--paper));
+  .prose.blogs-wiki-prose .table-scroll thead th {
+    background: var(--paper-soft);
+    color: var(--text-primary);
     font-weight: 600;
+    border-bottom: 1px solid var(--line-strong);
+    white-space: nowrap;
   }
 
   .prose.blogs-wiki-prose .table-scroll th,
   .prose.blogs-wiki-prose .table-scroll td {
-    padding: 10px 13px;
-    border: 0;
+    padding: 11px 15px;
     border-bottom: 1px solid var(--line);
     text-align: left;
     vertical-align: top;
   }
 
-  .prose.blogs-wiki-prose .table-scroll thead th {
-    border-bottom: 1px solid var(--line-strong);
+  /* 斑马纹：偶数行轻底色，让行清晰可辨 */
+  .prose.blogs-wiki-prose .table-scroll tbody tr:nth-child(even) td {
+    background: color-mix(in srgb, var(--paper-soft) 50%, var(--paper));
   }
 
   .prose.blogs-wiki-prose .table-scroll tbody tr:last-child td {
     border-bottom: 0;
   }
 
-  /* ── Shiki 代码块：保留语言标签 + 浅色卡片框；配色/背景由 Shiki 内联决定 ── */
+  /* ── Shiki 代码块：保留语言标签 + 浅色卡片框；配色/背景由 Shiki 内联决定 ──
+     字体统一 Consolas（用户要求），覆盖 Tailwind 默认 ui-monospace 栈。 */
   .prose.blogs-wiki-prose pre {
     position: relative;
     margin-block: 2.2em;
@@ -153,6 +161,7 @@
     border: 1px solid var(--line-strong);
     border-radius: 7px;
     overflow-x: auto;
+    font-family: Consolas, "SFMono-Regular", "Liberation Mono", "DejaVu Sans Mono", monospace;
     font-size: 13px;
     line-height: 1.7;
   }
@@ -204,7 +213,7 @@
     border-radius: 4px;
     background: var(--paper-soft);
     color: var(--text-primary);
-    font-family: var(--mono);
+    font-family: Consolas, "SFMono-Regular", "Liberation Mono", monospace;
     font-size: 0.82em;
     overflow-wrap: anywhere;
   }

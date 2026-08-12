@@ -116,37 +116,41 @@ const dateFormatter = new Intl.DateTimeFormat(locale, {
         </div>
 
         <div class="reader-meta-grid">
-          <div>
-            <span>{t.published}</span>
-            <strong>
-              {publishedDate && (
-                <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
-              )}
-            </strong>
-          </div>
-          {secondaryDate && (
+          <div class="reader-meta-row">
             <div>
-              <span>{t.updated}</span>
+              <span>{t.published}</span>
               <strong>
-                <time datetime={secondaryDate.toISOString()}>{dateFormatter.format(secondaryDate)}</time>
+                {publishedDate && (
+                  <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
+                )}
               </strong>
             </div>
-          )}
-          <div>
-            <span>{t.categories}</span>
-            <p>
-              {articleData.categories.map((category) => <CategoryPill label={category} />)}
-            </p>
-          </div>
-          {articleData.translationModel && (
+            {secondaryDate && (
+              <div>
+                <span>{t.updated}</span>
+                <strong>
+                  <time datetime={secondaryDate.toISOString()}>{dateFormatter.format(secondaryDate)}</time>
+                </strong>
+              </div>
+            )}
             <div>
-              <span>{t.translationModel}</span>
-              <strong>{articleData.translationModel}</strong>
+              <span>{t.categories}</span>
+              <p>
+                {articleData.categories.map((category) => <CategoryPill label={category} />)}
+              </p>
             </div>
-          )}
-          <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
-            {t.readOriginal} <span aria-hidden="true">↗</span>
-          </a>
+          </div>
+          <div class="reader-meta-row">
+            {articleData.translationModel && (
+              <div>
+                <span>{t.translationModel}</span>
+                <strong>{articleData.translationModel}</strong>
+              </div>
+            )}
+            <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
+              {t.readOriginal} <span aria-hidden="true">↗</span>
+            </a>
+          </div>
         </div>
       </header>
 

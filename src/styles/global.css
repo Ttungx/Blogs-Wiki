@@ -897,17 +897,23 @@
 
   .reader-meta-grid {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 16px 34px;
+    flex-direction: column;
+    gap: 18px;
     max-width: 760px;
     margin: 26px auto 0;
     padding-top: 18px;
     border-top: 1px solid var(--line);
   }
 
-  .reader-meta-grid > div {
+  .reader-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 16px 34px;
+  }
+
+  .reader-meta-row > div {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -917,7 +923,7 @@
     text-align: center;
   }
 
-  .reader-meta-grid > div > span {
+  .reader-meta-row > div > span {
     color: var(--faint);
     font-size: 11px;
     line-height: 1.35;
