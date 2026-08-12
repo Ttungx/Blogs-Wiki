@@ -10,6 +10,7 @@ import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import { sitePath } from '../../../../lib/urls';
 import { getArticle, getAvailableLanguages, listArticlesByBlog, parseDateSafe } from '../../../../lib/server/content';
 import { renderMarkdown } from '../../../../lib/server/markdown';
+import '../../../../styles/reader-typography.css';
 
 const { blog: blogId, article: slug, lang } = Astro.params;
 if (!blogId || !slug) return new Response('Not Found', { status: 404 });

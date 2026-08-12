@@ -3,6 +3,7 @@ import cloudflare from '@astrojs/cloudflare';
 import sitemap from '@astrojs/sitemap';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import tailwindcss from '@tailwindcss/vite';
 import { loadEnv } from 'vite';
 import { localImageProxy } from './scripts/dev/image-proxy.mjs';
 import { remarkImageProxy } from './scripts/dev/remark-image-proxy.mjs';
@@ -30,5 +31,10 @@ export default defineConfig({
     },
     remarkPlugins: [remarkMath, remarkImageProxy({ dev: import.meta.env.DEV, base })],
     rehypePlugins: [rehypeKatex],
+  },
+  vite: {
+    // 仅启用 Tailwind 官方 Vite 插件：构建期生成静态 CSS（无运行时 JS/WASM 进 Worker）。
+    // Preflight 不引入（见 src/styles/reader-typography.css），全站 reset 由项目自有样式负责。
+    plugins: [tailwindcss()],
   },
 });

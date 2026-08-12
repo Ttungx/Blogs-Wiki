@@ -1,0 +1,53 @@
+/**
+ * Markdown 阅读器排版引擎 —— 仅服务文章正文（.prose）。
+ *
+ * 设计约束（见 reader 重构 handoff）：
+ * - 以 @tailwindcss/typography 作为 prose baseline，替换手写 .prose 规则。
+ * - 显式不引入 Tailwind Preflight（全站 reset 由 src/styles/global.css 负责），
+ *   避免污染 Header / 首页 / 收藏册 / 搜索等非阅读页。
+ * - 仅在文章路由（src/pages/articles/**）引入本文件，缩窄 CSS 作用域。
+ *
+ * 生成的 CSS 为构建期静态产物，不向 Worker 打包运行时 JS / WASM。
+ */
+
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@plugin "@tailwindcss/typography";
+
+/**
+ * Blogs Wiki 品牌 token 映射 —— 把 Typography 的 --tw-prose-* 变量
+ * 指向项目既有设计 token（global.css :root），不造第二套颜色。
+ *
+ * 用复合选择器 .prose.blogs-wiki-prose（specificity 0,2,0）压过 Typography
+ * 默认的 .prose（0,1,0），无论层级先后都稳定生效。
+ */
+@layer components {
+  .prose.blogs-wiki-prose {
+    --tw-prose-body: var(--text-primary);
+    --tw-prose-headings: var(--text-primary);
+    --tw-prose-lead: var(--text-secondary);
+    --tw-prose-links: var(--text-primary);
+    --tw-prose-bold: var(--text-primary);
+    --tw-prose-counters: var(--text-tertiary);
+    --tw-prose-bullets: var(--text-tertiary);
+    --tw-prose-hr: var(--line);
+    --tw-prose-quotes: var(--text-primary);
+    --tw-prose-quote-borders: var(--line-strong);
+    --tw-prose-captions: var(--text-tertiary);
+    --tw-prose-code: var(--text-primary);
+    /* Shiki 自带 github-light 主题（内联背景/配色）：Typography 只负责节奏，不叠深色 pre 背景。 */
+    --tw-prose-pre-code: inherit;
+    --tw-prose-pre-bg: transparent;
+    --tw-prose-th-borders: var(--line-strong);
+    --tw-prose-td-borders: var(--line);
+    font-family: var(--sans);
+  }
+
+  /* 标题沿用编辑性字体（与全站标题一致）。 */
+  .prose.blogs-wiki-prose :is(h2, h3, h4) {
+    font-family: var(--editorial);
+  }
+}
