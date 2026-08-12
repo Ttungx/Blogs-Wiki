@@ -25,6 +25,8 @@ export interface TranslateV2Options {
   fetchImpl?: FetchLike;
   /** Token cap per body chunk passed to the planner (default 6000). */
   maxChunkTokens?: number;
+  /** OpenAI/DeepSeek 兼容 reasoning_effort（如 low/high/max），经 ocx 透传。 */
+  reasoningEffort?: string;
 }
 
 const DEFAULT_TIMEOUT_MS = 300_000;
@@ -83,11 +85,13 @@ async function classifyArticle(
       }, null, 2),
     },
   ];
-  const body = {
+  const body: Record<string, unknown> = {
     model: options.classifyModel ?? options.model,
     messages,
     response_format: { type: 'json_object' },
   };
+  const reasoningEffort = options.reasoningEffort?.trim() || undefined;
+  if (reasoningEffort) body.reasoning_effort = reasoningEffort;
   const raw = await requestChatCompletion(options.fetchImpl ?? fetch, endpoint, options.apiKey, body, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   let parsed: Record<string, unknown>;
   try {
@@ -120,11 +124,13 @@ async function translateChunk(
       }, null, 2),
     },
   ];
-  const body = {
+  const body: Record<string, unknown> = {
     model: options.model,
     messages,
     response_format: { type: 'json_object' },
   };
+  const reasoningEffort = options.reasoningEffort?.trim() || undefined;
+  if (reasoningEffort) body.reasoning_effort = reasoningEffort;
   const run = async (msgs: ChatMessage[]): Promise<Record<string, unknown>> => {
     const raw = await requestChatCompletion(options.fetchImpl ?? fetch, endpoint, options.apiKey, { ...body, messages: msgs }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     return parseModelJson(raw);

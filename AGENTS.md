@@ -44,7 +44,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 ## 内容更新
 
-**生产路径（GitHub Actions）**：定时或手动触发 `.github/workflows/content-update.yml` → Node 管线执行 discover → Defuddle fetch → translate → 本地产物持久化 → `scripts/import-local-articles.mjs --json` 生成结构化 payload → `scripts/sync-local-articles.mjs` 分片调用受保护的 `/api/content-sync` → D1 幂等写入。Action 只上传元数据报告，不提交或上传文章正文。
+**生产路径（GitHub Actions）**：定时或手动触发 `.github/workflows/content-update.yml`（cron `17 2 * * *` 即 02:17 UTC + `workflow_dispatch`）→ Node 管线执行 discover → Defuddle fetch → translate → 本地产物持久化 → `scripts/import-local-articles.mjs --json` 生成结构化 payload → `scripts/sync-local-articles.mjs` 分片调用受保护的 `/api/content-sync` → D1 幂等写入。Action 只上传元数据报告，不提交或上传文章正文。单文章/单来源失败不拖垮全局（runner 内 try/catch 隔离）。
 
 **Node 开发路径（scripts/update/）**：`npm run update` / `update:dry` / `audit:source`，用于开发、审计、预演。生产内容以 D1 为准；Node 路径的 `src/content/articles/` 与 `src/data/processed-urls.json` 是本地产物（`.gitignore`），由 Action 生成后通过同步脚本写入 D1。
 
@@ -54,7 +54,11 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 - 来源必须显式声明 `update_mode`：`"active"` 进完整更新，`"dry-run-only"` 只参与 dry-run。新增来源一律先 `dry-run-only`，人工核验后再改 `active`。
 - 每源默认 3 篇（`--limit` 可调）。无发布日期的来源（如 Paul Graham）无法生成文章，不要加入自动更新来源。
 - 分类只能从 `src/config/categories` 预定义集合选。
-- 翻译必填三个 Secrets；本地网络受限时 `USE_PROXY=true` + `PROXY_URL`（默认 `http://127.0.0.1:7897`）。个别站点（openai.com）拦截 Node TLS 指纹，抓取自动回退系统 `curl`（Node 侧通过 `worker/fetch/curl-runner.ts` 注册，Worker 运行时无 curl 则跳过回退）。
+- **翻译通道**（`TRANSLATION_PROVIDER`，GitHub Action 用仓库 `vars` 控制，默认 `free`）：
+  - `free`（默认，翻译零成本）：经本机 ocx 网关（`npm i -g @bitkyc08/opencodex`）走 **opencode-free** 免费层，env 为 `OPENAI_BASE_URL=http://127.0.0.1:10367/v1`、`TRANSLATION_MODEL=opencode-free/deepseek-v4-flash-free`、`TRANSLATION_REASONING_EFFORT=max`、`OPENAI_API_KEY=任意非空`（loopback 免认证）。模型名必须带 `-free` 后缀（GitHub runner 实测：`opencode-free/deepseek-v4-flash` 无后缀走错 auth 路径 → 401 Missing API key）。客户端在 chat/completions 请求体顶层传 `reasoning_effort`（DeepSeek V4 Flash 支持 low/high/max；ocx inbound 透传）。⚠️ `ocx provider add opencode-free` 只写磁盘 config、**不更新运行中进程**，顺序必须「先 add 再 `ocx start --port 10367`」。免费层约 200 请求/5 小时、15-20 RPM，429 常无 Retry-After——客户端已内置退避重试（尊重 Retry-After，无则 ~15s，最多 2 次）。prompt 可能被留存训练，只传公开内容。
+  - `paid`（回退）：三个 Secrets（`OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`）。
+  - **mimo-free 已官方下线**（`free-api-sunset.ts`：`FREE_API_SUNSET_AT = 2026-07-26T10:00Z`，返回 `Unsupported model mimo-auto`），不要接入。
+- 本地网络受限时 `USE_PROXY=true` + `PROXY_URL`（默认 `http://127.0.0.1:7897`）。个别站点（openai.com）拦截 Node TLS 指纹，抓取自动回退系统 `curl`（Node 侧通过 `worker/fetch/curl-runner.ts` 注册，Worker 运行时无 curl 则跳过回退）。
 
 ## 路书（docs/，先读再动手）
 
@@ -68,9 +72,8 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 **已完成（Phase 1-8 + 组合方案收尾）**：领域模型 + 接口防火墙 → FileRepository → D1 schema（0001-0007，含 articles/article_versions 拆分与译文时间）→ D1Repository → Node 管线接 repository interface → Worker-compatible fetch（Defuddle 提取器）→ Astro SSR 从 D1（网站上线）→ GitHub Actions 内容更新 → `/api/content-sync` 幂等同步 D1。Workflow 运行时代码保留，但生产 binding 已停用。
 
 **待办（Phase 9/10 + 收尾）**：
-
-- 配置 GitHub Secrets/Variables：`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`TRANSLATION_MODEL`、`CONTENT_SYNC_TOKEN`，以及 `CONTENT_SYNC_URL` 等 Variables。
-- 手动运行一次非 dry-run Action，验证发现 → 抓取 → 翻译 → `/api/content-sync` → D1 全链路；确认报告 artifact 与 D1 统计。
+- 配置 GitHub Secrets/Variables：`CONTENT_SYNC_TOKEN`、`CONTENT_SYNC_URL`；`TRANSLATION_PROVIDER`（默认 free）；付费回退时再配 `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`。
+- 首跑真实更新验证：workflow_dispatch（`dry_run=false`、`source` 指定单源、`limit=1`）观察 opencode-free 免费通道与 `/api/content-sync` → D1 是否端到端可用；确认报告 artifact 与 D1 统计。
 - Phase 9：Pagefind → D1 FTS5 搜索（Pagefind 目前在 Windows 构建有路径问题，已从 build 脚本移除）。
 - Phase 10：删除旧文件 backend（FileRepository / persist.ts / processed-urls.json）。
 - 清理：`worker/index.ts` 已不再作为 Worker 入口（API 已迁移到 `src/pages/api/`）；`worker/__tests__/d1/worker-runtime.test.ts` 仍测旧 HTTP handler，需适配新架构。

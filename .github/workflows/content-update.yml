@@ -34,9 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
-      TRANSLATION_MODEL: ${{ secrets.TRANSLATION_MODEL }}
+      # vars.TRANSLATION_PROVIDER=paid 时回退付费 secrets；默认 free。
+      TRANSLATION_PROVIDER: ${{ vars.TRANSLATION_PROVIDER || 'free' }}
       # 以下经仓库 Variables 配置；未设置时使用 CLI 默认值。
       TRANSLATION_PIPELINE: ${{ vars.TRANSLATION_PIPELINE }}
       FETCH_BACKEND: ${{ vars.FETCH_BACKEND }}
@@ -60,6 +59,50 @@ jobs:
 
       - name: 安装依赖
         run: npm ci
+
+      # opencode-free 免费层经 ocx（OpenAI 兼容网关，loopback 免认证）接入。
+      # 注意：ocx provider add 只写磁盘 config，不更新运行中进程，必须先 add 再 start。
+      # 不用 `ocx ready --wait`：runner 上无 Codex catalog 时 ready 恒为 false
+      # （"sync failed"），改用端口轮询 /v1/models。
+      - name: 启动 opencodex 免费通道
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs['dry-run'] != true) && (vars.TRANSLATION_PROVIDER || 'free') == 'free' }}
+        shell: bash
+        run: |
+          npm install -g @bitkyc08/opencodex
+          ocx provider add opencode-free
+          nohup ocx start --port 10367 > /tmp/ocx.log 2>&1 &
+          echo "ocx pid: $!"
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:10367/v1/models || true)
+            echo "poll $i: HTTP $code"
+            [[ "$code" = "200" ]] && exit 0
+            sleep 2
+          done
+          echo "ocx 网关未就绪；日志："
+          tail -40 /tmp/ocx.log || true
+          exit 1
+
+      - name: 配置翻译通道（free 默认，paid 回退）
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs['dry-run'] != true }}
+        shell: bash
+        env:
+          PAID_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PAID_OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          PAID_TRANSLATION_MODEL: ${{ secrets.TRANSLATION_MODEL }}
+        run: |
+          if [[ "$TRANSLATION_PROVIDER" == "paid" ]]; then
+            echo "OPENAI_API_KEY=${PAID_OPENAI_API_KEY}" >> "$GITHUB_ENV"
+            echo "OPENAI_BASE_URL=${PAID_OPENAI_BASE_URL}" >> "$GITHUB_ENV"
+            echo "TRANSLATION_MODEL=${PAID_TRANSLATION_MODEL}" >> "$GITHUB_ENV"
+            echo "::notice::翻译通道：paid（secrets）"
+          else
+            echo "OPENAI_API_KEY=opencodex-loopback" >> "$GITHUB_ENV"
+            echo "OPENAI_BASE_URL=http://127.0.0.1:10367/v1" >> "$GITHUB_ENV"
+            # 模型名必须带 -free 后缀（runner 实测：无后缀走错 auth 路径 → 401 Missing API key）
+            echo "TRANSLATION_MODEL=opencode-free/deepseek-v4-flash-free" >> "$GITHUB_ENV"
+            echo "TRANSLATION_REASONING_EFFORT=max" >> "$GITHUB_ENV"
+            echo "::notice::翻译通道：opencode-free/deepseek-v4-flash-free（reasoning_effort=max，经 ocx 网关）"
+          fi
 
       - name: 运行内容更新
         id: update
@@ -115,6 +158,12 @@ jobs:
           test -n "$CONTENT_SYNC_URL"
           test -n "$CONTENT_SYNC_TOKEN"
           node scripts/sync-local-articles.mjs --input .tmp-import-articles.json
+
+      - name: 停止 opencodex
+        if: always() && (vars.TRANSLATION_PROVIDER || 'free') == 'free'
+        shell: bash
+        run: |
+          pkill -f "ocx start" || true
 
       - name: 清理正文临时文件
         if: always()
