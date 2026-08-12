@@ -273,6 +273,47 @@ describe('content-sync 写入与幂等', () => {
     expect(identity?.author).toBe('Sync Author');
   });
 
+  test('模型译文保留首次生成时间，重译不覆盖 translated_at', async () => {
+    const firstTranslatedAt = '2026-08-10T01:02:03.000Z';
+    const laterTranslatedAt = '2026-08-12T04:05:06.000Z';
+    const first = makePayload();
+    const article = first.articles[0]!;
+    const modelVersion = article.versions.find((v) => v.language === 'zh-cn')!;
+    modelVersion.translatedAt = firstTranslatedAt;
+
+    await handleContentSync(post(JSON.stringify(first)), syncEnv());
+
+    const retranslated: SyncPayload = {
+      sources: [],
+      articles: [
+        {
+          ...article,
+          versions: [
+            article.versions.find((v) => v.language === 'en')!,
+            {
+              ...modelVersion,
+              title: '重译后的标题',
+              contentMarkdown: '## 重译正文\n\n第二次模型译文。',
+              translatedAt: laterTranslatedAt,
+            },
+          ],
+        },
+      ],
+      sql: [],
+    };
+    const response = await handleContentSync(post(JSON.stringify(retranslated)), syncEnv());
+    expect(response.status).toBe(200);
+
+    const version = await env.DB
+      .prepare(
+        'SELECT title, translated_at FROM article_versions WHERE article_id = ? AND language = ?',
+      )
+      .bind(article.id, 'zh-cn')
+      .first<{ title: string; translated_at: string | null }>();
+    expect(version?.title).toBe('重译后的标题');
+    expect(version?.translated_at).toBe(firstTranslatedAt);
+  });
+
   test('categories 省略时不触碰现有分类；空数组时清空', async () => {
     const first = makePayload();
     const article = first.articles[0]!;

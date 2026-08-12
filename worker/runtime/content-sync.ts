@@ -19,7 +19,9 @@
  *   ON CONFLICT(article_id, language) 更新；分类先 DELETE 再 INSERT。
  *   同一 payload 重复提交结果不变（第二次 created=0）。
  * - 可选字段（image_url / author / excerpt / translation_model /
- *   original_alt_url）省略时保留现值（COALESCE），不覆盖。
+ *   original_alt_url）省略时保留现值：`COALESCE(excluded, existing)`。
+ * - `translated_at` 例外：首次非空写入后冻结，`COALESCE(existing, excluded)`，
+ *   重译不可覆盖（与 d1-article-repository 一致）。
  * - 全部语句经 db.batch() 执行；D1 单批上限 100 条，超过则按批拆分
  *   （每批原子，请求级原子性按批边界）。
  *
@@ -428,7 +430,7 @@ const VERSION_UPSERT_SQL = `
     provenance = excluded.provenance,
     translation_model = COALESCE(excluded.translation_model, article_versions.translation_model),
     original_alt_url = COALESCE(excluded.original_alt_url, article_versions.original_alt_url),
-    translated_at = COALESCE(excluded.translated_at, article_versions.translated_at),
+    translated_at = COALESCE(article_versions.translated_at, excluded.translated_at),
     updated_at = datetime('now')
 `;
 
