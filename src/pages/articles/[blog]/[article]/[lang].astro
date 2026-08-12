@@ -51,8 +51,12 @@ const t = {
       ? translatedDate
         ? 'Translation generated'
         : 'Catalog updated'
-      : '收录更新',
+      : translatedDate
+        ? '译文生成'
+        : '收录更新',
   categories: targetLang === 'en' ? 'Categories' : '分类',
+  translationModel: targetLang === 'en' ? 'Translation model' : '翻译模型',
+  readOriginal: targetLang === 'en' ? 'Read original' : '阅读原文',
   readNextEyebrow: targetLang === 'en' ? 'Read next' : 'Read next · 延伸阅读',
   readNextTitle: targetLang === 'en' ? 'More articles' : '继续阅读',
   viewAll: targetLang === 'en' ? 'View all articles' : '查看全部文章',
@@ -133,6 +137,15 @@ const dateFormatter = new Intl.DateTimeFormat(locale, {
               {articleData.categories.map((category) => <CategoryPill label={category} />)}
             </p>
           </div>
+          {articleData.translationModel && (
+            <div>
+              <span>{t.translationModel}</span>
+              <strong>{articleData.translationModel}</strong>
+            </div>
+          )}
+          <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
+            {t.readOriginal} <span aria-hidden="true">↗</span>
+          </a>
         </div>
       </header>
 

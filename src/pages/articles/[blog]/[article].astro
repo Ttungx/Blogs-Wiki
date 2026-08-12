@@ -109,6 +109,15 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
               {articleData.categories.map((category) => <CategoryPill label={category} />)}
             </p>
           </div>
+          {articleData.translationModel && (
+            <div>
+              <span>翻译模型</span>
+              <strong>{articleData.translationModel}</strong>
+            </div>
+          )}
+          <a class="reader-meta-link" href={articleData.originalUrl} target="_blank" rel="noreferrer">
+            阅读原文 <span aria-hidden="true">↗</span>
+          </a>
         </div>
       </header>
 

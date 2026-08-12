@@ -219,8 +219,11 @@ function getSingleMeaningfulImageChild(node: Element): Element | null {
   });
   if (meaningful.length !== 1) return null;
   const only = meaningful[0];
-  if (!isElementNode(only) || only.tagName !== 'img') return null;
-  return only;
+  if (!isElementNode(only)) return null;
+  if (only.tagName === 'img') return only;
+  // logo 常被包在链接里：<p><a href="..."><img alt="...logo"></a></p>
+  if (only.tagName === 'a') return getSingleMeaningfulImageChild(only);
+  return null;
 }
 
 function mergeClassName(

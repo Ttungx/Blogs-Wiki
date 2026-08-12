@@ -60,3 +60,19 @@ test('logo 段 + blockquote 包装为 reader-testimonial', async () => {
   assert.doesNotMatch(html, /<p><img[^>]*alt="Customer logo"[^>]*><\/p>/);
   assert.match(html, /<p>普通段落保持原样。<\/p>/);
 });
+
+test('logo 被链接包裹时仍包装为 reader-testimonial', async () => {
+  const html = await renderMarkdown(
+    [
+      '[![Acme logo](logos/acme.svg)](https://acme.example/)',
+      '',
+      '> Linked logo still pairs with the quote.',
+    ].join('\n'),
+    { baseUrl: 'https://example.com/news/reader/' },
+  );
+
+  assert.match(html, /<figure class="reader-testimonial">/);
+  assert.match(html, /alt="Acme logo"/);
+  assert.match(html, /reader-testimonial-quote/);
+  assert.match(html, /Linked logo still pairs with the quote\./);
+});

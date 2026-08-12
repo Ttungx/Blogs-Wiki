@@ -935,6 +935,18 @@
     justify-content: center;
   }
 
+  .reader-meta-grid .reader-meta-link {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    align-self: center;
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: 2px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 550;
+  }
+
   .demo-notice {
     display: flex;
     gap: 18px;
@@ -1009,6 +1021,7 @@
 
   .prose h5 {
     margin-top: 1.58em;
+    scroll-margin-top: 40px;
   }
 
   .prose h6 {
