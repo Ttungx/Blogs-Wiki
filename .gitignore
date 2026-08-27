@@ -6,6 +6,7 @@ dist/
 *.log
 .zcode/
 workflow-backup/
+.omo/
 # 并行 worktree（多 agent 独立工作树）
 worktree/
 
@@ -24,3 +25,12 @@ worktree/
 # 文章正文与运行状态暂不入库（临时；恢复时删除以下两行）
 src/content/articles/
 src/data/processed-urls.json
+
+# 语料清理归档（2026-08-24 未同步历史积压，确认可弃后整目录删除）
+.corpus-archive/
+
+# 更新链运行产物（runner 日志 / import payload / 报告）
+logs/
+
+# 项目级 opencode 配置（含 Render MCP API key，手动填写后不入库）
+opencode.jsonc

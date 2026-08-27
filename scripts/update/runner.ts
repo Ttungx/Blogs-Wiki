@@ -1,4 +1,5 @@
 import { createFetchBackend, type FetchBackend } from './fetch-backend';
+import { fetchKnownRemoteUrls } from './dedupe';
 import { discoverSource } from './discovery';
 import { createTranslateClient, routeTranslator } from './translate';
 import { createTranslateV2Client } from './translate-v2';
@@ -200,6 +201,26 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
       const discovered = await (options.discover ?? discoverSource)(source, fetchImpl);
       result.discovered = discovered.length;
 
+      // 无状态运行环境（Render 容器等）：本地 processed-urls 为空时，
+      // 用 D1 check 预检过滤已存在文章，避免重复抓取+翻译。fail-open：
+      // 预检失败只告警不过滤，正确性由 content-sync 幂等写入兜底。
+      const checkEndpoint = (process.env.CONTENT_SYNC_CHECK_URL ?? '').trim();
+      if (!options.dryRun && checkEndpoint && discovered.length > 0) {
+        const knownRemote = await fetchKnownRemoteUrls({
+          endpoint: checkEndpoint,
+          token: (process.env.CONTENT_SYNC_TOKEN ?? '').trim(),
+          sourceId: source.id,
+          urls: discovered.map((item) => item.url),
+          fetchImpl,
+          logger,
+        });
+        if (knownRemote.size > 0) {
+          const seen = seenBySource.get(source.id);
+          for (const url of knownRemote) seen?.add(url);
+          logger.info(`[${source.id}] remote dedupe: ${knownRemote.size} URL(s) already in D1, filtered`);
+        }
+      }
+
       const pending = discovered
         .filter((item) => !(seenBySource.get(source.id) ?? new Set()).has(item.url))
         .sort((a, b) => {
@@ -294,7 +315,8 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
       result.failed += 1;
       summary.failed += 1;
       const message = error instanceof Error ? error.message : String(error);
-      result.errors.push(message);
+      // 源级失败（发现/整体异常）没有单一 URL；url 留空表示 source 级。
+      result.errors.push({ url: '', kind: 'fatal', message });
       logger.error(`[${source.id}] ${message}`);
     }
   }

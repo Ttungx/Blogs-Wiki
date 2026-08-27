@@ -645,13 +645,14 @@ function json(data: unknown, status = 200, extraHeaders: Record<string, string> 
 }
 
 /**
- * POST /api/content-sync 完整请求处理：方法 → 认证 → 媒体类型 →
- * body 大小 → 解析校验 → 写入。供 Astro APIRoute 与测试直接调用。
+ * 共享前置守卫（content-sync 与 content-check 共用）：
+ * 方法 → 认证 → 媒体类型 → body 大小 → 读取 body。
+ * 校验通过返回 `{ body }`；任一失败直接返回错误 Response。
  */
-export async function handleContentSync(
+async function authorizeAndReadBody(
   request: Request,
   env: ContentSyncEnv,
-): Promise<Response> {
+): Promise<{ body: ArrayBuffer } | Response> {
   if (request.method !== 'POST') {
     return json({ error: 'method not allowed' }, 405, { allow: 'POST' });
   }
@@ -691,6 +692,20 @@ export async function handleContentSync(
   if (body.byteLength === 0) {
     return json({ error: 'empty request body' }, 400);
   }
+  return { body };
+}
+
+/**
+ * POST /api/content-sync 完整请求处理：方法 → 认证 → 媒体类型 →
+ * body 大小 → 解析校验 → 写入。供 Astro APIRoute 与测试直接调用。
+ */
+export async function handleContentSync(
+  request: Request,
+  env: ContentSyncEnv,
+): Promise<Response> {
+  const authorized = await authorizeAndReadBody(request, env);
+  if ('ok' in authorized) return authorized;
+  const { body } = authorized;
 
   let payload: SyncPayload;
   try {
@@ -709,6 +724,120 @@ export async function handleContentSync(
     if (error instanceof SyncPayloadError) {
       return json({ error: error.message }, 400);
     }
+    return json(
+      { error: error instanceof Error ? error.message : String(error) },
+      500,
+    );
+  }
+}
+
+// ── Check 端点（管线翻译前的远端去重预检） ────────────
+
+/** 单次 check 请求的候选条目上限（对应单源发现列表量级，防滥用）。 */
+export const MAX_CHECK_ITEMS = 500;
+
+export interface CheckItem {
+  sourceId: string;
+  url: string;
+}
+
+interface CheckPayload {
+  items: CheckItem[];
+}
+
+function parseCheckPayload(raw: string): CheckPayload {
+  let obj: unknown;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    throw new SyncPayloadError('invalid JSON');
+  }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+    throw new SyncPayloadError('payload must be a JSON object');
+  }
+  const items = (obj as { items?: unknown }).items;
+  if (!Array.isArray(items)) {
+    throw new SyncPayloadError('payload.items must be an array');
+  }
+  if (items.length > MAX_CHECK_ITEMS) {
+    throw new SyncPayloadError(`too many items: ${items.length} (max ${MAX_CHECK_ITEMS})`);
+  }
+  const parsed: CheckItem[] = [];
+  for (let i = 0; i < items.length; i += 1) {
+    const where = `items[${i}]`;
+    const entry = items[i];
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new SyncPayloadError(`${where} must be an object`);
+    }
+    const record = entry as Record<string, unknown>;
+    const item: CheckItem = {
+      sourceId: requireString(record.sourceId, 'sourceId', where),
+      url: requireString(record.url, 'url', where),
+    };
+    if (!isValidHttpUrl(item.url)) {
+      throw new SyncPayloadError(`${where}.url must be an http(s) URL`);
+    }
+    parsed.push(item);
+  }
+  return { items: parsed };
+}
+
+/** 按 (source_id, original_url) 分块批量查询已存在文章（复用 sync 预检模式）。 */
+async function findExistingCheckItems(
+  db: D1Database,
+  items: CheckItem[],
+): Promise<Set<string>> {
+  const existing = new Set<string>();
+  for (let i = 0; i < items.length; i += D1_BATCH_LIMIT) {
+    const chunk = items.slice(i, i + D1_BATCH_LIMIT);
+    const results = await db.batch(
+      chunk.map((item) =>
+        db
+          .prepare('SELECT 1 AS hit FROM articles WHERE source_id = ? AND original_url = ? LIMIT 1')
+          .bind(item.sourceId, item.url),
+      ),
+    );
+    results.forEach((result, j) => {
+      if (result && result.results && result.results.length > 0) {
+        existing.add(`${chunk[j]!.sourceId}\u0000${chunk[j]!.url}`);
+      }
+    });
+  }
+  return existing;
+}
+
+/**
+ * POST /api/content-sync/check —— 无状态管线运行环境（Render 容器等）
+ * 在翻译前用 D1 判断「哪些 URL 已存在」，避免重复抓取与翻译。
+ *
+ * 前置守卫与 content-sync 完全共用；请求 {items:[{sourceId,url}]}，
+ * 响应 {existing:[{sourceId,url}]}（仅返回已存在子集）。
+ */
+export async function handleContentCheck(
+  request: Request,
+  env: ContentSyncEnv,
+): Promise<Response> {
+  const authorized = await authorizeAndReadBody(request, env);
+  if ('ok' in authorized) return authorized;
+  const { body } = authorized;
+
+  let payload: CheckPayload;
+  try {
+    payload = parseCheckPayload(new TextDecoder().decode(body));
+  } catch (error) {
+    return json(
+      { error: error instanceof SyncPayloadError ? error.message : 'invalid payload' },
+      400,
+    );
+  }
+
+  try {
+    const existingKeys = await findExistingCheckItems(env.DB, payload.items);
+    const existing = payload.items.filter((item) =>
+      existingKeys.has(`${item.sourceId}\u0000${item.url}`),
+    );
+    return json({ existing });
+  } catch (error) {
     return json(
       { error: error instanceof Error ? error.message : String(error) },
       500,

@@ -1,0 +1,45 @@
+# Render 部署配置 —— 内容更新 runner（免费 Web Service）。
+#
+# 架构：CF Worker Cron（每小时 :07）--ping /run--> 本服务执行单源更新链
+#       （update → import-local-articles → content-sync）--> D1。
+# 重活跑在这里的真实 Node 环境，绕开 Workers 免费版 10ms CPU 限制。
+#
+# 部署方式（二选一）：
+#   A. Render Dashboard → New + → Blueprint → 连接本仓库（自动读本文件）
+#   B. CLI: render blueprint launch
+#
+# 首次部署需在 Dashboard 手填 sync:false 的环境变量：
+#   RUNNER_KEY          与 CF Worker 的 CONTENT_SYNC_TOKEN 同值
+#   CONTENT_SYNC_TOKEN  同上（管线写 D1 用）
+#   OPENAI_API_KEY / OPENAI_BASE_URL / TRANSLATION_MODEL   翻译网关
+#
+# 部署完成后：把服务域名（如 https://blogs-wiki-updater.onrender.com）
+# 填入 CF Worker 的 RUNNER_URL 变量（wrangler.deploy.jsonc vars 或 Dashboard）。
+
+services:
+  - type: web
+    name: blogs-wiki-updater
+    runtime: node
+    plan: free
+    healthCheckPath: /healthz
+    buildCommand: npm ci
+    startCommand: node scripts/render-runner.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: CONTENT_SYNC_URL
+        value: "https://blogswiki.dpdns.org/api/content-sync/"
+      - key: CONTENT_SYNC_CHECK_URL
+        value: "https://blogswiki.dpdns.org/api/content-sync/check/"
+      - key: MODEL_REASONING_EFFORT
+        value: low
+      - key: RUNNER_KEY
+        sync: false
+      - key: CONTENT_SYNC_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        sync: false
+      - key: TRANSLATION_MODEL
+        sync: false

@@ -1,7 +1,9 @@
 /**
  * Post-build 脚本：在 Astro adapter 生成的 _worker.js 旁边创建 _entry.js，
- * 生成线上 Worker 入口。内容更新由 GitHub Actions 承担，
- * 不再向生产入口注入 Cloudflare Workflow 类。
+ * 生成线上 Worker 入口。除 Astro 默认 fetch 外，额外导出 scheduled 处理器：
+ * Worker Cron 定时 ping Render 免费实例的 /run 端点触发内容更新链
+ * （重活跑在 Render 的真实 Node 环境，绕开 Workers 免费 10ms CPU 限制；
+ * 结果经 content-sync 幂等写回 D1）。
  *
  * 用法：astro build && node scripts/inject-worker-entry.js
  */
@@ -21,6 +23,28 @@ if (!existsSync(indexPath)) {
   process.exit(1);
 }
 
+// 生成文件中的 scheduled 导出。ping 目标与鉴权：
+// - RUNNER_URL（vars）：Render 服务基地址，如 https://blogs-wiki-updater.onrender.com
+// - CONTENT_SYNC_TOKEN（secret）：复用 content-sync 同一枚 token 做 /run 鉴权
+const scheduledExport = [
+  '',
+  '// 内容更新定时触发：只发一次 HTTP ping（网络等待不计 CPU）。',
+  'export async function scheduled(event, env, ctx) {',
+  "  const base = (env.RUNNER_URL || '').trim();",
+  "  const key = (env.CONTENT_SYNC_TOKEN || '').trim();",
+  '  if (!base || !key) {',
+  "    console.error('scheduled: RUNNER_URL / CONTENT_SYNC_TOKEN not configured; skip trigger');",
+  '    return;',
+  '  }',
+  '  const target = `${base.replace(/\\/$/, \'\')}/run?key=${encodeURIComponent(key)}`;',
+  '  ctx.waitUntil(',
+  "    fetch(target, { method: 'POST', signal: AbortSignal.timeout(120_000) })",
+  '      .then((res) => console.log(`scheduled ping -> HTTP ${res.status}`))',
+  '      .catch((err) => console.error(`scheduled ping failed: ${err?.message ?? err}`))',
+  '  );',
+  '}',
+].join('\n');
+
 writeFileSync(
   entryPath,
   [
@@ -28,8 +52,9 @@ writeFileSync(
     '// Re-exports Astro adapter handler.',
     "import original from './entry.mjs';",
     'export default original;',
+    scheduledExport,
     '',
   ].join('\n'),
 );
 
-console.log(`✓ Worker entry generated: ${entryPath}`);
+console.log(`✓ Worker entry generated: ${entryPath} (fetch + scheduled)`);
