@@ -1,19 +1,20 @@
 ---
-import { getCollection } from 'astro:content';
+import { env } from 'cloudflare:workers';
+import { staticBlogs } from '../data/blogs-static';
 import SearchPanel from '../components/SearchPanel.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { byOriginalPublicationDateDesc } from '../lib/article-dates';
-import { slugFromId } from '../lib/article-id';
+import { listAllArticlesForSearch, parseDateSafe } from '../lib/server/content';
 import { sitePath } from '../lib/urls';
 
-const [blogs, articles] = await Promise.all([
-  getCollection('blogs'),
-  getCollection('articles'),
-]);
+export const prerender = false;
+
+// 博客元数据来自静态集合（轻量）；文章清单改读 D1——
+// 此前 getCollection('articles') 会把全部文章正文打进服务端 bundle，
+// 是 Worker 64MiB 体积上限超限的元凶。
+const blogs = staticBlogs;
+const zhArticles = await listAllArticlesForSearch(env.DB, 'zh-cn');
+
 const blogNames = new Map(blogs.map((blog) => [blog.id, blog.data.name]));
-const articlesByPublicationDate = articles
-  .filter((article) => article.data.language === 'zh-cn')
-  .sort(byOriginalPublicationDateDesc);
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric',
   month: '2-digit',
@@ -28,14 +29,19 @@ const items = [
     url: sitePath(`blogs/${blog.id}/`),
     categories: blog.data.categories,
   })),
-  ...articlesByPublicationDate.map((article) => ({
-    kind: 'article' as const,
-    title: article.data.title,
-    subtitle: blogNames.get(article.data.blogId) ?? article.data.sourceDomain,
-    url: sitePath(`articles/${article.data.blogId}/${slugFromId(article.id)}/`),
-    date: dateFormatter.format(article.data.publishedAt),
-    categories: article.data.categories,
-  })),
+  ...zhArticles.map((article) => {
+    const publishedAt = parseDateSafe(article.publishedAt);
+    // D1 文章 id 为 `blogId/slug`，slug 取首个斜杠之后的部分。
+    const slug = article.id.split('/').slice(1).join('/');
+    return {
+      kind: 'article' as const,
+      title: article.title,
+      subtitle: blogNames.get(article.sourceId) ?? article.sourceDomain,
+      url: sitePath(`articles/${article.sourceId}/${slug}/`),
+      ...(publishedAt ? { date: dateFormatter.format(publishedAt) } : {}),
+      categories: article.categories,
+    };
+  }),
 ];
 ---
 

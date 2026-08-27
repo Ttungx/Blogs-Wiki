@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 
-import { getCollection } from 'astro:content';
+import { staticBlogs } from '../../../../data/blogs-static';
 import { env } from 'cloudflare:workers';
 import BlogMark from '../../../../components/BlogMark.astro';
 import CategoryPill from '../../../../components/CategoryPill.astro';
@@ -23,7 +23,7 @@ const articleData = await getArticle(db, blogId, slug, targetLang);
 if (!articleData) return new Response('Not Found', { status: 404 });
 
 // blogs 元数据仍从静态 collection 读取（构建期解析，SSR 可用）
-const blogs = await getCollection('blogs');
+const blogs = staticBlogs;
 const blog = blogs.find((b) => b.id === blogId);
 if (!blog) return new Response('Not Found', { status: 404 });
 

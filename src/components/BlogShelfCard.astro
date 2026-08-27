@@ -1,10 +1,10 @@
 ---
-import type { CollectionEntry } from 'astro:content';
+import type { StaticBlogEntry } from '../data/blogs-static';
 import BlogMark from './BlogMark.astro';
 import { sitePath } from '../lib/urls';
 
 interface Props {
-  blog: CollectionEntry<'blogs'>;
+  blog: StaticBlogEntry;
   articleCount: number;
   index: number;
 }

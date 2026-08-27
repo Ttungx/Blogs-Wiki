@@ -1,5 +1,5 @@
 ---
-import { getCollection } from 'astro:content';
+import { staticBlogs } from '../data/blogs-static';
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import BlogShelfCard from '../components/BlogShelfCard.astro';
@@ -7,7 +7,7 @@ import { getArticleCountBySource } from '../lib/server/content';
 
 export const prerender = false;
 
-const blogs = await getCollection('blogs');
+const blogs = staticBlogs;
 
 const db = env.DB;
 // 每来源文章计数来自 D1（只计有 zh-cn 版本的文章）

@@ -195,6 +195,70 @@ export async function listArticlesByBlog(
   }));
 }
 
+/** 搜索页条目（全站指定语言版本的轻量清单，不含正文）。 */
+export interface ArticleSearchItem {
+  id: string;
+  sourceId: string;
+  sourceDomain: string;
+  publishedAt: string;
+  title: string;
+  categories: string[];
+}
+
+/**
+ * 全站文章搜索清单（指定语言版本），按发布日期降序。
+ * 搜索页专用：只取标题/分类等轻量字段——正文留在 D1，
+ * 避免把整个内容层打进服务端 bundle。
+ */
+export async function listAllArticlesForSearch(
+  db: D1Database,
+  lang = 'zh-cn',
+): Promise<ArticleSearchItem[]> {
+  const result = await db
+    .prepare(
+      `SELECT a.id, a.source_id, a.source_domain, a.published_at, v.title
+       FROM articles a
+       JOIN article_versions v ON v.article_id = a.id AND v.language = ?
+       ORDER BY a.published_at DESC`,
+    )
+    .bind(lang)
+    .all<{
+      id: string;
+      source_id: string;
+      source_domain: string;
+      published_at: string;
+      title: string;
+    }>();
+
+  if (result.results.length === 0) return [];
+
+  // 分类一次取全量按文章分组，避免 N+1 查询。
+  const catResult = await db
+    .prepare(
+      `SELECT article_id, category_name
+       FROM article_categories
+       WHERE article_id IN (SELECT article_id FROM article_versions WHERE language = ?)
+       ORDER BY category_name`,
+    )
+    .bind(lang)
+    .all<{ article_id: string; category_name: string }>();
+  const categoriesByArticle = new Map<string, string[]>();
+  for (const row of catResult.results) {
+    const list = categoriesByArticle.get(row.article_id);
+    if (list) list.push(row.category_name);
+    else categoriesByArticle.set(row.article_id, [row.category_name]);
+  }
+
+  return result.results.map((row) => ({
+    id: row.id,
+    sourceId: row.source_id,
+    sourceDomain: row.source_domain,
+    publishedAt: row.published_at,
+    title: row.title,
+    categories: categoriesByArticle.get(row.id) ?? [],
+  }));
+}
+
 /**
  * 每来源的文章计数（首页 blog card 用）。
  * 只计有指定语言版本的文章。

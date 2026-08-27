@@ -1,5 +1,5 @@
 ---
-import { getCollection } from 'astro:content';
+import { staticBlogs } from '../../data/blogs-static';
 import { env } from 'cloudflare:workers';
 import ArticleRow from '../../components/ArticleRow.astro';
 import BlogMark from '../../components/BlogMark.astro';
@@ -14,7 +14,7 @@ export const prerender = false;
 const { id } = Astro.params;
 if (!id) return new Response('Not Found', { status: 404 });
 
-const blogs = await getCollection('blogs');
+const blogs = staticBlogs;
 const blog = blogs.find((b) => b.id === id);
 if (!blog) return new Response('Not Found', { status: 404 });
 
