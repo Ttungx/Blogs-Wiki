@@ -1,46 +1,35 @@
-# 当前 TODO（2026-08-12）
+# 当前 TODO（2026-08-24）
 
-## 现役架构（代码）
+## 现役架构（已上线）
 
-**站点**：Cloudflare Worker + Astro SSR + D1  
-**内容更新（代码已落地，尚未推远端/未做生产首跑）**：GitHub Actions → 本地产物 → `/api/content-sync` → D1  
-**翻译默认**：`TRANSLATION_PROVIDER=free`（opencode-free / ocx）；`paid` 回退 Secrets  
-**Workflow**：代码与 orchestrator 保留；`wrangler.deploy.jsonc` 已无 workflows binding；`/api/trigger` 源码返回 410
+**站点**：Cloudflare Worker（Astro SSR + D1 + ASSETS）
+**写路径（2026-08-24 上线并首跑验证）**：Worker Cron（每小时 :07）→ ping Render 免费 runner `/run` → 单源更新链（发现 → D1 去重预检 → 抓取 → 翻译 → content-sync 幂等写 D1）
+**已退役**：GitHub Actions 路径（备份 `workflow-backup/`，gitignored）；Cloudflare Workflow（实验/回滚代码）；`POST /api/trigger` → 410
 
-## 生产 live 核对（2026-08-12）
+## 2026-08-24 实测证据
 
 | 检查 | 结果 |
 |---|---|
-| 用户域名 `https://blogswiki.dpdns.org/` | 200，Astro v7 SSR |
-| `/api/health/` | 200，`backend=d1`，`articleCount=29` |
-| `/api/sources/` | 200，24 sources |
-| 文章页 `/articles/anthropic/building-effective-agents/` | 200 |
-| `POST /api/trigger/` | **仍 200 且创建 Workflow instance**（与本地源码 410 不一致 → 生产未部署含 410 的提交） |
-| `*.workers.dev` 本机访问 | 连接失败（环境网络限制；用户域名可用） |
-| `origin/main` 是否含 Actions workflow | **否**（本地 `main` 超前 3 commit 未 push） |
-
-结论：**读路径 live 可用；写路径新架构仅本地代码完成，未 push / 未部署 / 未端到端首跑。**
+| D1 远程迁移 | ✅ 全部应用（No migrations to apply） |
+| Worker 部署 | ✅ 版本 3d1457ab；cron `7 * * * *` 注册成功；`RUNNER_URL` 暂空（安全跳过） |
+| 服务端 bundle | ✅ 139MB → 14MB（SSR 全面退出 astro:content，search 改读 D1） |
+| live 页面 | ✅ 首页/搜索/博客页/文章页/health 全 200 |
+| check 端点 | ✅ live 200，Bearer 认证生效，返回已存在子集 |
+| E2E 单源首跑 | ✅ anthropic limit=1：remote dedupe 过滤 4 URL → 新文翻译入库 → 线上文章页与搜索可见 |
 
 ## 开放任务（按优先级）
 
-1. 🟨 **推送 + 部署**：`main` 推 origin；`wrangler d1 migrations apply blogs-wiki --remote`（若 0007 未应用）→ `npm run deploy`；复测 `POST /api/trigger/` 应为 410
-2. 🟨 **配置 GitHub**：`CONTENT_SYNC_TOKEN` Secret、`CONTENT_SYNC_URL` Variable；`TRANSLATION_PROVIDER`（默认 free）；paid 回退再配 `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`；Worker 侧 `wrangler secret put CONTENT_SYNC_TOKEN`
-3. 🟨 **首跑真实更新**：`workflow_dispatch`（`dry-run=false`、单源、`limit=1`）核验 free 通道 → content-sync → D1 文章数增长
-4. ⬜ **Phase 9**：Pagefind → D1 FTS5（当前搜索索引缺失/降级）
-5. ⬜ **Phase 10**：删 FileRepository / persist.ts / processed-urls.json 文件 backend
-6. 🟨 **收尾**：`worker-runtime.test.ts` 适配新 API 入口；sitemap 动态化
-7. 🟨 **工作区**：大量未提交改动（阅读页/markdown/carousel、docs/sources 清理、vendors logo 等）需整理提交或丢弃
+1. 🟨 **Render Blueprint 创建**（render.yaml 已备好）：Dashboard 连仓库 → 填 `sync:false` 变量（`RUNNER_KEY`=Worker 的 CONTENT_SYNC_TOKEN 同值、`CONTENT_SYNC_TOKEN`、翻译网关三件套）→ 部署成功后把服务域名填入 Worker `RUNNER_URL`（`wrangler.deploy.jsonc` 改后需再 deploy）
+2. 🟨 **首轮全自动验收**：等整点 :07 或手动 `curl "$RUNNER_URL/run?key=...&source=<id>&limit=1"`，看 Render 日志与 D1 增长
+3. ✅ **本地 corpus 清理（2026-08-24 完成）**：2646→237 文件（45MB→5.3MB），现为 D1 精确镜像；历史积压 40MB 归档于 gitignored `.corpus-archive/2026-08-24/`（确认可弃后整目录删除）；顺带修复：D1 孤儿行 paul-graham（无 FK 时期残留）已删、4 处 URL 漂移本地对齐 D1；**全量 import 已验证可用（138 篇 2 chunks 通过）**
+4. ⬜ Phase 9：Pagefind → D1 FTS5（现搜索 = D1 轻量清单 + 客户端过滤）
+5. ⬜ Phase 10：删 FileRepository / persist.ts / processed-urls.json（search 已切 D1）
+6. 🟨 收尾：`worker-runtime.test.ts` 适配新 API 入口；sitemap 动态化
+7. ⬜ 工作区整理提交（本轮改动清单见 git status）
 
-## 文章渲染（本地 WIP，未 commit）
+## 已知坑
 
-- [x] 段间距 / 代码块 / markdown 基础增强
-- [x] testimonial AST 结构化（替代 CSS `:has`/float hack）
-- [x] meta 区字号与对齐微调
-- [ ] 提交并部署后在真实文章页验收
-
-## 内容更新架构
-
-- [x] Worker + Actions 组合方案（代码）
-- [x] content-sync 幂等写入（代码 + 本地测试）
-- [x] opencode-free 翻译通道（代码 + workflow 定义）
-- [ ] 推远端 + 部署 + 生产首跑验证
+- **SSR 严禁 import astro:content**：会连整个数据层存储（曾达 125MB）打进 bundle → 64MiB 超限。博客元数据编辑流程：改 `src/content/blogs/*.md` → `npx tsx scripts/generate-blogs-static.ts`
+- 线上 POST API 测试须带 `Content-Type: application/json`（裸表单被 Astro checkOrigin 拦成 403，非应用层响应）
+- API 路径带尾斜杠，否则 301/308
+- SSH 到 github.com 常被墙，git 远端操作走代理或 gh HTTPS API

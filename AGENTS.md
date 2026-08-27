@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Astro SSR + Cloudflare Workers 博客收藏站（用户域名 `https://blogswiki.dpdns.org/`）。读路径：SSR 从 D1 实时读，新文章写入 D1 立即可访问。写路径（代码已落地，截至 2026-08-12 未 push、未部署、未生产首跑）：GitHub Actions 发现/抓取/翻译 → 受保护 `/api/content-sync` 幂等写 D1。Workflow 代码仅作实验/回滚，`wrangler.deploy.jsonc` 已无 workflows binding，`/api/trigger` 源码返回 410——线上可能仍是旧部署，以 live 实测为准。仓库语言为中文，文档与提交信息用中文。
+Astro SSR + Cloudflare Workers 博客收藏站（用户域名 `https://blogswiki.dpdns.org/`）。读路径：SSR 从 D1 实时读，新文章写入 D1 立即可访问。写路径（2026-08-24 已上线并完成首跑验证）：Worker Cron 定时 ping Render 免费实例的 runner（`scripts/render-runner.mjs`）执行单源更新链（发现 → D1 去重预检 → 抓取 → 翻译 → 受保护 `/api/content-sync` 幂等写 D1）。GitHub Actions 路径已退役（workflow 备份于 gitignored `workflow-backup/`）；Cloudflare Workflow 仅作实验/回滚代码；`/api/trigger` 返回 410。仓库语言为中文，文档与提交信息用中文。
 
 ## 提交纪律
 
@@ -34,7 +34,7 @@ npm run build            # astro build + scripts/inject-worker-entry.js
 npm run deploy           # build + wrangler deploy --config wrangler.deploy.jsonc
 npm run preview:worker   # build + wrangler dev 本地预览
 npm run update:dry       # 预演：真实抓取，不翻译、不写文件
-npm run update           # 完整增量更新（生产由 Actions 调用）
+npm run update           # 完整增量更新（生产由 Render runner 单源轮转调用）
 npm run audit:source -- --source langchain   # 只读来源审计
 ```
 
@@ -43,41 +43,45 @@ npm run audit:source -- --source langchain   # 只读来源审计
 env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚本时需自行加载 `.env`。
 
 **密钥分层**（勿混用）：
-- Worker（`wrangler secret put`）：`CONTENT_SYNC_TOKEN`
-- Actions Secrets：paid 回退的 `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`；`CONTENT_SYNC_TOKEN`
-- Actions Variables：`CONTENT_SYNC_URL`；`TRANSLATION_PROVIDER`（默认 `free`）；可选 `TRANSLATION_PIPELINE` / `MODEL_REASONING_EFFORT` / `FETCH_BACKEND` / 代理相关
+- Worker（`wrangler secret put`）：`CONTENT_SYNC_TOKEN`（content-sync 与 /run ping 共用同一枚）
+- Worker vars：`RUNNER_URL`（Render 服务地址，部署 runner 后填入 `wrangler.deploy.jsonc` 再 deploy）
+- Render env（`sync:false`，Dashboard 手填）：`RUNNER_KEY`（= CONTENT_SYNC_TOKEN 同值）、`CONTENT_SYNC_TOKEN`、翻译网关三件套 `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`
+- 本地 `.env`：同上 + 代理相关；`CONTENT_SYNC_CHECK_URL` 指向线上 check 端点
 
 ## 架构（已上线）
 
-单 Worker 全栈：**Astro SSR 页面 + API 路由 + D1 + ASSETS 静态资源**，一个入口服务全站；内容更新管线在 GitHub Actions 运行。
+单 Worker 全栈：**Astro SSR 页面 + API 路由 + D1 + ASSETS 静态资源**，一个入口服务全站；内容更新由 Worker Cron 定时触发 Render 免费实例执行（详见「内容更新」）。
 
 ```
 访客 → Cloudflare Worker (blogs-wiki)
   ├─ ASSETS binding → 静态文件（CSS/JS/404/搜索页）
-  ├─ Astro SSR 页面（prerender=false）→ 首页/收集册/文章页，从 D1 实时读
-  │    ├─ 文章 = 身份（articles 表）+ 多语言版本（article_versions 表）
-  │    └─ 博客元数据 = 静态 collection（src/content/blogs/）
-  └─ /api/* 路由 → health / sources / content-sync（受保护写入）
+  ├─ Astro SSR 页面（prerender=false）→ 首页/收集册/文章页/搜索页，从 D1 实时读
+  │    ├─ 文章 = 身份（articles 表）+ 多语言版本（article_versions 表），D1 唯一真相
+  │    └─ 博客元数据 = 静态模块 src/data/blogs-static.ts（生成自 src/content/blogs/*.md）
+  ├─ scheduled（cron `7 * * * *`）→ ping RUNNER_URL /run 触发更新链
+  └─ /api/* 路由 → health / sources / content-sync / content-sync/check（受保护写入）
 ```
+
+- ⚠️ **SSR 页面严禁 `import astro:content`**：只要引入该模块，Astro 内容运行时会连同整个数据层存储（含全部文章正文，曾达 125MB）一起打进服务端 bundle → Worker 64MiB 上限超限。博客元数据改用静态模块：编辑 `src/content/blogs/*.md` 后跑 `npx tsx scripts/generate-blogs-static.ts` 再提交生成物。
 
 - binding 访问：`import { env } from 'cloudflare:workers'`（Astro v6+ 已移除 `Astro.locals.runtime.env`）；类型由 `worker-configuration.d.ts`（`wrangler types` 生成）。
 - 双 wrangler 配置：`wrangler.jsonc`（dev/build）+ `wrangler.deploy.jsonc`（部署，`main` → `dist/server/_entry.mjs`）；生产配置无 Workflow binding。
-- 构建管线：`astro build` 生成 `dist/client` + `dist/server/entry.mjs`；`scripts/inject-worker-entry.js` 生成 `_entry.mjs`（re-export Astro handler）；`wrangler deploy` 打包部署。
+- 构建管线：`astro build` 生成 `dist/client` + `dist/server/entry.mjs`；`scripts/inject-worker-entry.js` 生成 `_entry.mjs`（re-export Astro handler + `scheduled` 导出）；`wrangler deploy` 打包部署。
 - 架构纪律：一次只改一个架构层；改 `worker/` 前必读 `docs/migration-to-cloudflare.md`。
 
 ## 内容更新
 
-**生产路径（Actions）**：`.github/workflows/content-update.yml`（cron `17 2 * * *` + `workflow_dispatch`）→ discover → Defuddle fetch → translate → 本地持久化 → `scripts/import-local-articles.mjs --json` → `scripts/sync-local-articles.mjs` 分片调 `/api/content-sync` → D1 幂等写。Action 只上传元数据报告。单文章/单来源失败不拖垮全局。
+**生产路径（已上线，2026-08-24 首跑验证）**：Worker Cron（每小时 :07）→ ping Render 免费实例 `/run?key=` → `scripts/render-runner.mjs` 无状态轮转选源（时间片取模，默认 15 分钟一片，25 源 ≈ 每源 6 小时一更）→ spawn 子链：`npm run update -- --source <id>`（发现 → `/api/content-sync/check` D1 去重预检 fail-open → Defuddle 抓取 → 翻译 → 本地持久化）→ `import-local-articles --json` → `sync-local-articles` 分片调 `/api/content-sync` 幂等写 D1。触发即返回 202 绕开路由超时；忙碌保护同一时刻仅一条链。漏跑/重复跑无害（幂等兜底）。
 
-**Node 开发路径（scripts/update/）**：`npm run update` / `update:dry` / `audit:source`。生产内容以 D1 为准；`src/content/articles/` 与 `src/data/processed-urls.json` 是本地产物（`.gitignore`）。
+**Node 开发路径（scripts/update/）**：`npm run update` / `update:dry` / `audit:source`。生产内容以 D1 为准；`src/content/articles/` 与 `src/data/processed-urls.json` 是本地产物（`.gitignore`）。⚠️ 本地全量回放历史 corpus 会踩 slug 漂移脏数据（同 URL 新旧 id 冲突 → FK/PK 失败），Render 容器无此问题（每轮只有增量文件 + URL 级去重）；清理前禁止对生产跑全量 import。
 
-`POST /api/trigger` 源码已停用并返回 410；Workflow 及 `worker/runtime/update-orchestrator.ts` 仅作实验/回滚，不作为运维依据。
+`POST /api/trigger` 返回 410；GitHub Actions workflow 已退役（备份于 gitignored `workflow-backup/`）；Cloudflare Workflow 及 `worker/runtime/update-orchestrator.ts` 仅作实验/回滚，不作为运维依据。
 
 **来源配置**（`src/data/sources.json`，打包进 Worker）：
 - 来源必须声明 `update_mode`：`"active"` 进完整更新，`"dry-run-only"` 只参与 dry-run；新增来源先 `dry-run-only`，人工核验后转 `active`。
 - 每源默认 3 篇（`--limit` 可调）。无发布日期的来源（如 Paul Graham）无法生成文章，不要加入自动更新。分类只能从 `src/config/categories.ts` 预定义集合选。
 - **翻译通道**（`TRANSLATION_PROVIDER`，默认 `free`）：
-  - `free`（默认）：OpenAI 兼容网关（loopback 或免费层）。env 配 `OPENAI_BASE_URL` / `TRANSLATION_MODEL` / `MODEL_REASONING_EFFORT`（请求体顶层传 `reasoning_effort`；用 `low`——`high` 会因 reasoning 占满 max_tokens 致翻译输出空）。实测 `deepseek-v4-flash` + `low` ≈ 14s/篇（~27000 字符/min）。客户端已内置 429 退避（最多 2 次）。prompt 可能被留存训练，只传公开内容。
+  - `free`（默认）：OpenAI 兼容网关（loopback 或免费层）。env 配 `OPENAI_BASE_URL` / `TRANSLATION_MODEL` / `MODEL_REASONING_EFFORT`（请求体顶层传 `reasoning_effort`；用 `low`——`high` 会因 reasoning 占满 max_tokens 致翻译输出空；**Google Gemini OpenAI 端点不接受 `default`**，合法值 none/minimal/low/medium/high）。实测 `deepseek-v4-flash` + `low` ≈ 14s/篇（~27000 字符/min）；`gemini-3.5-flash-lite` + `low` ≈ 22s/篇（~64000 字符/min，吞吐 ~2.4×）。客户端已内置 429 退避（最多 2 次）。prompt 可能被留存训练，只传公开内容。
   - `paid`（回退）：三个 Secrets（`OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`）。
 - 本地网络受限时 `USE_PROXY=true` + `PROXY_URL`（默认 `http://127.0.0.1:7897`）。个别站点（openai.com）拦截 Node TLS 指纹，抓取自动回退系统 `curl`（Node 侧经 `worker/fetch/curl-runner.ts`；Worker 运行时无 curl 则跳过）。
 
@@ -90,13 +94,14 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 ## Cloudflare 迁移状态
 
-**已完成**：Phase 1-8 + Actions + content-sync + opencode-free（已合入本地 main）。权威进度与 live 证据见 `TODO.md`。
+**已完成**：Phase 1-8 + content-sync + free 翻译通道 + **写路径上线**（Worker Cron → Render runner，2026-08-24 首跑验证：check 去重生效、新文章翻译入库并线上可见）。权威进度与 live 证据见 `TODO.md`。
 
-**未闭合（生产门禁，优先于 Phase 9）**：
-- 本地 `main` 超前 `origin/main`（含 content-update workflow），需 push。
-- 部署含 trigger-410 / 无 Workflow binding 的 Worker；live 复测 `POST /api/trigger/`。
-- 配置 `CONTENT_SYNC_*` + 翻译变量；workflow_dispatch 首跑（单源、`limit=1`）。
-- Phase 9：Pagefind → D1 FTS5；Phase 10：删文件 backend。
+**待办**：
+- Render Blueprint 首次创建（render.yaml 已备好）：Dashboard 填 `sync:false` 变量 → 服务域名填入 Worker `RUNNER_URL` → 再 deploy 生效
+- 首轮全自动更新验收（等整点 :07 或手动 curl `/run`）
+- Phase 9：Pagefind → D1 FTS5（搜索页现为 D1 轻量清单 + 客户端过滤）
+- Phase 10：删文件 backend（search 已切 D1；先清本地 corpus slug 漂移脏数据）
+- 收尾：`worker-runtime.test.ts` 适配、sitemap 动态化
 
 ## 搜索、输出与探索委托纪律
 
