@@ -13,7 +13,7 @@
     "crons": ["7 * * * *"]
   },
   "vars": {
-    "RUNNER_URL": ""
+    "RUNNER_URL": "https://blogs-wiki-updater.onrender.com"
   },
   "assets": {
     "binding": "ASSETS",
