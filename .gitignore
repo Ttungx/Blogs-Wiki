@@ -29,8 +29,16 @@ src/data/processed-urls.json
 # 语料清理归档（2026-08-24 未同步历史积压，确认可弃后整目录删除）
 .corpus-archive/
 
+# 人工训练语料：仅本地训练用，不入库、不进生产构建（该目录从未被 git 跟踪，需入库时删除本行即可）
+tran/
+
 # 更新链运行产物（runner 日志 / import payload / 报告）
 logs/
 
 # 项目级 opencode 配置（含 Render MCP API key，手动填写后不入库）
 opencode.jsonc
+
+# 本地分析草稿与工具状态（不入库；analysis/ 已在 tsconfig exclude）
+analysis/
+.workbuddy/
+.tmp-census.json

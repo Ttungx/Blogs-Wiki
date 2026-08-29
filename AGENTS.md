@@ -43,7 +43,15 @@ npm run block:source -- --source <id> --reason "<why>" [--apply|--verify]   # �
 
 env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚本时需自行加载 `.env`。
 
+## CI/CD（GitHub Actions，2026-08-29 上线）
+
+**push main = 门禁 → 自动部署 Worker（D1 migration + wrangler deploy）+ Render（API 触发）；PR 只跑门禁。** 触发边界、密钥分层、CLOUDFLARE_API_TOKEN 配置指引见 `docs/ci-cd.md`。要点：
+- Actions 只管 CI/CD，**内容更新 cron 永不回 Actions**（算力在 Render runner）。
+- `CLOUDFLARE_API_TOKEN` 未配置时 deploy-worker 优雅跳过（notice 提示）；`RENDER_API_KEY` 已配置（Render 原生 webhook 自动部署失效，改由 Actions 显式触发）。
+- 仓库 PUBLIC：密钥只进 GitHub encrypted secrets，Actions 日志公开可见，严禁 echo 密钥。
+
 **密钥分层**（勿混用）：
+- GitHub Actions secrets：`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` / `RENDER_API_KEY`（CI/CD 部署用，见 `docs/ci-cd.md`）
 - Worker（`wrangler secret put`）：`CONTENT_SYNC_TOKEN`（content-sync 与 /run ping 共用同一枚）
 - Worker vars：`RUNNER_URL`（Render 服务地址，部署 runner 后填入 `wrangler.deploy.jsonc` 再 deploy）
 - Render env（`sync:false`，Dashboard 手填）：`RUNNER_KEY`（= CONTENT_SYNC_TOKEN 同值）、`CONTENT_SYNC_TOKEN`、翻译网关三件套 `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`

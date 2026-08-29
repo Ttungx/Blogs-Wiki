@@ -1,0 +1,152 @@
+# CI/CD —— 门禁测试 + 部署（Cloudflare Worker / Render）
+#
+# 触发边界：
+# - gate 门禁：PR → main、push → main（docs/markdown-only 改动跳过）
+# - deploy-worker / deploy-render：仅 push → main，且门禁通过后执行；
+#   workflow_dispatch 可手动重跑
+# - 内容更新 cron 不在本文件（算力在 Render runner，见 AGENTS.md「内容更新」；
+#   GitHub Actions 只负责 CI/CD，不参与内容抓取/翻译）
+#
+# 密钥分层（详见 docs/ci-cd.md）：
+# - GitHub Actions secrets：CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID /
+#   RENDER_API_KEY —— 仅用于部署，缺省时对应 job 优雅跳过并提示
+# - Cloudflare Worker secrets 与 Render env 与本文件无关（运行时密钥，
+#   分别在 CF Dashboard / Render Dashboard 配置，严禁写入仓库）
+#
+# 本仓库为 PUBLIC：Actions 日志公开可见，任何密钥不得出现在代码、文档、
+# 日志输出中（GitHub 会对 repo secrets 值自动打码，但不要主动 echo）。
+
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  # PR 推送可取消旧 run；main push 的部署不取消（排队执行，避免部署中断）
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gate:
+    name: 门禁（类型检查 + 全量测试）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: astro check（SSR/页面类型检查）
+        run: npm run check
+
+      - name: tsc（worker 类型检查）
+        run: npm run check:worker
+
+      - name: 更新管线测试 + smoke
+        run: npm run test:update
+
+      - name: worker 模块测试
+        run: npm run test:worker
+
+      - name: D1 集成测试（Miniflare）
+        run: npm run test:d1
+
+      - name: Markdown 渲染回归
+        run: npm run test:markdown
+
+  deploy-worker:
+    name: 部署 Cloudflare Worker（D1 migration + deploy）
+    needs: gate
+    # 仅 main push 部署；PR 只跑门禁
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 检查部署密钥
+        id: guard
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CF_TOKEN" ]; then
+            echo "deployed=skipped" >> "$GITHUB_OUTPUT"
+            echo "::notice::CLOUDFLARE_API_TOKEN 未配置，跳过 Worker 部署。配置指引见 docs/ci-cd.md"
+          else
+            echo "deployed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: D1 migrations（远程，幂等）
+        if: steps.guard.outputs.deployed == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 migrations apply blogs-wiki --remote
+
+      - name: 构建（astro build + inject worker entry）
+        if: steps.guard.outputs.deployed == 'true'
+        run: npm run build
+
+      - name: wrangler deploy
+        if: steps.guard.outputs.deployed == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config wrangler.deploy.jsonc
+
+  deploy-render:
+    name: 触发 Render 部署
+    needs: gate
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检查部署密钥
+        id: guard
+        env:
+          KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "deployed=skipped" >> "$GITHUB_OUTPUT"
+            echo "::notice::RENDER_API_KEY 未配置，跳过 Render 部署。配置指引见 docs/ci-cd.md"
+          else
+            echo "deployed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 触发 Render 部署（锚定本次 commit）
+        if: steps.guard.outputs.deployed == 'true'
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: srv-da7ve73bc2fs73carkh0
+        run: |
+          code=$(curl -sS -o /tmp/render-deploy.json -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "content-type: application/json" \
+            -d "{\"commitId\": \"${{ github.sha }}\"}" \
+            "https://api.render.com/v1/services/$SERVICE_ID/deploys")
+          cat /tmp/render-deploy.json
+          if [ "$code" != "201" ]; then
+            echo "::error::Render 部署触发失败：HTTP $code"
+            exit 1
+          fi
