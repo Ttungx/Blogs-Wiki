@@ -1,17 +1,28 @@
 # CI/CD 与密钥分层
 
-> 一句话：**push 到 main = 门禁测试 → 自动部署 Worker + Render**；PR = 只跑门禁。
+> 一句话：**push main = 只跑门禁；发版本（push `v*` tag）= 门禁 → 自动部署 Worker + Render**；PR = 只跑门禁。
 > 本仓库为 **PUBLIC**，Actions 日志公开可见——密钥只进加密 secrets，严禁出现在代码、文档、日志、commit 信息中。
 
 ## 触发边界（.github/workflows/ci.yml）
 
 | Job | 触发 | 内容 |
 |---|---|---|
-| `gate` | PR → main、push → main（`docs/**`、`**.md` 改动跳过） | astro check + tsc + test:update/worker/d1/markdown 全量门禁 |
-| `deploy-worker` | 仅 push → main，且 gate 通过 | `d1 migrations apply --remote`（幂等）→ `astro build` → `wrangler deploy` |
-| `deploy-render` | 仅 push → main，且 gate 通过 | Render API 触发部署（锚定本次 commit） |
+| `gate` | PR → main、push → main、push tag `v*`（`docs/**`、`**.md` 改动跳过） | astro check + tsc + test:update/worker/d1/markdown 全量门禁 |
+| `release-guard` | 仅 tag `v*` push 或 workflow_dispatch | 校验 tag 与 `package.json` version 一致（防版本漂移） |
+| `deploy-worker` | 仅版本发布（tag 或手动），gate + guard 通过后 | `d1 migrations apply --remote`（幂等）→ `astro build` → `wrangler deploy` |
+| `deploy-render` | 仅版本发布（tag 或手动），gate + guard 通过后 | Render API 触发部署（锚定 tag 所指 commit） |
 
-- 并发控制：PR push 取消旧 run；main push 的部署排队不取消。
+**平时提交不部署**——main 上的任何 push 只触发门禁测试。部署是一个显式的"发版"动作：
+
+```bash
+npm version patch   # 或 minor / major：bump package.json + 自动 commit + 打 v* tag
+git push origin main --follow-tags
+# → gate → release-guard（tag vs package.json）→ deploy-worker + deploy-render
+```
+
+手动逃生门：Actions 页面 `CI/CD → Run workflow`（workflow_dispatch）可部署当前 main，不校验版本——仅用于紧急热修，常规发版走 tag。
+
+- 并发控制：PR push 取消旧 run；main/tag push 的部署排队不取消。
 - **内容更新 cron 不在 Actions**：内容抓取/翻译算力在 Render runner（GitHub Actions 版已于 2026-08 退役，备份在本地 gitignored `workflow-backup/`）。Actions 只管 CI/CD，这条边界不许打破——Workers 免费 10ms CPU 跑不动 Defuddle，别把重活搬回来。
 - 密钥未配置时对应 deploy job **优雅跳过**（notice 提示，不红），便于密钥没配齐时先享受 CI。
 

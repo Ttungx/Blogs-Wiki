@@ -45,7 +45,8 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 ## CI/CD（GitHub Actions，2026-08-29 上线）
 
-**push main = 门禁 → 自动部署 Worker（D1 migration + wrangler deploy）+ Render（API 触发）；PR 只跑门禁。** 触发边界、密钥分层、CLOUDFLARE_API_TOKEN 配置指引见 `docs/ci-cd.md`。要点：
+**push main = 只跑门禁；发版（`npm version patch|minor|major` 后 push `v*` tag）= 门禁 → 自动部署 Worker（D1 migration + wrangler deploy）+ Render（API 触发）。** PR 只跑门禁。触发边界、发布流程、密钥分层、CLOUDFLARE_API_TOKEN 配置指引见 `docs/ci-cd.md`。要点：
+- **平时提交不部署**——部署只由版本 tag（或 Actions 页手动 dispatch 热修）触发；tag 与 package.json version 强一致校验。
 - Actions 只管 CI/CD，**内容更新 cron 永不回 Actions**（算力在 Render runner）。
 - `CLOUDFLARE_API_TOKEN` 未配置时 deploy-worker 优雅跳过（notice 提示）；`RENDER_API_KEY` 已配置（Render 原生 webhook 自动部署失效，改由 Actions 显式触发）。
 - 仓库 PUBLIC：密钥只进 GitHub encrypted secrets，Actions 日志公开可见，严禁 echo 密钥。

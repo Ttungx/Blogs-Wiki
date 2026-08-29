@@ -1,9 +1,11 @@
-# CI/CD —— 门禁测试 + 部署（Cloudflare Worker / Render）
+# CI/CD —— 门禁测试 + 版本发布部署（Cloudflare Worker / Render）
 #
 # 触发边界：
-# - gate 门禁：PR → main、push → main（docs/markdown-only 改动跳过）
-# - deploy-worker / deploy-render：仅 push → main，且门禁通过后执行；
-#   workflow_dispatch 可手动重跑
+# - gate 门禁：PR → main、push → main、push 版本 tag（docs/markdown-only 改动跳过）
+# - deploy-worker / deploy-render：**仅版本发布时执行**，两条路径：
+#   1. push tag `v*`（主路径）：tag 必须与 package.json version 一致（release-guard 校验）
+#   2. workflow_dispatch（手动逃生门，部署当前 main，不校验版本）
+# - 发布流程：`npm version patch|minor|major` → `git push origin main --follow-tags`
 # - 内容更新 cron 不在本文件（算力在 Render runner，见 AGENTS.md「内容更新」；
 #   GitHub Actions 只负责 CI/CD，不参与内容抓取/翻译）
 #
@@ -23,6 +25,7 @@ on:
     branches: [main]
   push:
     branches: [main]
+    tags: ["v*"]
     paths-ignore:
       - "docs/**"
       - "**/*.md"
@@ -33,7 +36,7 @@ permissions:
 
 concurrency:
   group: ci-cd-${{ github.ref }}
-  # PR 推送可取消旧 run；main push 的部署不取消（排队执行，避免部署中断）
+  # PR 推送可取消旧 run；main/tag push 的部署不取消（排队执行，避免部署中断）
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -69,11 +72,36 @@ jobs:
       - name: Markdown 渲染回归
         run: npm run test:markdown
 
+  release-guard:
+    name: 发布校验（tag 与 package.json 版本一致）
+    needs: gate
+    # 仅版本发布路径需要：tag push 或手动 dispatch
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      release: "true"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: 校验 tag 与 package.json version 一致
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PKG="v$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::tag ${TAG} 与 package.json 版本 ${PKG} 不一致——先 npm version <level> 再发 tag"
+            exit 1
+          fi
+          echo "release ${TAG} 校验通过"
+
   deploy-worker:
     name: 部署 Cloudflare Worker（D1 migration + deploy）
-    needs: gate
-    # 仅 main push 部署；PR 只跑门禁
-    if: github.event_name == 'push'
+    needs: [gate, release-guard]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -118,8 +146,8 @@ jobs:
 
   deploy-render:
     name: 触发 Render 部署
-    needs: gate
-    if: github.event_name == 'push'
+    needs: [gate, release-guard]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: 检查部署密钥
