@@ -65,14 +65,29 @@ function isoDate(value) {
 const files = walk(ARTICLES_DIR);
 console.log(`Found ${files.length} article files`);
 
+// 永久拉黑（tombstone）守卫：import 是唯一绕过发现层、能把已移除源文章重导进
+// D1 的旁路。blog_id 命中 blocked-sources.json 即跳过（与 loadSources 门禁同源）。
+function readBlockedIds() {
+  try {
+    const registry = JSON.parse(readFileSync(join(ROOT, 'src', 'data', 'blocked-sources.json'), 'utf8'));
+    return new Set((registry.blocked ?? []).map((entry) => entry.id));
+  } catch (error) {
+    if (error.code === 'ENOENT') return new Set();
+    throw error;
+  }
+}
+const blockedIds = readBlockedIds();
+
 // 按 blogId/slug 分组，收集每个文件
 const groups = new Map();
 let skipped = 0;
+let blockedSkipped = 0;
 for (const file of files) {
   const parsed = parseMarkdown(file);
   if (!parsed) { skipped++; continue; }
   const fm = parsed.frontmatter;
   if (!fm.blog_id || !fm.title) { skipped++; continue; }
+  if (blockedIds.has(fm.blog_id)) { blockedSkipped++; continue; }
   const rel = relative(ARTICLES_DIR, file).replace(/\\/g, '/');
   const parts = rel.split('/'); // blogId/lang/slug.md
   const blogId = parts[0];
@@ -83,7 +98,7 @@ for (const file of files) {
   groups.get(key).push({ file, fm, body: parsed.body, lang, blogId, slug });
 }
 
-console.log(`Grouped into ${groups.size} articles (${skipped} skipped)`);
+console.log(`Grouped into ${groups.size} articles (${skipped} skipped, ${blockedSkipped} blocked-skipped)`);
 
 function readSources() {
   const sources = JSON.parse(readFileSync(join(ROOT, 'src', 'data', 'sources.json'), 'utf8'));

@@ -34,9 +34,9 @@ export const staticBlogs: StaticBlogEntry[] = [
       "author": "Andrej Karpathy",
       "description": "LLM 教育、AI 思考与工程实践。",
       "homepageUrl": "https://karpathy.ai/",
-      "blogUrl": "https://karpathy.github.io/",
-      "domain": "karpathy.github.io",
-      "rssUrl": "https://karpathy.github.io/feed.xml",
+      "blogUrl": "https://karpathy.bearblog.dev/",
+      "domain": "karpathy.bearblog.dev",
+      "rssUrl": "https://karpathy.bearblog.dev/feed/",
       "avatar": "https://github.com/karpathy.png",
       "categories": [
         "AI",
@@ -60,25 +60,6 @@ export const staticBlogs: StaticBlogEntry[] = [
         "AI",
         "Agent",
         "Research"
-      ],
-      "demo": true
-    }
-  },
-  {
-    "id": "cloudflare",
-    "data": {
-      "name": "Cloudflare",
-      "type": "company",
-      "description": "全球网络、开发平台与基础设施工程。",
-      "homepageUrl": "https://www.cloudflare.com/",
-      "blogUrl": "https://blog.cloudflare.com/",
-      "domain": "blog.cloudflare.com",
-      "logo": "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.94.0/icons/cloudflare-color.svg",
-      "rssUrl": "https://blog.cloudflare.com/rss/",
-      "sitemapUrl": "https://blog.cloudflare.com/sitemap.xml",
-      "categories": [
-        "Engineering / Infrastructure",
-        "Internet / Technology"
       ],
       "demo": true
     }
@@ -185,26 +166,6 @@ export const staticBlogs: StaticBlogEntry[] = [
     }
   },
   {
-    "id": "google-research",
-    "data": {
-      "name": "Google Research",
-      "type": "company",
-      "author": "Google Research",
-      "description": "Google Research 官方博客，覆盖 AI / ML 研究与工程实践。",
-      "homepageUrl": "https://research.google/",
-      "blogUrl": "https://research.google/blog/",
-      "domain": "research.google",
-      "logo": "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.94.0/icons/google-color.svg",
-      "logoScale": 0.9,
-      "rssUrl": "https://research.google/blog/rss/",
-      "categories": [
-        "AI",
-        "Research"
-      ],
-      "demo": true
-    }
-  },
-  {
     "id": "google-security",
     "data": {
       "name": "Google Security",
@@ -238,27 +199,6 @@ export const staticBlogs: StaticBlogEntry[] = [
       "categories": [
         "Agent",
         "AI Coding / Developer Tools"
-      ],
-      "demo": true
-    }
-  },
-  {
-    "id": "hugging-face",
-    "data": {
-      "name": "Hugging Face",
-      "type": "company",
-      "author": "Hugging Face",
-      "description": "开源模型、工具链与 ML 社区的官方博客。",
-      "homepageUrl": "https://huggingface.co/",
-      "blogUrl": "https://huggingface.co/blog",
-      "domain": "huggingface.co",
-      "logo": "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.94.0/icons/huggingface-color.svg",
-      "logoScale": 0.9,
-      "rssUrl": "https://huggingface.co/blog/feed.xml",
-      "sitemapUrl": "https://huggingface.co/sitemap-blog.xml",
-      "categories": [
-        "AI",
-        "Research"
       ],
       "demo": true
     }
@@ -364,25 +304,6 @@ export const staticBlogs: StaticBlogEntry[] = [
     }
   },
   {
-    "id": "meta-engineering",
-    "data": {
-      "name": "Meta Engineering",
-      "type": "company",
-      "author": "Meta Engineering",
-      "description": "Meta 工程团队博客，覆盖大规模基础设施、ML 系统与生产工程。",
-      "homepageUrl": "https://engineering.fb.com/",
-      "blogUrl": "https://engineering.fb.com/",
-      "domain": "engineering.fb.com",
-      "logo": "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.94.0/icons/meta-color.svg",
-      "logoScale": 0.9,
-      "rssUrl": "https://engineering.fb.com/feed/",
-      "categories": [
-        "Engineering / Infrastructure"
-      ],
-      "demo": true
-    }
-  },
-  {
     "id": "microsoft-research",
     "data": {
       "name": "Microsoft Research",
@@ -429,10 +350,9 @@ export const staticBlogs: StaticBlogEntry[] = [
       "author": "Moonshot AI",
       "description": "Moonshot 的大模型、Agent 与评测技术官方博客。",
       "homepageUrl": "https://www.kimi.com/",
-      "blogUrl": "https://www.kimi.com/blog/",
+      "blogUrl": "https://www.kimi.com/en/blog/",
       "domain": "kimi.com",
       "logo": "/vendors/moonshotai.svg",
-      "sitemapUrl": "https://www.kimi.com/sitemap/sitemap-ug-blog.xml",
       "categories": [
         "AI",
         "Agent",
@@ -514,26 +434,6 @@ export const staticBlogs: StaticBlogEntry[] = [
       "categories": [
         "AI",
         "Research"
-      ],
-      "demo": true
-    }
-  },
-  {
-    "id": "simon-willison",
-    "data": {
-      "name": "Simon Willison's Weblog",
-      "type": "personal",
-      "author": "Simon Willison",
-      "description": "LLM、开发工具、数据与开放 Web 的持续笔记。",
-      "homepageUrl": "https://simonwillison.net/",
-      "blogUrl": "https://simonwillison.net/",
-      "domain": "simonwillison.net",
-      "avatar": "https://github.com/simonw.png",
-      "rssUrl": "https://simonwillison.net/atom/everything/",
-      "sitemapUrl": "https://simonwillison.net/sitemap.xml",
-      "categories": [
-        "AI Coding / Developer Tools",
-        "Internet / Technology"
       ],
       "demo": true
     }

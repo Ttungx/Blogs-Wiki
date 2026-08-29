@@ -45,7 +45,10 @@ function stripTags(value: string): string {
 }
 
 export function isCandidateArticle(url: string, source: SourceConfig): boolean {
-  if (!isLikelyArticleUrl(url, source.domain, { allowNonArticlePaths: source.allow_non_article_paths })) return false;
+  if (!isLikelyArticleUrl(url, source.domain, {
+    allowNonArticlePaths: source.allow_non_article_paths,
+    extraDomains: source.extra_domains,
+  })) return false;
   const pathname = new URL(url).pathname.replace(/\/+$/, '');
   const excluded = source.exclude_paths?.some((prefix) => {
     if (prefix.startsWith('^')) {
@@ -158,7 +161,10 @@ export function parseListing(html: string, listingUrl: string, source: SourceCon
   const anchors = [...html.matchAll(/<a\b([^>]*?)\bhref=["']([^"'#]+)["']([^>]*)>([\s\S]*?)<\/a>/gi)];
   return uniqueCanonicalUrls(anchors.flatMap((match) => {
     const url = canonicalizeUrl(match[2], listingUrl);
-    if (!url || !isLikelyArticleUrl(url, source.domain, { allowNonArticlePaths: source.allow_non_article_paths })) return [];
+    if (!url || !isLikelyArticleUrl(url, source.domain, {
+      allowNonArticlePaths: source.allow_non_article_paths,
+      extraDomains: source.extra_domains,
+    })) return [];
     return [{ url, title: stripTags(match[4]) }];
   }), listingUrl);
 }
@@ -166,7 +172,10 @@ export function parseListing(html: string, listingUrl: string, source: SourceCon
 async function fromFeed(source: SourceConfig, fetchImpl: FetchLike): Promise<DiscoveredArticle[]> {
   if (!source.rss_url) return [];
   return parseFeed(await fetchText(fetchImpl, source.rss_url, `${source.id} RSS`), source.rss_url)
-    .filter((item) => isLikelyArticleUrl(item.url, source.domain, { allowNonArticlePaths: source.allow_non_article_paths }));
+    .filter((item) => isLikelyArticleUrl(item.url, source.domain, {
+      allowNonArticlePaths: source.allow_non_article_paths,
+      extraDomains: source.extra_domains,
+    }));
 }
 
 interface SitemapCollectResult {
@@ -209,7 +218,10 @@ async function collectSitemapEntries(source: SourceConfig, fetchImpl: FetchLike)
 async function fromSitemap(source: SourceConfig, fetchImpl: FetchLike): Promise<DiscoveredArticle[]> {
   if (!source.sitemap_url) return [];
   const { entries } = await collectSitemapEntries(source, fetchImpl);
-  return entries.filter((item) => isLikelyArticleUrl(item.url, source.domain, { allowNonArticlePaths: source.allow_non_article_paths }));
+  return entries.filter((item) => isLikelyArticleUrl(item.url, source.domain, {
+    allowNonArticlePaths: source.allow_non_article_paths,
+    extraDomains: source.extra_domains,
+  }));
 }
 
 async function fromListing(source: SourceConfig, fetchImpl: FetchLike): Promise<DiscoveredArticle[]> {

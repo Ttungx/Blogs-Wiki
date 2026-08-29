@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { assertNotBlocked, loadBlockedSources } from './blocked-sources';
 import type { SourceConfig, SourceType, SourceUpdateMode } from './types';
 
 export interface ConfigIssue {
@@ -128,12 +129,12 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
 
     // 未知字段：提示但不阻断（宽松校验是特性，但消除"配了没反应"的静默）。
     const ALLOWED_KEYS = new Set([
-      'id', 'name', 'type', 'homepage_url', 'blog_url', 'domain',
+      'id', 'name', 'type', 'homepage_url', 'blog_url', 'domain', 'extra_domains',
       'rss_url', 'sitemap_url', 'sitemap_include_paths', 'logo', 'avatar',
       'update_mode', 'prefer_official_zh', 'zh_path_map', 'git_date', 'api',
       'article_paths', 'exclude_paths', 'url_date_pattern',
       'min_content_chars', 'quality_filter', 'allow_non_article_paths',
-      'limit', 'discovery_strategy', 'max_child_sitemaps', 'backfill',
+      'limit', 'discovery_strategy', 'max_child_sitemaps', 'min_published_year', 'backfill',
     ]);
     for (const key of Object.keys(value)) {
       if (!ALLOWED_KEYS.has(key)) {
@@ -162,6 +163,23 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
       const num = value[key];
       if (num !== undefined && (typeof num !== 'number' || !Number.isInteger(num) || num <= 0)) {
         issues.push({ path: `[${index}].${key}`, message: 'must be a positive integer' });
+      }
+    }
+
+    if (value.min_published_year !== undefined
+      && (typeof value.min_published_year !== 'number' || !Number.isInteger(value.min_published_year)
+        || value.min_published_year < 1900 || value.min_published_year > 2100)) {
+      issues.push({ path: `[${index}].min_published_year`, message: 'must be a 4-digit year' });
+    }
+
+    if (value.extra_domains !== undefined) {
+      if (!Array.isArray(value.extra_domains) || !value.extra_domains.length
+        || value.extra_domains.some((entry) => typeof entry !== 'string'
+          || !entry.trim()
+          || entry.includes('/') || entry.includes(':') || /\s/.test(entry))) {
+        issues.push({ path: `[${index}].extra_domains`, message: 'must be a non-empty array of hostnames without scheme or path' });
+      } else if (typeof value.domain === 'string' && value.extra_domains.includes(value.domain.trim().toLowerCase())) {
+        issues.push({ path: `[${index}].extra_domains`, message: 'must not repeat `domain`' });
       }
     }
 
@@ -212,7 +230,7 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
   return { sources, issues, warnings };
 }
 
-export async function loadSources(rootDir: string): Promise<SourceConfig[]> {
+export async function loadSourcesUnchecked(rootDir: string): Promise<SourceConfig[]> {
   const file = path.join(rootDir, 'src', 'data', 'sources.json');
   const raw = JSON.parse(await fs.readFile(file, 'utf8')) as unknown;
   const result = validateSourceConfigs(raw);
@@ -224,4 +242,17 @@ export async function loadSources(rootDir: string): Promise<SourceConfig[]> {
     console.warn(`[sources.json] ${warning.path}: ${warning.message}`);
   }
   return result.sources;
+}
+
+/**
+ * 加载源配置的唯一咽喉点：schema 校验通过后，再跑永久拉黑（tombstone）门禁。
+ * 命中拉黑（同 id / 同域名 / 子域 / 父域 / extra_domains 相交）即抛错拒绝加载。
+ * update / backfill / census / audit 四个抓取驱动入口都经此函数，故全部自动受保护。
+ * block-source 工具与 smoke 测试需要绕过门禁读写源，改用 loadSourcesUnchecked。
+ */
+export async function loadSources(rootDir: string): Promise<SourceConfig[]> {
+  const sources = await loadSourcesUnchecked(rootDir);
+  const blocked = await loadBlockedSources(rootDir);
+  assertNotBlocked(sources, blocked);
+  return sources;
 }

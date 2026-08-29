@@ -8,10 +8,9 @@
  * - maxArticles：保护阀，不是目标数量；触发时在报告中明示 truncated_by_max。
  * - qualityFilter：回填前需要内容质量过滤（handoff 标 `require_quality_filter` 的源）。
  *
- * split 源（cloudflare / hugging-face / google-deepmind / jay-alammar /
- * andrej-karpathy）在现有 sources.json 只有一个主 discovery 入口，无法从
- * URL 区分子 channel；policy 里用保守的 since/max 等价覆盖，子索引语义
- * 记入 notes，后续接入分 channel discovery 时再细化。
+ * split 源（google-deepmind / jay-alammar / andrej-karpathy）在现有 sources.json
+ * 只有一个主 discovery 入口，无法从 URL 区分子 channel；policy 里用保守的 since/max
+ * 等价覆盖，子索引语义记入 notes，后续接入分 channel discovery 时再细化。
  */
 
 import { urlDateFromPattern } from './url-date';
@@ -36,27 +35,22 @@ export interface BackfillPolicy {
 export const BACKFILL_POLICIES: BackfillPolicy[] = [
   { sourceId: 'openai', mode: 'all', notes: '仅当前白名单分类（research/engineering/safety/security）' },
   { sourceId: 'anthropic', mode: 'all', notes: 'Research + Engineering 全量' },
-  { sourceId: 'cloudflare', mode: 'all', maxArticles: 80, qualityFilter: true, notes: 'handoff: engineering 全量 + reliability/security 2019 起；sitemap lastmod 全为 2026（重新生成日期）不可用于日期过滤，本轮最新优先限量回填，历史待专门发现机制' },
-  { sourceId: 'simon-willison', mode: 'since', since: '2023-01-01', maxArticles: 700, urlDatePattern: '/(\\d{4})/([A-Z][a-z]{2})/(\\d{1,2})/', notes: 'sitemap 无日期，从 URL 路径推断；历史经典另做 curated' },
   { sourceId: 'lilian-weng', mode: 'all' },
   { sourceId: 'langchain', mode: 'all', qualityFilter: true, notes: '白名单过滤后全量' },
   { sourceId: 'cursor', mode: 'all', notes: 'Research 分类全量' },
-  { sourceId: 'hugging-face', mode: 'since', since: '2020-01-01', maxArticles: 250, qualityFilter: true, notes: 'org articles 全量 + legacy /blog 2020 起，官方作者优先' },
   { sourceId: 'qwen', mode: 'all' },
   { sourceId: 'google-deepmind', mode: 'since', since: '2020-01-01', qualityFilter: true, notes: 'technical blogs 全量 + broad 2020 起' },
   { sourceId: 'microsoft-research', mode: 'all', maxArticles: 500, notes: 'handoff: since 2021；listing 无日期导致 policy 日期过滤误杀，改 all + 页面日期 integrity 把关' },
-  { sourceId: 'google-research', mode: 'since', since: '2021-01-01', maxArticles: 600, qualityFilter: true },
   { sourceId: 'meta-ai', mode: 'all', maxArticles: 350, qualityFilter: true, notes: 'handoff: since 2020；listing 无日期导致 policy 日期过滤误杀，改 all + 页面日期 integrity 把关' },
   { sourceId: 'eleuther-ai', mode: 'all' },
   { sourceId: 'mistral-ai', mode: 'all', notes: 'Research + Engineering categories' },
   { sourceId: 'sebastian-raschka', mode: 'all' },
   { sourceId: 'hamel-husain', mode: 'all', notes: '主页 long-form 索引' },
   { sourceId: 'jay-alammar', mode: 'all', notes: 'newsletter all；legacy jalammar.github.io 待独立入口' },
-  { sourceId: 'andrej-karpathy', mode: 'all', notes: '当前入口为 karpathy.github.io；bear/karpathy.ai 待独立入口' },
+  { sourceId: 'andrej-karpathy', mode: 'all', notes: 'bearblog 主 + karpathy.github.io legacy（extra_domains 双域）' },
   { sourceId: 'lastwhisper', mode: 'all', notes: 'handoff 的 keli-wen；2026-08-12 更名 lastwhisper' },
   { sourceId: 'moonshot', mode: 'all' },
   { sourceId: 'github-engineering', mode: 'all' },
-  { sourceId: 'meta-engineering', mode: 'since', since: '2020-01-01', maxArticles: 500 },
   { sourceId: 'google-security', mode: 'since', since: '2018-01-01', maxArticles: 400 },
   { sourceId: 'dan-koe', mode: 'all', qualityFilter: true, notes: '排除纯促销/活动/直播/订阅通知' },
 ];

@@ -15,6 +15,10 @@ export interface SourceConfig {
    *  fetched (e.g. OpenAI's category sitemaps under /sitemap.xml/research/).
    *  The root sitemap itself is always parsed for these child URLs. */
   sitemap_include_paths?: string[];
+  /** 额外允许的文章域名。发现层默认只收录 `domain` 及其子域下的 URL；同一
+   *  博客迁移/镜像到第二个域名时（如 karpathy：bearblog 主站 + github.io
+   *  legacy），在此列出第二个域名即可让两个域的候选都进入发现结果。 */
+  extra_domains?: string[];
   logo?: string;
   avatar?: string;
   /** `dry-run-only` sources can be discovered and fetched, but never translated or persisted. */
@@ -109,6 +113,9 @@ export interface SourceConfig {
   discovery_strategy?: 'auto' | 'merge';
   /** 子 sitemap 抓取上限；未设则用 DEFAULT_MAX_CHILD_SITEMAPS。 */
   max_child_sitemaps?: number;
+  /** 清点（census）口径的发布年份下限；未设时 company 源用 2019、personal 源
+   *  不限时间。设置后对两类都生效，且日期未知的候选不再计入。 */
+  min_published_year?: number;
   /** 回填策略（`npm run backfill` 消费）。未设则用 backfill-policy 兜底默认。 */
   backfill?: {
     /** `all` 收录窗口内全部；`since` 只收 since 之后。默认 `all`。 */

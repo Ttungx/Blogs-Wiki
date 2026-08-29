@@ -1,10 +1,12 @@
 # 博客适配开发登记表
 
-所有博客的审核、适配阶段、阻碍与后续顺序以本表为准。最后更新：2026-08-12。
+所有博客的审核、适配阶段、阻碍与后续顺序以本表为准。最后更新：2026-08-28。
 
 ## 来源质量原则
 
 收录优先级：**Research / Engineering / Technical / Science / Essays / Writing > 普通 Blog > News / Company News**。
+
+**项目定位（2026-08-28 起）**：专注 **AI 公司博客**与**个人作者**两类来源。偏工程/基础设施方向且文章量巨大的站点（如 Cloudflare ~3577 篇、Meta Engineering ~1084 篇发现量）放弃收录；文章量小的垂直工程源（github-engineering、google-security）不受此限。大厂研究院按实际内容密度个案评估（google-research 因量大且混非 AI 主题放弃；microsoft-research 量适中保留）。
 
 - 企业源优先官方 Research / Engineering / Technical 索引或 Archive；`/news`、`/blog` 需先核验内容密度与过滤边界。模型发布、产品发布不机械排除——只要讲训练方法、架构、推理、eval、安全、系统实现、失败经验、设计取舍就收录；签约、合作、融资、任命、客户案例、活动、奖项、价格调整、市场宣传、纯 availability announcement 一律排除。
 - 个人作者：技术、思想、哲学、学习、认知、职业方法、创作方法均可，只要能产生长期学习价值。
@@ -13,18 +15,14 @@
 
 | ID | 适配状态 | 来源 | 来源地址 | 方向 | 已验证发现入口 | 中文 / 本地化 | 收录文章索引 URL 来源 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `openai` | 已适配 | [OpenAI](https://openai.com/news/) | https://openai.com/news/ | LLM / Agent / Research | Sitemap 分类白名单 | 官方简体中文优先，否则模型翻译 | https://openai.com/news/research/ https://openai.com/news/safety-alignment/ https://openai.com/news/engineering/ https://openai.com/news/security/ (中文: https://openai.com/zh-Hans-CN/news/research/) | 仅收录 research/engineering/safety/security 分类；hrefLang alternate 命中即直通中文原文 |
+| `openai` | 已适配 | [OpenAI](https://openai.com/news/) | https://openai.com/news/ | LLM / Agent / Research | Sitemap 分类白名单 | 官方简体中文优先，否则模型翻译 | https://openai.com/news/research/ https://openai.com/news/safety-alignment/ https://openai.com/news/engineering/ https://openai.com/news/security/ (中文: https://openai.com/zh-Hans-CN/news/research/) | 仅收录 research/engineering/safety/security 分类；hrefLang alternate 命中即直通中文原文；⚠️ 无尾斜杠 child sitemap 路径会被 CDN 按 TLS 指纹 403（curl 拿到 308 可跟随），Node 侧一律走 curl 回退（fetch-backend / audit / census 已注册） |
 | `anthropic` | 已适配 | [Anthropic](https://www.anthropic.com/research) | https://www.anthropic.com/research | LLM / Agent / Safety | Sitemap | 模型翻译 | https://www.anthropic.com/research https://www.anthropic.com/engineering | 保留 Research + Engineering，坚决排除 /news 公司公告；这是目标范式，不换源 |
-| `cloudflare` | 已适配 | [Cloudflare](https://blog.cloudflare.com/tag/engineering/) | https://blog.cloudflare.com/tag/engineering/ | Engineering / Infrastructure | RSS + Sitemap | 模型翻译 | https://blog.cloudflare.com/tag/engineering/（主）https://blog.cloudflare.com/tag/reliability/ https://blog.cloudflare.com/tag/security/（辅） | 主入口收 engineering tag，Reliability / Security 辅助；仍排除 20 个本地化前缀；security/reliability 需过滤纯产品文 |
-| `simon-willison` | 已适配 | [Simon Willison's Weblog](https://simonwillison.net/entries/) | https://simonwillison.net/entries/ | LLM / AI Engineering | Atom + Sitemap | 模型翻译 | https://simonwillison.net/entries/ | `/entries/` 为长文集合，数千篇；明确避开 blogmarks / link feed |
 | `lilian-weng` | 已适配 | [Lil'Log](https://lilianweng.github.io/archives/) | https://lilianweng.github.io/archives/ | LLM / Agent / Research | RSS + Sitemap | 模型翻译 | https://lilianweng.github.io/archives/ | 官方 Archives 为干净长文索引 |
 | `langchain` | 已适配 | [LangChain](https://www.langchain.com/blog) | https://www.langchain.com/blog | Agent Framework / Evals / Observability | RSS + Sitemap | 无已知官方中文 | https://www.langchain.com/blog | 保留 /blog；白名单 Agent Architecture / Evals、Observability / Engineering / Systems / Conceptual Guide / Open Source；排除 Customer、Newsletter、Partner、Company Announcement |
 | `cursor` | 已适配 | [Cursor](https://cursor.com/blog/topic/research) | https://cursor.com/blog/topic/research | Coding Agent / Model Training / Agent Harness | Sitemap + 列表页 | 官方中文 `/cn/blog/` 直通（hreflang + zh_path_map 双通道） | https://cursor.com/blog/topic/research | 主入口为独立 Research 分类（agent harness / 模型训练 / eval / sandbox / GPU kernel）；Broad Blog 混 Product / Company / Customers，仅作补充；中文路由 /cn/blog/topic/research |
-| `hugging-face` | 已适配 | [Hugging Face](https://huggingface.co/organizations/huggingface/activity/articles) | https://huggingface.co/organizations/huggingface/activity/articles | 开源 LLM / 模型工具链 | RSS + Sitemap | 无官方中文，模型翻译 | https://huggingface.co/organizations/huggingface/activity/articles（主）https://huggingface.co/blog（legacy） | 官方 `huggingface` 组织 Articles 更干净；旧 `/blog` 已社区化，仅作 legacy 补充，排除 org 投稿 |
 | `qwen` | 已适配 | [Qwen](https://qwenlm.github.io/blog/) | https://qwenlm.github.io/blog/ | LLM / 多模态 / Agent | Sitemap | 官方简体中文 `/zh/blog/` 直通（zh_path_map 探测） | https://qwenlm.github.io/blog/ | https://qwenlm.github.io/blog/ (中文 /zh/blog/ 近满) |
 | `google-deepmind` | 已适配 | [Google DeepMind](https://deepmind.google/blog-categories/technical-blogs) | https://deepmind.google/blog-categories/technical-blogs | 前沿模型 / AI Safety / Science | RSS + Sitemap | 待逐站核验 | https://deepmind.google/blog-categories/technical-blogs（主）https://deepmind.google/blog/（补充） | 主要入口为 Technical Blogs 分类；Broad News 混模型发布、资助、合作，作补充并排除政企公告 |
-| `microsoft-research` | 已适配 | [Microsoft Research](https://www.microsoft.com/en-us/research/blog/) | https://www.microsoft.com/en-us/research/blog/ | LLM / Agent / Research | RSS | 待逐站核验 | https://www.microsoft.com/en-us/research/blog/ | 研究组织博客，保留；仅排除活动、奖项、招聘 / fellowship |
-| `google-research` | 已适配 | [Google Research](https://research.google/blog/) | https://research.google/blog/ | AI / ML Research | RSS | 无官方中文，模型翻译 | https://research.google/blog/ | 保留根 Research Blog；按 label 过滤 Conferences & Events、Programs、Product、Global、Year in Review；AI/ML/Systems/Security/HCI/Responsible AI 留下 |
+| `microsoft-research` | 已适配 | [Microsoft Research](https://www.microsoft.com/en-us/research/blog/) | https://www.microsoft.com/en-us/research/blog/ | LLM / Agent / Research | RSS + Sitemap | 待逐站核验 | https://www.microsoft.com/en-us/research/blog/ | 研究组织博客，保留；仅排除活动、奖项、招聘 / fellowship；2026-08-28 接入 Yoast sitemapindex（post-sitemap*.xml），发现量 ~10 → 640（2019+ 口径） |
 | `meta-ai` | 已适配 | [Meta AI](https://ai.meta.com/blog/) | https://ai.meta.com/blog/ | Llama / 生成式 AI / Research | 列表页 | 无官方中文，模型翻译 | https://ai.meta.com/blog/ | 保留；只收 FAIR/Research、模型/训练/推理、安全、开源技术；grants、生态合作、活动、商业 adoption 排除 |
 | `eleuther-ai` | 已适配 | [EleutherAI](https://blog.eleuther.ai/) | https://blog.eleuther.ai/ | 开源 LLM / 可解释性 / Safety | RSS + Sitemap | 无已知官方中文 | https://blog.eleuther.ai/ (根 slug) | 保留，研究密度高；仅过滤组织公告 |
 | `mistral-ai` | 已适配 | [Mistral AI](https://mistral.ai/news/?categories=research) | https://mistral.ai/news/?categories=research | 开源模型 / 模型研究 | RSS | 待逐站核验 | https://mistral.ai/news/?categories=research https://mistral.ai/news/?categories=engineering | 官方已区分 Research / Engineering / Product / Company / Solutions，按 categories 白名单收录，不从整个 News 过滤 |
@@ -33,17 +31,13 @@
 | `sebastian-raschka` | 已适配 | [Ahead of AI](https://magazine.sebastianraschka.com/archive) | https://magazine.sebastianraschka.com/archive | LLM 训练 / 微调 / Research | RSS + Sitemap | 无已知官方中文 | https://magazine.sebastianraschka.com/archive | `/archive` 为稳定清晰的文章索引（/p/<slug>） |
 | `hamel-husain` | 已适配 | [Hamel Husain](https://hamel.dev/) | https://hamel.dev/ | Agent / Evals / AI 产品 | RSS | 无已知官方中文 | https://hamel.dev/ | `/blog/` 已跳转主页；主页维护 long-form writing 索引，质量高 |
 | `eugene-yan` | 正在适配 | [Eugene Yan](https://eugeneyan.com/writing/) | https://eugeneyan.com/writing/ | Applied ML / LLM / 产品实践 | RSS + Sitemap | 无已知官方中文 | https://eugeneyan.com/writing/ | https://eugeneyan.com/writing/ (排除站外跳转占位) |
-| `jay-alammar` | 已适配 | [Jay Alammar](https://newsletter.languagemodels.co/archive) | https://newsletter.languagemodels.co/archive | LLM 可视化教育 | RSS | 无已知官方中文 | https://newsletter.languagemodels.co/archive https://jalammar.github.io/ | 双源：新文章在 newsletter archive；经典 Illustrated Transformer / BERT 等在旧站 jalammar.github.io |
-| `andrej-karpathy` | 已适配 | [Andrej Karpathy](https://karpathy.bearblog.dev/) | https://karpathy.bearblog.dev/ | LLM 教育 / 个人思考 | RSS | 无已知官方中文 | https://karpathy.bearblog.dev/（主）https://karpathy.github.io/（legacy）https://karpathy.ai/blog/（补充） | 多源：Bear Blog 为 2025 后活跃长文源；旧 GitHub Blog 2026 仍偶尔更新故保留；karpathy.ai/blog 可作补充 |
+| `jay-alammar` | 已适配 | [Jay Alammar](https://newsletter.languagemodels.co/archive) | https://newsletter.languagemodels.co/archive | LLM 可视化教育 | RSS + Sitemap | 无已知官方中文 | https://newsletter.languagemodels.co/archive https://jalammar.github.io/ | 双源：新文章在 newsletter archive；经典 Illustrated Transformer / BERT 等在旧站 jalammar.github.io；⚠️ Substack 平台的 sitemap/RSS 同为近期窗口（~10 篇），历史全量需 /archive 分页方案（待办） |
+| `andrej-karpathy` | 已适配 | [Andrej Karpathy](https://karpathy.bearblog.dev/) | https://karpathy.bearblog.dev/ | LLM 教育 / 个人思考 | Atom + Sitemap + listing（双域三通道） | 无已知官方中文 | https://karpathy.bearblog.dev/（主）https://karpathy.github.io/（legacy） | 2026-08-28 修复（18 → 31 篇）：bearblog 三通道全接入（rss /feed/ + sitemap.xml 14 篇，/now 页 exclude）；`domain: karpathy.bearblog.dev` + 源级 `extra_domains: ["karpathy.github.io"]` 放行 legacy 老文（listing 23 条）；karpathy.ai/blog 观察后未接（无独立 feed） |
 | `lastwhisper` | 已适配 | [LastWhisper](https://keli-wen.github.io/One-Poem-Suffices/) | https://keli-wen.github.io/One-Poem-Suffices/ | LLM / Agent / Context Engineering | Sitemap | 中文原文，en 双语 | https://keli-wen.github.io/One-Poem-Suffices/ | 来源 ID 为 lastwhisper（2026-08-12 由 keli-wen 改名，与 collection id 对齐）；无 RSS；sitemap 无日期，用 GitHub 提交历史兜底（git_date） |
-| `moonshot` | 已适配 | [Moonshot](https://www.kimi.com/en/blog/) | https://www.kimi.com/en/blog/ | LLM 模型 / Agent / Benchmark | Sitemap | 无官方中文，模型翻译 | https://www.kimi.com/en/blog/ | 该页即 Kimi Research（K3 / K2.6 / Agent Swarm / Muon / MoBA / Mooncake），比开放平台 Blog 干净 |
+| `moonshot` | 已适配 | [Moonshot](https://www.kimi.com/en/blog/) | https://www.kimi.com/en/blog/ | LLM 模型 / Agent / Benchmark | 列表页 | 无官方中文，模型翻译 | https://www.kimi.com/en/blog/ | 该页即 Kimi Research（K3 / K2.6 / Agent Swarm / Muon / MoBA / Mooncake），比开放平台 Blog 干净；2026-08-28 修复（发现 0 → 9）：站点改版后无博客 sitemap（旧 sitemap-ug-blog.xml 404），blog_url 对齐 /en/blog/，listing 发现 + 正文日期；文章量小（~10 篇） |
 | `z-ai` | 候选 | [Z.ai](https://z.ai/blog) | https://z.ai/blog | LLM / Agent / AI Coding | 无 | 待核验 | 无（https://z.ai/blog 当前 404；https://z.ai/sitemap.xml 未发现 `/blog/`） | 单篇 `https://z.ai/blog/<slug>` 可访问，但未发现官方可枚举文章入口；保持 dry-run-only，禁止自动更新；不得回退到 https://www.zhipuai.cn/zh/news |
-| `github-engineering` | 已适配 | [GitHub Engineering](https://github.blog/engineering/) | https://github.blog/engineering/ | Developer Platform / Engineering | RSS + Sitemap | 无官方中文，模型翻译 | https://github.blog/engineering/ | /engineering/feed/ + post-sitemap；排除 changelog/news-insights/author/category |
-| `trail-of-bits` | 计划中 | [Trail of Bits](https://blog.trailofbits.com/) | https://blog.trailofbits.com/ | Security / Program Analysis | RSS 待复核 | 待核验 | https://blog.trailofbits.com/ | 做 category allowlist：Application Security、Ecosystem Security、Engineering Practice、Research Practice、Cryptography、Fuzzing、Program Analysis、Machine Learning；宁多收技术领域，不收公司 Announcement |
-| `tailscale` | 计划中 | [Tailscale Blog](https://tailscale.com/blog/) | https://tailscale.com/blog/ | Networking / Zero Trust | RSS | 待核验 | https://tailscale.com/blog/ | 保留根 Blog 但不能全收：只要 networking、protocol、security、distributed systems、性能/可靠性、底层工程；Company、产品可用性、调查营销、浅层教程排除 |
-| `fly-io` | 计划中 | [Fly.io Blog](https://fly.io/blog/) | https://fly.io/blog/ | Distributed Systems / Infrastructure | Feed 待复核 | 待核验 | https://fly.io/blog/ | 保留：Postgres、SQLite/LiteFS、distributed systems、VM/infra 深挖质量高；只排除纯产品/价格公告 |
-| `meta-engineering` | 已适配 | [Meta Engineering](https://engineering.fb.com/) | https://engineering.fb.com/ | Large-scale Engineering | RSS + Sitemap | 无官方中文，模型翻译 | https://engineering.fb.com/ | 保留 Engineering；优先 AI/ML、Production Engineering、Data Infrastructure、Security 分类；sitemap_index 仅取 post-sitemap；排除 meta-tech-podcast |
-| `google-security` | 已适配 | [Google Security](https://blog.google/security/) | https://blog.google/security/ | Security | RSS + Sitemap | 无官方中文，模型翻译 | https://blog.google/security/ | Google Online Security Blog 长期技术安全博客（漏洞、Chrome 安全、威胁研究密度高）；2026-08 核对 security.googleblog.com（2026-04 后停更、滞后约 3.5 月），保持 blog.google/security；hub 页（vrp/android-security/chrome-security/open-source-security）已 exclude |
+| `github-engineering` | 已适配 | [GitHub Engineering](https://github.blog/engineering/) | https://github.blog/engineering/ | Developer Platform / Engineering | RSS + Sitemap | 无官方中文，模型翻译 | https://github.blog/engineering/ | /engineering/feed/ + post-sitemap；排除 changelog/news-insights/author/category；2026-08-28 定位审查：文章量小，保留 |
+| `google-security` | 已适配 | [Google Security](https://blog.google/security/) | https://blog.google/security/ | Security | RSS + Sitemap | 无官方中文，模型翻译 | https://blog.google/security/ | Google Online Security Blog 长期技术安全博客（漏洞、Chrome 安全、威胁研究密度高）；2026-08 核对 security.googleblog.com（2026-04 后停更、滞后约 3.5 月），保持 blog.google/security；hub 页（vrp/android-security/chrome-security/open-source-security）已 exclude；2026-08-28 定位审查：文章量小，保留 |
 | `tencent-cloud` | 候选 | [腾讯云开发者社区](https://cloud.tencent.com/developer/) | https://cloud.tencent.com/developer/ | AI / LLM / 云工程（UGC） | 列表页 | 官方简体中文原生 | 无（暂停 broad UGC 生产索引） | 巨大 UGC 社区（官方团队 + 第三方 + 媒体转载混排），边界太差；暂停作为生产索引，保留 ID/适配代码；以后只登记经审核的腾讯官方工程团队专栏 |
 | `tencent-hunyuan` | 正在适配 | [腾讯混元研究博客](https://hy.tencent.com/research) | https://hy.tencent.com/research | LLM / Agent / Research（中文） | POST JSON API（publicList/publicDetail） | 官方简体中文直通（lang=zh） | https://hy.tencent.com/research（无 RSS/sitemap，React SPA；发现与正文走 api.hunyuan.tencent.com） | 2026-02 上线，公开混元研究员前沿研究与技术实践；7 篇（elr/hyra/hy3 等）；发现+抓取+官方中文直通已验证；dry-run-only；正文 Markdown 直通、图片 COS 原链 |
 | `dan-koe` | 已适配 | [Dan Koe](https://letters.thedankoe.com/) | https://letters.thedankoe.com/ | 个人成长 / AI 时代技能 / 创作 | RSS + Sitemap | 无已知官方中文 | https://letters.thedankoe.com/ (/p/<slug>) | Substack（future/proof）；RSS 20 条 + sitemap 90 条，3 篇样本审计通过；已转 active，6 篇（3 en + 3 zh）全量链路验证通过 |
@@ -83,6 +77,9 @@
 1. 已完成共性能力：Defuddle 抓取引擎切换（worker backend，图片保留 + fbsbx 误判修复）、可见文本日期解析、zh 路径探测（zh_path_map）、GitHub 提交历史日期兜底（git_date）、发现层 curl 回退、腾讯追踪参数清理。
 2. 2026-08-11 已完成适配：cursor、qwen、google-research、meta-ai、hugging-face、keli-wen、moonshot、google-security、meta-engineering、github-engineering（10 个，转 active）。
 3. 2026-08-12 来源治理审查：新增「来源质量原则」；统一修正各源索引 URL（engineering/archive/topic 优先于 broad news/blog）；tencent-cloud 暂停 broad UGC 生产索引，新增 tencent-hunyuan 候选；hugging-face 主源改官方组织 Articles；andrej-karpathy / jay-alammar / sebastian-ruder / maarten-grootendorst 改为多源。openai 保持不变。
+4. 2026-08-28 项目定位变更：专注 AI 公司 + 个人作者。移除 `cloudflare` / `meta-engineering` / `google-research` 三源（sources.json、本地 corpus、`src/content/blogs/*.md` + blogs-static、远程 D1 articles 及关联记录），计划中纯工程源划掉（明细见「暂缓 / 不纳入」）。`google-research` 与 `microsoft-research` 按内容密度个案评估后取舍。
+6. 2026-08-28 移除 `simon-willison` / `hugging-face` 两源（用户指令：文章量过大）：sources.json、`src/content/blogs/*.md` + blogs-static 再生成、`backfill-policy.ts` / `backfill.ts` wave 表、远程 D1（simon-willison 存量 6 篇及关联 versions/categories、sources 表登记；hugging-face 无存量）、本地 corpus（simon-willison）。移除后 active 源 24 个。
+7. 2026-08-28 上线前发现层清点（只枚举计数，不抓正文）：首轮 22 个 active 源计入范围约 19 443 篇（个人作者不限时间、非个人作者仅 2019+），openai / moonshot 发现层完全失效（P0）。**同日修复轮完成**：openai 根因为 census 缺 curl 回退注册 + 无尾斜杠 child sitemap 触发 CDN 指纹拦截（配置与生产链本就正常）；moonshot 对齐 /en/blog/ 走 listing；karpathy 接入 bearblog 双域三通道（新增源级 `extra_domains`）；microsoft-research 接入 Yoast sitemap；jay-alammar 接入 Substack sitemap（窗口限制仍在）；hugging-face 排除语言聚合 hub 并澄清口径（738 单段全为官方博文，社区双段已被过滤）；simon-willison 按用户指令加源级 `min_published_year: 2019`。修后 22/22 源 ok，计入范围 **11 234** 篇。修后总表与根因链见 [`docs/discovery-census-2026-08-28.md`](discovery-census-2026-08-28.md)；清点工具 `scripts/update/census.ts`。
 4. 正在适配（有正文提取阻碍，保持 dry-run-only）：tencent-cloud（已暂停 broad UGC，等待重新登记官方工程团队专栏）。
 5. 已适配来源持续运行增量更新并抽检质量。
 6. 2026-08-12 首轮原文 Backfill：25 个已适配源全部执行（约 2470 篇原文入库，Defuddle 抓取 + 完整性门禁，未翻译）。范围与策略见交接文档 `BLOGS_WIKI_BACKFILL_SCOPE_HANDOFF`，结果报告见 `docs/backfill-report.md`，错误台账见 `docs/backfill-errors.md`。
@@ -95,6 +92,54 @@
 发现、官方中文、图片和翻译分块的 V2 设计与启用门槛见 [`docs/update-pipeline-v2.md`](update-pipeline-v2.md)。
 
 ## 暂缓 / 不纳入
+
+2026-08-28 项目定位变更（专注 AI 公司 + 个人作者，放弃偏工程且文章量巨大的站点），以下来源移出收录范围：
+
+| ID | 原状态 | 放弃原因 |
+| --- | --- | --- |
+| `cloudflare` | 已适配→放弃 | Engineering / Infrastructure 方向，发现量 ~3577 篇；配置、存量文章（D1 6 篇 + 本地 corpus）、收集册展示已全部清理 |
+| `simon-willison` | 已适配→放弃 | 2026-08-28 用户指令：文章量过大（清点 ~4000+ 篇）不匹配站点定位；配置、backfill policy、存量文章（D1 6 篇 + 本地 corpus）、收集册展示已全部清理 |
+| `hugging-face` | 已适配→放弃 | 2026-08-28 用户指令：官方全量池 ~700+ 篇且增量快，文章量过大；配置、backfill policy、收集册展示已清理（D1 无存量） |
+| `meta-engineering` | 已适配→放弃 | Large-scale Engineering 方向，发现量 ~1084 篇；配置与收集册展示已清理（D1 无存量） |
+| `google-research` | 已适配→放弃 | AI/ML Research 但量大且混 HCI 等非 AI 主题；配置与收集册展示已清理（D1 无存量） |
+| `trail-of-bits` | 计划中→划掉 | Security / Program Analysis，纯工程方向，与新定位不符 |
+| `tailscale` | 计划中→划掉 | Networking / Zero Trust，纯工程方向，与新定位不符 |
+| `fly-io` | 计划中→划掉 | Distributed Systems / Infrastructure，纯工程方向，与新定位不符 |
+| `datadog-engineering` | 计划中→划掉 | Observability / Infrastructure，纯工程方向，与新定位不符 |
+| `mozilla-hacks` | 计划中→划掉 | Web Platform，纯工程方向，与新定位不符 |
+
+保留说明：`github-engineering` / `google-security` 文章量小，不适用"量大工程源"排除标准，继续保留；`julia-evans` / `mitchell-hashimoto` 属个人作者，保留计划。
+
+## 已移除源（拉黑 / tombstone）
+
+> **唯一权威表**。移除一个源不再是"删 sources.json 条目、指望它不再被碰"，而是一等可复用操作：`npm run block:source` 登记 → `loadSources` 咽喉点拦截。机制实现见 AGENTS.md「已移除源的拉黑机制（tombstone）」与 `scripts/update/blocked-sources.ts`。
+
+| ID | 拉黑域 | 拉黑日 | URL 留痕数 | 原因 |
+| --- | --- | --- | ---: | --- |
+| `cloudflare` | blog.cloudflare.com | 2026-08-28 | 75 | 纯工程/基础设施，发现量 ~3577 |
+| `google-research` | research.google | 2026-08-28 | 100 | 量大且混 HCI 等非 AI 主题 |
+| `meta-engineering` | engineering.fb.com | 2026-08-28 | 343 | Large-scale Engineering，~1084 |
+| `hugging-face` | huggingface.co | 2026-08-28 | 250 | 官方全量池 ~700+ 且增量快，量过大 |
+| `simon-willison` | simonwillison.net | 2026-08-28 | 700 | 文章量过大（清点 ~4000+），不匹配定位 |
+| `paul-graham` | paulgraham.com | 2026-08-28 | 1 | 无机器可读发布日期，结构性不适配（`blogs-static` 的 `demo:true` 展示条目保留） |
+
+合计 **1469** 条 URL，账本见 `src/data/blocked-urls.json`（append-only 决策留痕，解除拉黑也不删）。
+
+**拦截语义**：只要某源的 id 或域名（含子域/父域/`extra_domains` 双向相交）命中 `src/data/blocked-sources.json`，`loadSources` 直接抛 `Blocked source violation` **拒绝加载整份源配置**——update/backfill/census/audit 四个抓取驱动入口全部经它，故结构上不可能再发现或抓取被拉黑源。这是刻意的"停摆好过偷偷重抓"取舍。
+
+**解除拉黑（三者缺一不可）**：① 从 `blocked-sources.json` 的 `blocked[]` 删条目（`blocked-urls.json` 账本保留）；② 本表把该源移回上方适配表并写明重新纳入理由；③ 跑 `npm run test:update`（其"拉黑域与现存源零冲突"断言会先确认不误伤）。
+
+**口径与红线**：
+- **只拉黑"曾进入 `sources.json`"的源**。从未登记的候选（trail-of-bits / tailscale / fly-io / datadog-engineering / mozilla-hacks）不拉黑——没有 URL 留痕可记，且"重新纳入候选"是合法决策，不该被硬门禁挡住。
+- **改名遗迹绝不是移除源**：`kimi→moonshot`（migration 0006）、`keli-wen→lastwhisper`（0008）、`glm→z-ai`。拉黑 `kimi.com` 会撞上活跃 moonshot 域名 → 每次 `npm run update` 全停。smoke 测试已加断言禁止这三个旧 id 出现在拉黑名单。
+- **拉黑域必须与原 `source.domain` 完全同形**，禁止归并到注册域（现存最宽域如 `microsoft.com` 是未来地雷：若误把子域归并到 `microsoft.com` 拉黑，会连累所有 `*.microsoft.com` 活跃源）。
+
+### 移除一个源的标准流程（供未来复用）
+
+1. `npm run block:source -- --source <id> [--domain <host>] --reason "<why>"` 预演，核对 URL 计数与"零冲突"；
+2. 追加 `--apply` 落盘（自动写两 JSON + 删 `src/content/articles/<id>/` 并先备份到 `logs/blocked-backup/`；**绝不碰 `.corpus-archive/` 与远程 D1**）；
+3. 手工：删 `src/content/blogs/<id>.md`（demo 展示条目除外）→ `npx tsx scripts/generate-blogs-static.ts` → 确认 `sources.json` 已无该条目 → 清 `backfill.ts` WAVES / `backfill-policy.ts` 残留 → 更新本表；
+4. `npm run block:source -- --verify` + `npm run test:update` + `npm run build`（`dist/server/entry.mjs` 体积必须不变，证明 blocked-*.json 未进 Worker bundle）。
 
 ## 单站适配流程
 
@@ -120,7 +165,7 @@
 - [已完成] Defuddle 抓取引擎替换 Readability（`FETCH_BACKEND=worker`，worker/fetch/extractor.ts）。
 - [已完成] 无日期博客 GitHub 提交历史兜底（`git_date`，keli-wen 落地）。
 - [已完成] 发现层 curl 回退（openai.com TLS 指纹拦截）。
-- 为 Hugging Face 增加 org 投稿过滤落地（已配置 `^/blog/[^/]+$` 单段过滤，待抽检质量）。
+- 为 Hugging Face 增加 org 投稿过滤落地（源已于 2026-08-28 移除，条目作废）。
 - [脚手架完成] 腾讯云正文 `__NEXT_DATA__` JSON 提取适配。
 - Z.ai 暂不建设正文提取器：缺少官方可枚举入口，先完成来源边界核验。
 - [脚手架完成] 处理 `src`、`srcset`、`data-src`、`data-lazy-src`、`data-original` 等图片地址并保留原链。

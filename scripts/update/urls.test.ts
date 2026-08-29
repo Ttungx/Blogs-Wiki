@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { canonicalizeUrl, isLikelyArticleUrl } from './urls';
+import { canonicalizeUrl, isLikelyArticleUrl, normalizeHostname, hostInDomain, domainsIntersect } from './urls';
 import { isCandidateArticle } from './discovery';
 import type { SourceConfig } from './types';
 
@@ -71,4 +71,42 @@ test('isLikelyArticleUrl 支持 allowNonArticlePaths 放宽全局黑名单', () 
     isLikelyArticleUrl('https://example.com/press/some-article/', 'example.com', { allowNonArticlePaths: true }),
     true,
   );
+});
+
+test('isLikelyArticleUrl 支持 extra_domains 放行第二域名', () => {
+  // karpathy：主域 bearblog + extra github.io legacy
+  assert.strictEqual(
+    isLikelyArticleUrl('https://karpathy.github.io/2020/06/11/why-i-no-longer-own-gpus/', 'karpathy.bearblog.dev'),
+    false,
+    '未配 extra_domains 时第二域名应被拒',
+  );
+  assert.strictEqual(
+    isLikelyArticleUrl('https://karpathy.github.io/2020/06/11/why-i-no-longer-own-gpus/', 'karpathy.bearblog.dev', {
+      extraDomains: ['karpathy.github.io'],
+    }),
+    true,
+  );
+});
+
+test('normalizeHostname 去 scheme/路径/www 并小写', () => {
+  assert.strictEqual(normalizeHostname('https://WWW.Example.com/path'), 'example.com');
+  assert.strictEqual(normalizeHostname('example.com'), 'example.com');
+  assert.strictEqual(normalizeHostname('www.example.com'), 'example.com');
+  assert.strictEqual(normalizeHostname('http://Blog.Example.CO.uk/x'), 'blog.example.co.uk');
+});
+
+test('hostInDomain 相等或子域为真（大小写/www 无关）', () => {
+  assert.strictEqual(hostInDomain('www.huggingface.co', 'huggingface.co'), true);
+  assert.strictEqual(hostInDomain('HF.CO', 'hf.co'), true);
+  assert.strictEqual(hostInDomain('blog.huggingface.co', 'huggingface.co'), true);
+  assert.strictEqual(hostInDomain('huggingface.co', 'blog.huggingface.co'), false);
+  assert.strictEqual(hostInDomain('notmatching.com', 'matching.com'), false);
+});
+
+test('domainsIntersect 双向（祖先/后代/相等），同级域不相交', () => {
+  assert.strictEqual(domainsIntersect('huggingface.co', 'huggingface.co'), true);
+  assert.strictEqual(domainsIntersect('blog.huggingface.co', 'huggingface.co'), true);
+  assert.strictEqual(domainsIntersect('huggingface.co', 'blog.huggingface.co'), true);
+  assert.strictEqual(domainsIntersect('research.google', 'deepmind.google'), false);
+  assert.strictEqual(domainsIntersect('research.google', 'blog.google'), false);
 });

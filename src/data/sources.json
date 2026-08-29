@@ -41,51 +41,6 @@
     ]
   },
   {
-    "id": "cloudflare",
-    "name": "Cloudflare Blog",
-    "type": "company",
-    "homepage_url": "https://www.cloudflare.com/",
-    "blog_url": "https://blog.cloudflare.com/",
-    "domain": "blog.cloudflare.com",
-    "rss_url": "https://blog.cloudflare.com/rss/",
-    "sitemap_url": "https://blog.cloudflare.com/sitemap.xml",
-    "update_mode": "active",
-    "exclude_paths": [
-      "/zh-cn/",
-      "/ja-jp/",
-      "/fr-fr/",
-      "/de-de/",
-      "/ko-kr/",
-      "/es-es/",
-      "/zh-tw/",
-      "/pt-br/",
-      "/nl-nl/",
-      "/id-id/",
-      "/it-it/",
-      "/th-th/",
-      "/es-la/",
-      "/ru-ru/",
-      "/pl-pl/",
-      "/vi-vn/",
-      "/ar-ar/",
-      "/he-il/",
-      "/sv-se/",
-      "/tr-tr/"
-    ]
-  },
-  {
-    "id": "simon-willison",
-    "name": "Simon Willison's Weblog",
-    "type": "personal",
-    "homepage_url": "https://simonwillison.net/",
-    "blog_url": "https://simonwillison.net/",
-    "domain": "simonwillison.net",
-    "rss_url": "https://simonwillison.net/atom/everything/",
-    "sitemap_url": "https://simonwillison.net/sitemap.xml",
-    "url_date_pattern": "/(\\d{4})/([A-Z][a-z]{2})/(\\d{1,2})/",
-    "update_mode": "active"
-  },
-  {
     "id": "lilian-weng",
     "name": "Lil'Log",
     "type": "personal",
@@ -134,21 +89,6 @@
       "/blog": "/cn/blog"
     },
     "sitemap_url": "https://cursor.com/sitemap.xml"
-  },
-  {
-    "id": "hugging-face",
-    "name": "Hugging Face Blog",
-    "type": "company",
-    "homepage_url": "https://huggingface.co/",
-    "blog_url": "https://huggingface.co/blog",
-    "domain": "huggingface.co",
-    "rss_url": "https://huggingface.co/blog/feed.xml",
-    "sitemap_url": "https://huggingface.co/sitemap-blog.xml",
-    "update_mode": "active",
-    "article_paths": [
-      "^/blog/[^/]+$"
-    ],
-    "exclude_paths": []
   },
   {
     "id": "qwen",
@@ -208,22 +148,10 @@
     "blog_url": "https://www.microsoft.com/en-us/research/blog/",
     "domain": "microsoft.com",
     "rss_url": "https://www.microsoft.com/en-us/research/feed/",
+    "sitemap_url": "https://www.microsoft.com/en-us/research/sitemap.xml",
     "update_mode": "active",
     "article_paths": [
       "/en-us/research/blog"
-    ]
-  },
-  {
-    "id": "google-research",
-    "name": "Google Research",
-    "type": "company",
-    "homepage_url": "https://research.google/",
-    "blog_url": "https://research.google/blog/",
-    "domain": "research.google",
-    "rss_url": "https://research.google/blog/rss/",
-    "update_mode": "active",
-    "article_paths": [
-      "/blog"
     ]
   },
   {
@@ -414,6 +342,7 @@
     "blog_url": "https://newsletter.languagemodels.co/",
     "domain": "newsletter.languagemodels.co",
     "rss_url": "https://newsletter.languagemodels.co/feed",
+    "sitemap_url": "https://newsletter.languagemodels.co/sitemap.xml",
     "update_mode": "active",
     "article_paths": [
       "/p"
@@ -428,10 +357,15 @@
     "type": "personal",
     "homepage_url": "https://karpathy.ai/",
     "blog_url": "https://karpathy.github.io/",
-    "domain": "karpathy.github.io",
-    "rss_url": "https://karpathy.github.io/feed.xml",
+    "domain": "karpathy.bearblog.dev",
+    "extra_domains": [
+      "karpathy.github.io"
+    ],
+    "rss_url": "https://karpathy.bearblog.dev/feed/",
+    "sitemap_url": "https://karpathy.bearblog.dev/sitemap.xml",
     "update_mode": "active",
     "exclude_paths": [
+      "/now",
       "/2020/06/11/biohacking-lite",
       "/2021/06/21/blockchain",
       "/2018/01/20/medium",
@@ -466,15 +400,11 @@
     "name": "Moonshot",
     "type": "company",
     "homepage_url": "https://www.kimi.com/",
-    "blog_url": "https://www.kimi.com/blog/",
+    "blog_url": "https://www.kimi.com/en/blog/",
     "domain": "kimi.com",
-    "sitemap_url": "https://www.kimi.com/sitemap/sitemap-ug-blog.xml",
     "update_mode": "active",
     "article_paths": [
-      "^/blog/[a-z0-9-]+$"
-    ],
-    "exclude_paths": [
-      "^/blog/$"
+      "^/(en/)?blog/[a-z0-9-]+$"
     ]
   },
   {
@@ -508,27 +438,6 @@
       "^/security/chrome-security$",
       "^/security/open-source-security$",
       "^/security/$"
-    ]
-  },
-  {
-    "id": "meta-engineering",
-    "name": "Meta Engineering",
-    "type": "company",
-    "homepage_url": "https://engineering.fb.com/",
-    "blog_url": "https://engineering.fb.com/",
-    "domain": "engineering.fb.com",
-    "rss_url": "https://engineering.fb.com/feed/",
-    "sitemap_url": "https://engineering.fb.com/sitemap_index.xml",
-    "sitemap_include_paths": [
-      "/post-sitemap.xml",
-      "/post-sitemap2.xml"
-    ],
-    "update_mode": "active",
-    "article_paths": [
-      "^/20\\d\\d/\\d\\d/\\d\\d/"
-    ],
-    "exclude_paths": [
-      "^/.*meta-tech-podcast"
     ]
   },
   {

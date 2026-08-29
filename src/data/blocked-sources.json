@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-29T01:55:23.486Z",
+  "blocked": [
+    {
+      "id": "cloudflare",
+      "name": "Cloudflare Blog",
+      "domain": "blog.cloudflare.com",
+      "blocked_at": "2026-08-28",
+      "reason": "2026-08-28 项目定位变更：纯工程/基础设施方向，发现量 ~3577 篇",
+      "url_count": 75,
+      "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
+    },
+    {
+      "id": "google-research",
+      "name": "Google Research",
+      "domain": "research.google",
+      "blocked_at": "2026-08-28",
+      "reason": "2026-08-28 项目定位变更：量大且混 HCI 等非 AI 主题",
+      "url_count": 100,
+      "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
+    },
+    {
+      "id": "hugging-face",
+      "name": "Hugging Face Blog",
+      "domain": "huggingface.co",
+      "blocked_at": "2026-08-28",
+      "reason": "2026-08-28 用户指令：官方全量池 ~700+ 且增量快，文章量过大",
+      "url_count": 250,
+      "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
+    },
+    {
+      "id": "meta-engineering",
+      "name": "Meta Engineering",
+      "domain": "engineering.fb.com",
+      "blocked_at": "2026-08-28",
+      "reason": "2026-08-28 项目定位变更：Large-scale Engineering，发现量 ~1084 篇",
+      "url_count": 343,
+      "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
+    },
+    {
+      "id": "paul-graham",
+      "name": "Paul Graham Essays",
+      "domain": "paulgraham.com",
+      "blocked_at": "2026-08-28",
+      "reason": "无机器可读发布日期，管线结构性不适配，不参与自动更新",
+      "url_count": 1,
+      "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
+    },
+    {
+      "id": "simon-willison",
+      "name": "Simon Willison's Weblog",
+      "domain": "simonwillison.net",
+      "blocked_at": "2026-08-28",
+      "reason": "2026-08-28 用户指令：文章量过大，不匹配站点定位",
+      "url_count": 700,
+      "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
+    }
+  ]
+}

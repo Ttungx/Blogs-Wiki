@@ -68,10 +68,38 @@ export function canonicalizeUrl(value: string, base?: string): string | null {
 // 形式的 `{`/`}`（裸或百分号编码）都判定为非文章，最早排除。
 const TEMPLATE_PLACEHOLDER = /%7b|%7d|[{}]/i;
 
+/**
+ * 归一化主机名/域名字符串：去 scheme、取首个 `/` 前的段、小写、剥离开头 `www.`。
+ * 统一 isLikelyArticleUrl（源 domain）与拉黑门禁（source.domain / extra_domains /
+ * blocked.domain）共用一套主机判定语义，避免两处规则漂移。
+ */
+export function normalizeHostname(value: string): string {
+  const withoutScheme = value.includes('://') ? value.slice(value.indexOf('://') + 3) : value;
+  const host = withoutScheme.split('/')[0].trim().toLowerCase();
+  return host.replace(/^www\./, '');
+}
+
+/** host 是否等于 domain 或其子域（剥离 www、大小写不敏感）。 */
+export function hostInDomain(host: string, domain: string): boolean {
+  const h = normalizeHostname(host);
+  const d = normalizeHostname(domain);
+  if (!h || !d) return false;
+  return h === d || h.endsWith(`.${d}`);
+}
+
+/** 两个域名是否相交（互为相等 / 祖先 / 后代）。拉黑域 T 与源声明域 D 的
+ *  可发现主机集合 {D}∪{*.D} 与 {T}∪{*.T} 相交 ⟺ 双向判定成立。 */
+export function domainsIntersect(a: string, b: string): boolean {
+  return hostInDomain(a, b) || hostInDomain(b, a);
+}
+
 export interface ArticleUrlOptions {
   /** 为 true 时跳过全局 NON_ARTICLE_PATHS 黑名单，让调用方的 article_paths
    *  白名单完全决定收录范围（用于博客路径含 /press /media 等段的源）。 */
   allowNonArticlePaths?: boolean;
+  /** 除主 domain 外同样允许通过 hostname 校验的域名（源级 extra_domains，
+   *  用于同一博客的第二域名，如 bearblog 主站 + github.io legacy）。 */
+  extraDomains?: string[];
 }
 
 export function isLikelyArticleUrl(
@@ -82,9 +110,8 @@ export function isLikelyArticleUrl(
   if (TEMPLATE_PLACEHOLDER.test(value)) return false;
   try {
     const url = new URL(value);
-    const host = url.hostname.replace(/^www\./, '');
-    const expectedHost = sourceDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-    if (host !== expectedHost && !host.endsWith(`.${expectedHost}`)) return false;
+    const allowedDomains = [sourceDomain, ...(options?.extraDomains ?? [])];
+    if (!allowedDomains.some((domain) => hostInDomain(url.hostname, domain))) return false;
     if (url.pathname === '/' || url.pathname.length < 4) return false;
     if (options?.allowNonArticlePaths) return true;
     return !NON_ARTICLE_PATHS.some((pattern) => pattern.test(url.pathname));

@@ -50,8 +50,8 @@ import type {
 const WAVES: Record<number, string[]> = {
   0: ['lilian-weng', 'qwen', 'cursor', 'eleuther-ai', 'andrej-karpathy', 'keli-wen', 'moonshot'],
   1: ['anthropic', 'mistral-ai', 'sebastian-raschka', 'hamel-husain', 'jay-alammar', 'github-engineering', 'dan-koe', 'langchain'],
-  2: ['openai', 'hugging-face', 'google-deepmind', 'cloudflare'],
-  3: ['simon-willison', 'microsoft-research', 'google-research', 'meta-ai', 'meta-engineering', 'google-security'],
+  2: ['openai', 'google-deepmind'],
+  3: ['microsoft-research', 'meta-ai', 'google-security'],
 };
 
 const DEFAULT_ERROR_LOG = path.join('docs', 'backfill-errors.md');

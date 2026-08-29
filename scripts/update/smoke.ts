@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,6 +37,8 @@ import {
   restoreMarkdown,
 } from './translation-plan';
 import { selectSourcesForRun } from './source-policy';
+import { findBlockedConflicts, loadBlockedSources } from './blocked-sources';
+import { hostInDomain } from './urls';
 import {
   isProcessed,
   loadProcessedState,
@@ -84,6 +86,21 @@ function jsonResponse(content: string, status = 200): Response {
     JSON.stringify({ choices: [{ message: { role: 'assistant', content } }] }),
     { status, headers: { 'content-type': 'application/json' } },
   );
+}
+
+/** 递归收集 src/ 或 worker/ 下的源码文件（.ts/.tsx/.astro/.mjs），供 bundle 护栏扫描。 */
+async function walkSourceFiles(root: string, relDir: string): Promise<string[]> {
+  const base = path.join(root, relDir);
+  let entries: string[];
+  try {
+    entries = await readdir(base, { recursive: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
+  }
+  return entries
+    .filter((entry) => /\.(ts|tsx|astro|mjs)$/.test(entry))
+    .map((entry) => path.join(base, entry));
 }
 
 async function run() {
@@ -671,6 +688,44 @@ async function run() {
     assert.equal(configuredScaffolds.length > 0, true);
     assert.equal(selectSourcesForRun(configuredScaffolds, false).runnable.length, 0);
     assert.equal(selectSourcesForRun(configuredScaffolds, false).skipped.length, configuredScaffolds.length);
+
+    // Real tombstone registry: 拉黑域与现存源零冲突 + URL 账本一致 + bundle 护栏。
+    const blockedEntries = await loadBlockedSources(projectRoot);
+    assert.ok(blockedEntries.length > 0, 'blocked-sources.json 应至少有一条拉黑记录');
+    // 零冲突：任何现存源（含 dry-run-only）都不得与被拉黑域相交
+    assert.deepEqual(findBlockedConflicts(configuredSources, blockedEntries), [], '拉黑域不得与任何现存源相交');
+    // 改名遗迹绝不出现在拉黑名单（migration 0006/0008）
+    for (const legacy of ['kimi', 'keli-wen', 'glm']) {
+      assert.ok(!blockedEntries.some((b) => b.id === legacy), `改名遗迹 ${legacy} 不应被拉黑`);
+    }
+    const urlsLedger = JSON.parse(
+      await readFile(path.join(projectRoot, 'src', 'data', 'blocked-urls.json'), 'utf8'),
+    ) as { records: Record<string, { domain: string; extra_domains?: string[]; count?: number; urls: string[] }> };
+    for (const entry of blockedEntries) {
+      const record = urlsLedger.records[entry.id];
+      assert.ok(record, `blocked-urls 缺 ${entry.id} 记录`);
+      assert.equal(entry.url_count, record.urls.length, `${entry.id} url_count 与账本长度一致`);
+      assert.equal(record.count, record.urls.length, `${entry.id} record.count 与 urls.length 一致`);
+      assert.deepEqual(record.urls, [...record.urls].sort(), `${entry.id} urls 已字典序排序`);
+      assert.equal(new Set(record.urls).size, record.urls.length, `${entry.id} urls 无重复`);
+      const allowed = [entry.domain, ...(entry.extra_domains ?? [])];
+      for (const url of record.urls) {
+        const host = new URL(url).hostname;
+        assert.ok(allowed.some((d) => hostInDomain(host, d)),
+          `${entry.id} 存在 host 不在拉黑域内的 URL: ${url}`);
+      }
+    }
+    // bundle 护栏：blocked-*.json 只能被 scripts/update/ 经 fs 读取，严禁 src/**、worker/** import
+    const guardFiles = await Promise.all(
+      ['src', 'worker'].flatMap((dir) => walkSourceFiles(projectRoot, dir)),
+    );
+    for (const file of guardFiles.flat()) {
+      const text = await readFile(file, 'utf8');
+      assert.ok(
+        !text.includes('blocked-sources.json') && !text.includes('blocked-urls.json'),
+        `bundle 护栏违规：${path.relative(projectRoot, file)} 引用了 blocked-*.json`,
+      );
+    }
 
     // translate: valid JSON path
     const calls: Array<{ input: string; init: RequestInit }> = [];

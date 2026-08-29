@@ -76,6 +76,10 @@ Environment:
   OPENAI_BASE_URL       Base URL, e.g. https://api.openai.com/v1.
   TRANSLATION_MODEL     Model identifier, recorded on each article.
   MODEL_REASONING_EFFORT  Optional (e.g. high); sent as reasoning_effort on chat/completions.
+  AI_PROVIDER           Optional provider selector "1"|"2"|"3". When set, uses
+                        AI_PROVIDER_<n>_BASE_URL/_API_KEY/_MODEL (+ optional
+                        _REASONING_EFFORT) instead of the flat vars above.
+                        Unset or empty = flat vars (unchanged behavior).
   STORAGE_BACKEND       file (default) or d1; d1 requires an injected Worker binding.`);
       console.log(`  USE_PROXY             Set to "true" to route requests through PROXY_URL.
   PROXY_URL             HTTP proxy, e.g. http://127.0.0.1:7897.`);
