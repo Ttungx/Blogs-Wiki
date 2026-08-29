@@ -59,7 +59,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
   ├─ Astro SSR 页面（prerender=false）→ 首页/收集册/文章页/搜索页，从 D1 实时读
   │    ├─ 文章 = 身份（articles 表）+ 多语言版本（article_versions 表），D1 唯一真相
   │    └─ 博客元数据 = 静态模块 src/data/blogs-static.ts（生成自 src/content/blogs/*.md）
-  ├─ scheduled（cron `7,22,37,52 * * * *`，每 15 分钟）→ ping RUNNER_URL /run 触发更新链
+  ├─ scheduled（cron `7,22,37,52 * * * *`，每 15 分钟）→ ping RUNNER_URL /run 触发更新链（⚠️ 触发暂缓上线：deploy 配置 crons=[]，放行时恢复）
   └─ /api/* 路由 → health / sources / content-sync / content-sync/check / content-sync/items（受保护写入）
 ```
 
@@ -72,7 +72,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 ## 内容更新
 
-**生产路径（已上线，2026-08-24 首跑验证）**：Worker Cron（每 15 分钟，`7,22,37,52 * * * *`；ping 同时让 Render 免费实例常驻，约 720h/月 < 750h 免费额度）→ ping Render `/run?key=` → `scripts/render-runner.mjs` 无状态轮转选源（时间片取模，默认 15 分钟一片，25 源 ≈ 每源 6 小时一更）→ spawn 子链：`npm run update -- --source <id>`（发现 → `/api/content-sync/check` D1 去重预检 fail-open（命中 = 已发布文章 + 90 天内门禁拒绝缓存）→ Defuddle 抓取 → 翻译 → 本地持久化 → 门禁拒绝经 `/api/content-sync/items` 上报 `source_items` 负缓存）→ `npm run translate:batch -- --source <id>`（补翻本地 corpus 缺中文版的原文，断点续传）→ `import-local-articles --json` → `sync-local-articles` 分片调 `/api/content-sync` 幂等写 D1。触发即返回 202 绕开路由超时；忙碌保护同一时刻仅一条链。漏跑/重复跑无害（幂等兜底）。门禁拒绝缓存 90 天滑动 TTL：过期自动放行重试，重拒续期（防站点临时坏页被永久误杀）。
+**生产路径（已上线，2026-08-24 首跑验证；⚠️ 自动触发暂缓：crons=[] 部署中，历史 cron 从未实际触发过，首次全自动 tick 待放行后观察）**：Worker Cron（每 15 分钟，`7,22,37,52 * * * *`；ping 同时让 Render 免费实例常驻，约 720h/月 < 750h 免费额度）→ ping Render `/run?key=` → `scripts/render-runner.mjs` 无状态轮转选源（时间片取模，默认 15 分钟一片，25 源 ≈ 每源 6 小时一更）→ spawn 子链：`npm run update -- --source <id>`（发现 → `/api/content-sync/check` D1 去重预检 fail-open（命中 = 已发布文章 + 90 天内门禁拒绝缓存）→ Defuddle 抓取 → 翻译 → 本地持久化 → 门禁拒绝经 `/api/content-sync/items` 上报 `source_items` 负缓存）→ `npm run translate:batch -- --source <id>`（补翻本地 corpus 缺中文版的原文，断点续传）→ `import-local-articles --json` → `sync-local-articles` 分片调 `/api/content-sync` 幂等写 D1。触发即返回 202 绕开路由超时；忙碌保护同一时刻仅一条链。漏跑/重复跑无害（幂等兜底）。门禁拒绝缓存 90 天滑动 TTL：过期自动放行重试，重拒续期（防站点临时坏页被永久误杀）。
 
 **Node 开发路径（scripts/update/）**：`npm run update` / `update:dry` / `audit:source`。生产内容以 D1 为准；`src/content/articles/` 与 `src/data/processed-urls.json` 是本地产物（`.gitignore`）。⚠️ 本地全量回放历史 corpus 会踩 slug 漂移脏数据（同 URL 新旧 id 冲突 → FK/PK 失败），Render 容器无此问题（每轮只有增量文件 + URL 级去重）；清理前禁止对生产跑全量 import。
 
