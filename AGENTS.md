@@ -36,6 +36,7 @@ npm run preview:worker   # build + wrangler dev 本地预览
 npm run update:dry       # 预演：真实抓取，不翻译、不写文件
 npm run update           # 完整增量更新（生产由 Render runner 单源轮转调用）
 npm run audit:source -- --source langchain   # 只读来源审计
+npm run block:source -- --source <id> --reason "<why>" [--apply|--verify]   # 移除源=永久拉黑（tombstone）
 ```
 
 > **部署前置**：先 `wrangler d1 migrations apply blogs-wiki --remote`，再 `npm run deploy`。新 SSR 读 `article_versions.translated_at`，远程 D1 未应用迁移时文章页整页 500。API 路径带尾斜杠（`/api/health/`），否则可能 301/308。
@@ -58,8 +59,8 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
   ├─ Astro SSR 页面（prerender=false）→ 首页/收集册/文章页/搜索页，从 D1 实时读
   │    ├─ 文章 = 身份（articles 表）+ 多语言版本（article_versions 表），D1 唯一真相
   │    └─ 博客元数据 = 静态模块 src/data/blogs-static.ts（生成自 src/content/blogs/*.md）
-  ├─ scheduled（cron `7 * * * *`）→ ping RUNNER_URL /run 触发更新链
-  └─ /api/* 路由 → health / sources / content-sync / content-sync/check（受保护写入）
+  ├─ scheduled（cron `7,22,37,52 * * * *`，每 15 分钟）→ ping RUNNER_URL /run 触发更新链
+  └─ /api/* 路由 → health / sources / content-sync / content-sync/check / content-sync/items（受保护写入）
 ```
 
 - ⚠️ **SSR 页面严禁 `import astro:content`**：只要引入该模块，Astro 内容运行时会连同整个数据层存储（含全部文章正文，曾达 125MB）一起打进服务端 bundle → Worker 64MiB 上限超限。博客元数据改用静态模块：编辑 `src/content/blogs/*.md` 后跑 `npx tsx scripts/generate-blogs-static.ts` 再提交生成物。
@@ -71,7 +72,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 ## 内容更新
 
-**生产路径（已上线，2026-08-24 首跑验证）**：Worker Cron（每小时 :07）→ ping Render 免费实例 `/run?key=` → `scripts/render-runner.mjs` 无状态轮转选源（时间片取模，默认 15 分钟一片，25 源 ≈ 每源 6 小时一更）→ spawn 子链：`npm run update -- --source <id>`（发现 → `/api/content-sync/check` D1 去重预检 fail-open → Defuddle 抓取 → 翻译 → 本地持久化）→ `import-local-articles --json` → `sync-local-articles` 分片调 `/api/content-sync` 幂等写 D1。触发即返回 202 绕开路由超时；忙碌保护同一时刻仅一条链。漏跑/重复跑无害（幂等兜底）。
+**生产路径（已上线，2026-08-24 首跑验证）**：Worker Cron（每 15 分钟，`7,22,37,52 * * * *`；ping 同时让 Render 免费实例常驻，约 720h/月 < 750h 免费额度）→ ping Render `/run?key=` → `scripts/render-runner.mjs` 无状态轮转选源（时间片取模，默认 15 分钟一片，25 源 ≈ 每源 6 小时一更）→ spawn 子链：`npm run update -- --source <id>`（发现 → `/api/content-sync/check` D1 去重预检 fail-open（命中 = 已发布文章 + 90 天内门禁拒绝缓存）→ Defuddle 抓取 → 翻译 → 本地持久化 → 门禁拒绝经 `/api/content-sync/items` 上报 `source_items` 负缓存）→ `npm run translate:batch -- --source <id>`（补翻本地 corpus 缺中文版的原文，断点续传）→ `import-local-articles --json` → `sync-local-articles` 分片调 `/api/content-sync` 幂等写 D1。触发即返回 202 绕开路由超时；忙碌保护同一时刻仅一条链。漏跑/重复跑无害（幂等兜底）。门禁拒绝缓存 90 天滑动 TTL：过期自动放行重试，重拒续期（防站点临时坏页被永久误杀）。
 
 **Node 开发路径（scripts/update/）**：`npm run update` / `update:dry` / `audit:source`。生产内容以 D1 为准；`src/content/articles/` 与 `src/data/processed-urls.json` 是本地产物（`.gitignore`）。⚠️ 本地全量回放历史 corpus 会踩 slug 漂移脏数据（同 URL 新旧 id 冲突 → FK/PK 失败），Render 容器无此问题（每轮只有增量文件 + URL 级去重）；清理前禁止对生产跑全量 import。
 
@@ -80,9 +81,11 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 **来源配置**（`src/data/sources.json`，打包进 Worker）：
 - 来源必须声明 `update_mode`：`"active"` 进完整更新，`"dry-run-only"` 只参与 dry-run；新增来源先 `dry-run-only`，人工核验后转 `active`。
 - 每源默认 3 篇（`--limit` 可调）。无发布日期的来源（如 Paul Graham）无法生成文章，不要加入自动更新。分类只能从 `src/config/categories.ts` 预定义集合选。
+- **已移除源的拉黑机制（tombstone）**：移除源不是"删 `sources.json` 条目"就完事——用 `npm run block:source` 登记进 `src/data/blocked-sources.json`（门禁登记表）+ `src/data/blocked-urls.json`（URL 账本留痕，append-only、解除拉黑也不删）。`loadSources`（update/backfill/census/audit 四入口的唯一咽喉点，`scripts/update/config.ts`）命中同 id / 同域名（含子域/父域/`extra_domains` 双向相交）即抛 `Blocked source violation` **拒绝加载**，结构上杜绝重抓。⚠️ 两个 `blocked-*.json` **只由 Node 侧 `scripts/update/` 经 `fs.readFile` 读取，严禁 `import`**（同 `sources.json` 打包进 Worker 的 bundle 纪律；smoke 有静态扫描护栏）。**拉黑域必须与原 `source.domain` 完全同形**，且改名遗迹（`kimi`/`keli-wen`/`glm`）不是移除源、绝不拉黑。详见 `docs/blog-source-registry.md`「已移除源（拉黑 / tombstone）」。
 - **翻译通道**（`TRANSLATION_PROVIDER`，默认 `free`）：
   - `free`（默认）：OpenAI 兼容网关（loopback 或免费层）。env 配 `OPENAI_BASE_URL` / `TRANSLATION_MODEL` / `MODEL_REASONING_EFFORT`（请求体顶层传 `reasoning_effort`；用 `low`——`high` 会因 reasoning 占满 max_tokens 致翻译输出空；**Google Gemini OpenAI 端点不接受 `default`**，合法值 none/minimal/low/medium/high）。实测 `deepseek-v4-flash` + `low` ≈ 14s/篇（~27000 字符/min）；`gemini-3.5-flash-lite` + `low` ≈ 22s/篇（~64000 字符/min，吞吐 ~2.4×）。客户端已内置 429 退避（最多 2 次）。prompt 可能被留存训练，只传公开内容。
   - `paid`（回退）：三个 Secrets（`OPENAI_API_KEY` / `OPENAI_BASE_URL` / `TRANSLATION_MODEL`）。
+  - **多服务商槽位**（仅本地 Node 路径，见 `scripts/update/ai-provider.ts`）：`.env` 配 `AI_PROVIDER=1|2|3` + 槽位变量 `AI_PROVIDER_<n>_BASE_URL/_API_KEY/_MODEL/_REASONING_EFFORT` 切换 OpenAI 兼容服务商；未设置时回落平铺三件套，Render 生产 env 不含选择器、行为不变。
 - 本地网络受限时 `USE_PROXY=true` + `PROXY_URL`（默认 `http://127.0.0.1:7897`）。个别站点（openai.com）拦截 Node TLS 指纹，抓取自动回退系统 `curl`（Node 侧经 `worker/fetch/curl-runner.ts`；Worker 运行时无 curl 则跳过）。
 
 ## 路书（docs/，先读再动手）

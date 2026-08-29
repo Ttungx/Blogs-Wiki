@@ -21,6 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTranslateClient, routeTranslator } from './translate';
 import { createTranslateV2Client } from './translate-v2';
+import { resolveAiProvider } from './ai-provider';
 import { createFetchImpl } from './network';
 import { createUpdateRepositories } from './repository-factory';
 import { parseVersionFile } from '../../worker/domain/article';
@@ -108,7 +109,15 @@ interface PendingArticle {
 async function scanMissingZh(rootDir: string, sourceId?: string): Promise<PendingArticle[]> {
   const articlesDir = path.join(rootDir, 'src', 'content', 'articles');
   const pending: PendingArticle[] = [];
-  const blogEntries = await fs.readdir(articlesDir, { withFileTypes: true });
+  let blogEntries;
+  try {
+    blogEntries = await fs.readdir(articlesDir, { withFileTypes: true });
+  } catch (error) {
+    // 本地无 corpus（如 Render 冷启动 fresh clone、dry-run 环境）＝无事可做，
+    // 不能让整条更新链在 set -e 下因此中断。
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return pending;
+    throw error;
+  }
 
   for (const blog of blogEntries) {
     if (!blog.isDirectory()) continue;
@@ -194,10 +203,9 @@ async function run() {
   const logger = consoleLogger;
 
   if (!options.dryRun) {
-    const apiKey = process.env.OPENAI_API_KEY ?? '';
-    const baseUrl = process.env.OPENAI_BASE_URL ?? '';
-    const model = process.env.TRANSLATION_MODEL ?? '';
-    if (!apiKey || !baseUrl || !model) {
+    // AI_PROVIDER 未设时回落平铺变量，报错口径不变。
+    const provider = resolveAiProvider(process.env);
+    if (!provider.apiKey || !provider.baseUrl || !provider.model) {
       throw new Error('OPENAI_API_KEY, OPENAI_BASE_URL and TRANSLATION_MODEL are required (loaded from .env)');
     }
   }
@@ -219,11 +227,12 @@ async function run() {
 
   const fetchImpl = createFetchImpl(logger);
   const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
+  const provider = resolveAiProvider(process.env);
   const common = {
-    apiKey: process.env.OPENAI_API_KEY ?? '',
-    baseUrl: process.env.OPENAI_BASE_URL ?? '',
-    model: process.env.TRANSLATION_MODEL ?? '',
-    reasoningEffort: (process.env.MODEL_REASONING_EFFORT ?? '').trim() || undefined,
+    apiKey: provider.apiKey,
+    baseUrl: provider.baseUrl,
+    model: provider.model,
+    reasoningEffort: provider.reasoningEffort,
     fetchImpl,
   } as const;
   // 默认 V1 整篇一次；TRANSLATION_PIPELINE=v2 强制 V2；超长（>100K 字符）兜底 V2。

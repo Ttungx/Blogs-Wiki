@@ -1,9 +1,11 @@
 /**
- * GitHub Actions → Worker 内容同步桥接（POST /api/content-sync）。
+ * 内容管线 → Worker 桥接端点族（POST /api/content-sync[/check|/items]）。
  *
  * 职责边界（与 UpdateWorkflow / /api/trigger 完全隔离，互不调用）：
- * - GitHub Actions 在 CI 里执行内容更新管线（discover → fetch → translate），
- *   产出结构化文章数据后经本端点上传；Worker 侧只做校验 + D1 幂等写入。
+ * - 更新管线（Render runner 的 Node 进程）执行内容链（discover → fetch →
+ *   translate），产出结构化文章数据后经本端点上传；Worker 侧只做校验 +
+ *   D1 幂等写入。/check 供管线翻译前去重预检（含门禁拒绝负缓存读取），
+ *   /items 供管线上报质量门禁拒绝（source_items 负缓存写入）。
  * - 本模块不触发 Workflow，不读取翻译 Secrets，不感知前端页面。
  *
  * 认证与限制：
@@ -736,6 +738,14 @@ export async function handleContentSync(
 /** 单次 check 请求的候选条目上限（对应单源发现列表量级，防滥用）。 */
 export const MAX_CHECK_ITEMS = 500;
 
+/**
+ * 门禁拒绝负缓存（source_items.status='skipped'）的信任窗口（天）。
+ * 窗口内的拒绝被 check 视为「已存在」，在抓取前过滤；过期自动放行重试，
+ * 再次被拒会刷新 updated_at 续期——滑动 TTL 自愈，防止站点临时坏页
+ * 被永久误杀（与管线 fail-open 哲学一致）。
+ */
+export const REJECTION_TTL_DAYS = 90;
+
 export interface CheckItem {
   sourceId: string;
   url: string;
@@ -806,9 +816,43 @@ async function findExistingCheckItems(
   return existing;
 }
 
+/** 查询 TTL 窗口内的门禁拒绝记录（source_items.status='skipped'），点查同构。 */
+async function findRejectedCheckItems(
+  db: D1Database,
+  items: CheckItem[],
+): Promise<Set<string>> {
+  const rejected = new Set<string>();
+  const since = `-${REJECTION_TTL_DAYS} days`;
+  for (let i = 0; i < items.length; i += D1_BATCH_LIMIT) {
+    const chunk = items.slice(i, i + D1_BATCH_LIMIT);
+    const results = await db.batch(
+      chunk.map((item) =>
+        db
+          .prepare(
+            `SELECT 1 AS hit FROM source_items
+             WHERE source_id = ? AND original_url = ?
+               AND status = 'skipped'
+               AND updated_at >= datetime('now', ?)
+             LIMIT 1`,
+          )
+          .bind(item.sourceId, item.url, since),
+      ),
+    );
+    results.forEach((result, j) => {
+      if (result && result.results && result.results.length > 0) {
+        rejected.add(`${chunk[j]!.sourceId}\u0000${chunk[j]!.url}`);
+      }
+    });
+  }
+  return rejected;
+}
+
 /**
  * POST /api/content-sync/check —— 无状态管线运行环境（Render 容器等）
  * 在翻译前用 D1 判断「哪些 URL 已存在」，避免重复抓取与翻译。
+ *
+ * 「已存在」= articles 有该文章，或 TTL 窗口内被质量门禁拒绝过
+ * （source_items 负缓存，过期自动放行重试）。
  *
  * 前置守卫与 content-sync 完全共用；请求 {items:[{sourceId,url}]}，
  * 响应 {existing:[{sourceId,url}]}（仅返回已存在子集）。
@@ -832,12 +876,161 @@ export async function handleContentCheck(
   }
 
   try {
-    const existingKeys = await findExistingCheckItems(env.DB, payload.items);
-    const existing = payload.items.filter((item) =>
-      existingKeys.has(`${item.sourceId}\u0000${item.url}`),
-    );
+    const [existingKeys, rejectedKeys] = await Promise.all([
+      findExistingCheckItems(env.DB, payload.items),
+      findRejectedCheckItems(env.DB, payload.items),
+    ]);
+    const existing = payload.items.filter((item) => {
+      const key = `${item.sourceId}\u0000${item.url}`;
+      return existingKeys.has(key) || rejectedKeys.has(key);
+    });
     return json({ existing });
   } catch (error) {
+    return json(
+      { error: error instanceof Error ? error.message : String(error) },
+      500,
+    );
+  }
+}
+
+// ── Items 端点（门禁拒绝负缓存写入） ──────────────────
+
+/** 单次 items 请求上限（与 check 同量级）。 */
+export const MAX_ITEMS = 500;
+
+/** 上报的门禁拒绝条目。 */
+export interface RejectedEntry {
+  sourceId: string;
+  url: string;
+  /** 门禁失败代码（如 content-too-short, missing-published-date）。 */
+  code: string;
+}
+
+interface ItemsPayload {
+  items: RejectedEntry[];
+}
+
+/** 解析并校验 items 上报载荷；结构/取值问题抛 SyncPayloadError（400）。 */
+export function parseItemsPayload(raw: string): ItemsPayload {
+  let obj: unknown;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    throw new SyncPayloadError('invalid JSON');
+  }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+    throw new SyncPayloadError('payload must be a JSON object');
+  }
+  const items = (obj as { items?: unknown }).items;
+  if (!Array.isArray(items)) {
+    throw new SyncPayloadError('payload.items must be an array');
+  }
+  if (items.length > MAX_ITEMS) {
+    throw new SyncPayloadError(`too many items: ${items.length} (max ${MAX_ITEMS})`);
+  }
+  const parsed: RejectedEntry[] = [];
+  for (let i = 0; i < items.length; i += 1) {
+    const where = `items[${i}]`;
+    const entry = items[i];
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new SyncPayloadError(`${where} must be an object`);
+    }
+    const record = entry as Record<string, unknown>;
+    const item: RejectedEntry = {
+      sourceId: requireString(record.sourceId, 'sourceId', where),
+      url: requireString(record.url, 'url', where),
+      code: requireString(record.code, 'code', where, 256),
+    };
+    if (!isValidHttpUrl(item.url)) {
+      throw new SyncPayloadError(`${where}.url must be an http(s) URL`);
+    }
+    parsed.push(item);
+  }
+  return { items: parsed };
+}
+
+/**
+ * 拒绝缓存 upsert：重复上报把 attempt_count +1 并刷新 updated_at（续期）。
+ * status='published' 的历史行（Workflow 时代产物）不降级——已发布文章
+ * 由 articles 去重，负缓存不得覆盖终态。
+ */
+const REJECTION_UPSERT_SQL = `
+  INSERT INTO source_items (source_id, original_url, status, attempt_count, last_error)
+  VALUES (?, ?, 'skipped', 1, ?)
+  ON CONFLICT(source_id, original_url) DO UPDATE SET
+    status = CASE WHEN source_items.status = 'published'
+                  THEN 'published' ELSE 'skipped' END,
+    attempt_count = source_items.attempt_count + 1,
+    last_error = excluded.last_error,
+    updated_at = datetime('now')
+`;
+
+/** 预检：items 引用的来源必须已存在（source_items.source_id 有 FK）。 */
+async function ensureSourcesExistForItems(
+  db: D1Database,
+  items: RejectedEntry[],
+): Promise<void> {
+  const needed = new Set(items.map((item) => item.sourceId));
+  const missing: string[] = [];
+  for (const id of needed) {
+    const row = await db
+      .prepare('SELECT 1 AS hit FROM sources WHERE id = ? LIMIT 1')
+      .bind(id)
+      .first();
+    if (!row) missing.push(id);
+  }
+  if (missing.length > 0) {
+    throw new SyncPayloadError(`items reference unknown sources: ${missing.join(', ')}`);
+  }
+}
+
+/** 执行拒绝缓存写入：分批 db.batch() upsert，返回统计。 */
+export async function executeRejectionSync(
+  db: D1Database,
+  items: RejectedEntry[],
+): Promise<{ ok: true; items: { received: number }; batches: number }> {
+  await ensureSourcesExistForItems(db, items);
+
+  const statements = items.map((item) =>
+    db.prepare(REJECTION_UPSERT_SQL).bind(item.sourceId, item.url, item.code),
+  );
+  let batches = 0;
+  for (let i = 0; i < statements.length; i += D1_BATCH_LIMIT) {
+    await db.batch(statements.slice(i, i + D1_BATCH_LIMIT));
+    batches += 1;
+  }
+  return { ok: true, items: { received: items.length }, batches };
+}
+
+/**
+ * POST /api/content-sync/items —— 管线质量门禁拒绝的负缓存写入。
+ * 请求 {items:[{sourceId,url,code}]}，响应 {ok,items:{received},batches}。
+ */
+export async function handleContentItems(
+  request: Request,
+  env: ContentSyncEnv,
+): Promise<Response> {
+  const authorized = await authorizeAndReadBody(request, env);
+  if ('ok' in authorized) return authorized;
+  const { body } = authorized;
+
+  let payload: ItemsPayload;
+  try {
+    payload = parseItemsPayload(new TextDecoder().decode(body));
+  } catch (error) {
+    return json(
+      { error: error instanceof SyncPayloadError ? error.message : 'invalid payload' },
+      400,
+    );
+  }
+
+  try {
+    const result = await executeRejectionSync(env.DB, payload.items);
+    return json(result);
+  } catch (error) {
+    if (error instanceof SyncPayloadError) {
+      return json({ error: error.message }, 400);
+    }
     return json(
       { error: error instanceof Error ? error.message : String(error) },
       500,

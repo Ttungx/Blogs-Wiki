@@ -1,8 +1,9 @@
 import { createFetchBackend, type FetchBackend } from './fetch-backend';
-import { fetchKnownRemoteUrls } from './dedupe';
+import { fetchKnownRemoteUrls, reportRejectedUrls, type RejectedItem } from './dedupe';
 import { discoverSource } from './discovery';
 import { createTranslateClient, routeTranslator } from './translate';
 import { createTranslateV2Client } from './translate-v2';
+import { resolveAiProvider } from './ai-provider';
 import { selectSourcesForRun } from './source-policy';
 import { loadSources } from './config';
 import { createFetchImpl } from './network';
@@ -103,21 +104,33 @@ function buildTranslator(
   if (dryRun) return undefined;
   if (injected) return injected;
 
-  const apiKey = process.env.OPENAI_API_KEY ?? '';
-  const baseUrl = process.env.OPENAI_BASE_URL ?? '';
-  const model = process.env.TRANSLATION_MODEL ?? '';
-  if (!apiKey || !baseUrl || !model) {
+  // AI_PROVIDER 未设时回落平铺变量，报错口径不变。
+  const provider = resolveAiProvider(process.env);
+  if (!provider.apiKey || !provider.baseUrl || !provider.model) {
     throw new Error(
       'OPENAI_API_KEY, OPENAI_BASE_URL and TRANSLATION_MODEL are required unless --dry-run is used.',
     );
   }
+  const { apiKey, baseUrl, model } = provider;
 
-  const reasoningEffort = (process.env.MODEL_REASONING_EFFORT ?? '').trim() || undefined;
+  const reasoningEffort = provider.reasoningEffort;
   // 默认 V1 整篇一次（吞吐高）；TRANSLATION_PIPELINE=v2 强制 V2；超长（>100K 字符）兜底 V2。
   const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
   const v1 = createTranslateClient({ apiKey, baseUrl, model, fetchImpl, reasoningEffort });
   const v2 = createTranslateV2Client({ apiKey, baseUrl, model, fetchImpl, reasoningEffort });
   return routeTranslator(v1, v2, forceV2);
+}
+
+/** 门禁拒绝上报端点：由 CONTENT_SYNC_URL 派生（…/api/content-sync/items/）。 */
+function rejectionEndpoint(): string {
+  const base = (process.env.CONTENT_SYNC_URL ?? '').trim();
+  if (!base) return '';
+  const withSlash = base.endsWith('/') ? base : `${base}/`;
+  try {
+    return new URL('items/', withSlash).toString();
+  } catch {
+    return '';
+  }
 }
 
 function selectSources(
@@ -217,7 +230,7 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
         if (knownRemote.size > 0) {
           const seen = seenBySource.get(source.id);
           for (const url of knownRemote) seen?.add(url);
-          logger.info(`[${source.id}] remote dedupe: ${knownRemote.size} URL(s) already in D1, filtered`);
+          logger.info(`[${source.id}] remote dedupe: ${knownRemote.size} URL(s) already known (published or rejected), filtered`);
         }
       }
 
@@ -236,6 +249,7 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
       const candidates = perSourceLimit > 0 ? pending.slice(0, perSourceLimit) : pending;
       logger.info(`[${source.id}] discovered ${discovered.length}, new ${pending.length}, processing ${candidates.length}`);
 
+      const integrityRejections: RejectedItem[] = [];
       for (const item of candidates) {
         try {
           const article: ExtractedArticle = source.prefer_official_zh
@@ -297,6 +311,7 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
               await repositories.sourceState.markProcessed(source.id, item.url);
               seenBySource.get(source.id)?.add(item.url);
             }
+            integrityRejections.push({ url: item.url, code: error.codes.join(', ') });
             result.errors.push({
               url: item.url,
               kind: 'integrity',
@@ -310,6 +325,19 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
             logger.error(`  ${item.url}: ${message}`);
           }
         }
+      }
+
+      // 门禁拒绝上报 D1 负缓存（fail-open）：后续轮次的 check 预检会在
+      // 抓取前过滤这些 URL，消除容器状态重置后的「重抓 → 再拒」循环。
+      if (!options.dryRun && integrityRejections.length > 0) {
+        await reportRejectedUrls({
+          endpoint: rejectionEndpoint(),
+          token: (process.env.CONTENT_SYNC_TOKEN ?? '').trim(),
+          sourceId: source.id,
+          items: integrityRejections,
+          fetchImpl,
+          logger,
+        });
       }
     } catch (error) {
       result.failed += 1;

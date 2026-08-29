@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Render 免费 Web Service 入口：外部定时器（Cloudflare Worker Cron）请求
- * /run 触发「单源更新链」，与 content-sync 组合构成无状态内容更新路径。
+ * Render 免费 Web Service 入口：外部定时器（Cloudflare Worker Cron，
+ * 每 15 分钟）请求 /run 触发「单源更新链」，与 content-sync 组合构成
+ * 无状态内容更新路径。
  *
  * 为什么重活不放进 Worker：Workers 免费版单请求 10ms CPU，Defuddle 解析
  * 一篇 HTML 就会超限；这里跑完整 Node 环境，无此限制。
@@ -9,11 +10,14 @@
  * 设计要点：
  * - 无状态轮转选源：按时间片（RUN_INTERVAL_MINUTES，默认 15 分钟）取模决定
  *   本轮处理的源。容器重启/休眠唤醒不影响正确性；25 源 × 15 分钟 ≈ 每源
- *   每 6 小时更新一次。
- * - 触发即返回：spawn 子进程异步执行整条链（update → import → sync），
- *   HTTP 立即 202，绕开平台路由超时；进度看日志文件与 Render 日志流。
+ *   每 6 小时更新一次（Worker cron `7,22,37,52 * * * *` 与切片同频）。
+ *   ping 同时让免费实例保持常驻（约 720h/月 < 750h 免费额度），消除冷启动。
+ * - 触发即返回：spawn 子进程异步执行整条链（update → translate:batch 补翻
+ *   → import → sync），HTTP 立即 202，绕开平台路由超时；进度看日志文件
+ *   与 Render 日志流。
  * - 幂等兜底：漏跑/重复跑无害——content-sync 按 (source_id, original_url)
- *   去重；管线 CONTENT_SYNC_CHECK_URL 预检避免重复翻译。
+ *   去重；管线 CONTENT_SYNC_CHECK_URL 预检避免重复抓取+翻译（含 90 天内
+ *   门禁拒绝负缓存，经 /api/content-sync/items 上报）。
  * - 忙碌保护：同一时刻最多一条链在跑；忙时返回 202 busy，下轮自动补位。
  *
  * 环境变量：
@@ -84,10 +88,13 @@ let busy = false;
 let lastRun = null;
 
 function buildChainScript(sourceId, limitArg) {
-  // 单条链：发现/去重/抓取/翻译 → 生成本地 payload → 分片推送 D1。
+  // 单条链：发现/去重/抓取/翻译 → 补翻缺失译文 → 生成本地 payload → 分片推送 D1。
+  // translate:batch 只补本地 corpus 缺 zh 版本的原文（断点续传），单篇失败
+  // 只记错误台账不退出，不会拖垮链条；随后 import+sync 把新译文一并推上 D1。
   return [
     'set -e',
     `npm run update -- --source ${JSON.stringify(sourceId)} --report logs/report${limitArg}`,
+    `npm run translate:batch -- --source ${JSON.stringify(sourceId)} --report logs/report`,
     'node scripts/import-local-articles.mjs --json --output logs/.tmp-import-articles.json',
     'node scripts/sync-local-articles.mjs --input logs/.tmp-import-articles.json',
     'echo CHAIN_OK',

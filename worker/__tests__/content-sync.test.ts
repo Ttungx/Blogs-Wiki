@@ -10,9 +10,11 @@ import { test } from 'node:test';
 import {
   isAllowedSqlStatement,
   MAX_ARTICLES,
+  MAX_ITEMS,
   MAX_SOURCES,
   MAX_SQL_STATEMENTS,
   normalizeSqlStatements,
+  parseItemsPayload,
   parseSyncPayload,
   SyncPayloadError,
 } from '../runtime/content-sync.ts';
@@ -261,4 +263,40 @@ test('payload 同时含 articles 与 sql 时两者都被解析', () => {
   assert.equal(payload.articles.length, 1);
   assert.equal(payload.sql.length, 1);
   assert.match(payload.sql[0]!, /^INSERT/);
+});
+
+// ── items 上报载荷（门禁拒绝负缓存） ──────────────────
+
+function makeItem(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    sourceId: 'sync-blog',
+    url: 'https://sync.example/blog/junk-page/',
+    code: 'content-too-short',
+    ...overrides,
+  };
+}
+
+test('parseItemsPayload 解析合法载荷', () => {
+  const payload = parseItemsPayload(
+    JSON.stringify({ items: [makeItem(), makeItem({ code: 'missing-published-date' })] }),
+  );
+  assert.equal(payload.items.length, 2);
+  assert.equal(payload.items[0]!.code, 'content-too-short');
+});
+
+test('parseItemsPayload：缺 items / 非数组 / 条目非法 / url 非 http(s) / 超上限', () => {
+  assertPayloadError(() => parseItemsPayload('{}'), /payload.items must be an array/);
+  assertPayloadError(() => parseItemsPayload('{"items":"nope"}'), /payload.items must be an array/);
+  assertPayloadError(() => parseItemsPayload('{"items":[{}]}'), /missing or invalid sourceId/);
+  assertPayloadError(() => parseItemsPayload('{"items":[{"sourceId":"s"}]}'), /missing or invalid url/);
+  assertPayloadError(() => parseItemsPayload('{"items":[{"sourceId":"s","url":"https://a/1"}]}'), /missing or invalid code/);
+  assertPayloadError(
+    () => parseItemsPayload(JSON.stringify({ items: [makeItem({ url: 'ftp://x.example/a' })] })),
+    /must be an http\(s\) URL/,
+  );
+  const tooMany = Array.from({ length: MAX_ITEMS + 1 }, () => makeItem());
+  assertPayloadError(
+    () => parseItemsPayload(JSON.stringify({ items: tooMany })),
+    new RegExp(`too many items.*max ${MAX_ITEMS}`),
+  );
 });

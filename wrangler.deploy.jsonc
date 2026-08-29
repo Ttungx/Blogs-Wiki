@@ -7,10 +7,12 @@
   "observability": {
     "enabled": true
   },
-  // 内容更新定时触发：每小时 ping Render runner 一次（单源轮转）。
+  // 内容更新定时触发：每 15 分钟 ping Render runner 一次（单源轮转）。
+  // 25 源 × 15 分钟时间片取模 → 每源约 6.25 小时一更；
+  // ping 同时让免费实例保持常驻（约 720h/月 < 750h 免费额度），消除冷启动。
   // RUNNER_URL 部署 Render 服务后填实际地址，如 https://blogs-wiki-updater.onrender.com
   "triggers": {
-    "crons": ["7 * * * *"]
+    "crons": ["7,22,37,52 * * * *"]
   },
   "vars": {
     "RUNNER_URL": "https://blogs-wiki-updater.onrender.com"
