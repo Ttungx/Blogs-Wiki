@@ -42,3 +42,9 @@ opencode.jsonc
 analysis/
 .workbuddy/
 .tmp-census.json
+
+# 质量模型本地运行产物（可再生，不入库）
+ml/dataset.jsonl
+ml/shadow-scores*.jsonl
+ml/backfill-full.log
+ml/__pycache__/

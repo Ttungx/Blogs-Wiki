@@ -25,12 +25,21 @@ import type {
 import { CATEGORIES } from '../../src/config/categories';
 import { DEFAULT_LIMIT_PER_SOURCE } from './constants';
 import { checkArticleIntegrity } from './backfill-integrity';
+import { appendShadowRecord, evaluateQualityGate, resolveQualityGateMode, type QualityVerdict } from './quality-model';
 
 /** 质量门禁失败（永久）：内容不合格，标记处理避免下轮重抓。 */
 class IntegrityGateError extends Error {
   constructor(readonly codes: string[]) {
     super(`integrity gate failed: ${codes.join(', ')}`);
     this.name = 'IntegrityGateError';
+  }
+}
+
+/** 质量模型自动拒绝（plan §30 可恢复：不写 processed 终态，仅进 90 天负缓存）。 */
+class QualityGateError extends Error {
+  constructor(readonly verdict: QualityVerdict) {
+    super(`quality gate rejected: score=${verdict.score.toFixed(4)} (model ${verdict.modelVersion})`);
+    this.name = 'QualityGateError';
   }
 }
 
@@ -264,6 +273,29 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
             throw new IntegrityGateError(blocking.map((issue) => issue.code));
           }
 
+          // 质量模型门禁（plan §28/§29）：QUALITY_GATE_MODE 默认 off——不加载模型、
+          // 行为与未接入完全一致；shadow 记录 wouldReject；enforce 才阻塞，
+          // 且拒绝可恢复（不写 processed 终态，90 天负缓存过期后随模型升级重新评估）。
+          const gateMode = resolveQualityGateMode();
+          const gate = evaluateQualityGate(article, gateMode, {
+            log: (m) => logger.warn(`  ${item.url}: ${m}`),
+          });
+          if (gateMode === 'shadow') {
+            appendShadowRecord({
+              sourceId: source.id,
+              url: item.url,
+              title: article.title,
+              score: gate.verdict.score,
+              wouldReject: gate.verdict.decision === 'reject',
+              modelVersion: gate.verdict.modelVersion,
+              threshold: gate.verdict.threshold,
+              at: new Date().toISOString(),
+            });
+          }
+          if (gate.blocked) {
+            throw new QualityGateError(gate.verdict);
+          }
+
           if (!translate) {
             logger.info(
               source.update_mode === 'dry-run-only'
@@ -319,6 +351,16 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
               message: error.message,
             });
             logger.warn(`  ${item.url}: ${error.message} (content rejected; will not retry)`);
+          } else if (error instanceof QualityGateError) {
+            // 质量模型拒绝（plan §30 可恢复）：不 markProcessed，只上报负缓存
+            // （90 天 TTL），模型升级后自动重新评估；code 记录模型版本与分数供审计。
+            const code = `quality-model:${error.verdict.modelVersion} score=${error.verdict.score.toFixed(4)}`;
+            if (!options.dryRun) {
+              integrityRejections.push({ url: item.url, code });
+              seenBySource.get(source.id)?.add(item.url);
+            }
+            result.errors.push({ url: item.url, kind: 'quality-model', code, message: error.message });
+            logger.warn(`  ${item.url}: ${error.message} (quality rejected; negative-cached 90d)`);
           } else {
             const message = error instanceof Error ? error.message : String(error);
             result.errors.push({ url: item.url, kind: 'fatal', message });

@@ -34,6 +34,7 @@ import {
 } from './repository-factory';
 import { policyFor, policyPasses, type BackfillPolicy } from './backfill-policy';
 import { checkArticleIntegrity, type ContentStats } from './backfill-integrity';
+import { appendShadowRecord, evaluateQualityGate, resolveQualityGateMode } from './quality-model';
 import { urlDateFromPattern } from './url-date';
 import {
   loadProcessedState,
@@ -176,7 +177,7 @@ interface SourceBackfillResult {
 /** 结构化错误记录：单篇失败或源级失败。 */
 export interface BackfillError {
   url: string;
-  kind: 'fetch' | 'integrity' | 'fatal';
+  kind: 'fetch' | 'integrity' | 'quality-model' | 'fatal';
   /** 完整性门禁错误码（integrity 类）。 */
   code?: string;
   message: string;
@@ -324,6 +325,35 @@ async function backfillSource(
           });
         }
         throw new Error(`integrity blocked: ${blocking.length} issue(s)`);
+      }
+
+      // 质量模型门禁（plan §28）：QUALITY_GATE_MODE 默认 off（零开销、零行为变化）；
+      // shadow 记录 wouldReject；enforce 阻塞——手动回填路径的错误仅记录不写终态，
+      // 模型升级后重新回填即可重新评估。
+      const gateMode = resolveQualityGateMode();
+      const qualityGate = evaluateQualityGate(article, gateMode, {
+        log: (m) => logger.warn(`  - ${key}: ${m}`),
+      });
+      if (gateMode === 'shadow') {
+        appendShadowRecord({
+          sourceId: source.id,
+          url: key,
+          title: article.title,
+          score: qualityGate.verdict.score,
+          wouldReject: qualityGate.verdict.decision === 'reject',
+          modelVersion: qualityGate.verdict.modelVersion,
+          threshold: qualityGate.verdict.threshold,
+          at: new Date().toISOString(),
+        });
+      }
+      if (qualityGate.blocked) {
+        result.errors.push({
+          url: key,
+          kind: 'quality-model',
+          code: `quality-model:${qualityGate.verdict.modelVersion}`,
+          message: `score=${qualityGate.verdict.score.toFixed(4)} ≥ threshold`,
+        });
+        throw new Error(`quality gate rejected: score=${qualityGate.verdict.score.toFixed(4)}`);
       }
 
       if (repositories) {

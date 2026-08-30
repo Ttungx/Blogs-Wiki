@@ -130,7 +130,7 @@ export interface SourceConfig {
 /** 增量管线结构化错误（取代原先的字符串数组，便于按类型聚合分析）。 */
 export interface ArticleError {
   url: string;
-  kind: 'fetch' | 'integrity' | 'translate' | 'redirect' | 'fatal';
+  kind: 'fetch' | 'integrity' | 'translate' | 'redirect' | 'fatal' | 'quality-model';
   code?: string;
   message: string;
 }
