@@ -721,3 +721,620 @@ placeholder 泄漏、图片 URL 非绝对、缺日期、缺标题、超出回填
   - 有效日期 2018-08-13 早于 policy.since 2019-01-01，跳过
 - **integrity** [outside-backfill-window] `https://deepmind.google/blog/a-milestone-for-deepmind-health-and-streams`
   - 有效日期 2017-02-27 早于 policy.since 2019-01-01，跳过
+
+---
+
+## 2026-08-30T12:27:18.906Z（anthropic）
+
+- 错误总数：1
+
+### anthropic（1 条）
+
+- **integrity** [todo-marker] `https://www.anthropic.com/engineering/claude-code-auto-mode`
+  - warn: 正文含 todo-marker 标记（提示性）
+
+---
+
+## 2026-08-30T12:27:32.562Z（google-security）
+
+- 错误总数：0
+
+无错误。
+
+---
+
+## 2026-08-30T12:27:51.023Z（qwen）
+
+- 错误总数：2
+
+### qwen（2 条）
+
+- **integrity** [todo-marker] `https://qwenlm.github.io/blog/qvq-72b-preview`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://qwenlm.github.io/blog/qwen-vl`
+  - warn: 正文含 todo-marker 标记（提示性）
+
+---
+
+## 2026-08-30T12:28:08.496Z（langchain）
+
+- 错误总数：9
+
+### langchain（9 条）
+
+- **integrity** [todo-marker] `https://www.langchain.com/blog/financial-ai-that-investigates-macro-trends-eu-economic-analysis-with-you-com-and-langchain`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.langchain.com/blog/building-a-company-due-diligence-agent-with-deep-agents-langsmith-and-parallel`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.langchain.com/blog/deep-agents-v0-7`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.langchain.com/blog/how-we-benchmark-deep-agents`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.langchain.com/blog/how-to-build-a-custom-agent-harness`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.langchain.com/blog/open-swe-an-open-source-framework-for-internal-coding-agents`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.langchain.com/blog/code-interpreter-api`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.langchain.com/blog/deep-agents`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.langchain.com/blog/introducing-deepagents-cli`
+  - warn: 正文含 todo-marker 标记（提示性）
+
+---
+
+## 2026-08-30T12:28:49.357Z（cursor）
+
+- 错误总数：3
+
+### cursor（3 条）
+
+- **integrity** [content-too-short] `https://cursor.com/blog/grok-4-5-model-card`
+  - 正文纯文本 191 字符，低于 200
+- **integrity** [looks-like-navigation-list] `https://cursor.com/blog/grok-4-5-model-card`
+  - 正文 191 字符但含 6 个外链，疑似导航/归档列表
+- **integrity** [todo-marker] `https://cursor.com/blog/automations`
+  - warn: 正文含 todo-marker 标记（提示性）
+
+---
+
+## 2026-08-30T12:28:55.509Z（meta-ai）
+
+- 错误总数：0
+
+无错误。
+
+---
+
+## 2026-08-30T12:29:07.028Z（dan-koe）
+
+- 错误总数：3
+
+### dan-koe（3 条）
+
+- **integrity** [todo-marker] `https://letters.thedankoe.com/p/how-id-build-a-one-person-business`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://letters.thedankoe.com/p/prompt-deep-work-accelerator`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [event-deadline] `https://letters.thedankoe.com/p/how-average-people-will-get-rich`
+  - 命中促销/直播信号（event-deadline）
+
+---
+
+## 2026-08-30T12:29:14.631Z（google-deepmind）
+
+- 错误总数：91
+
+### google-deepmind（91 条）
+
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/2017-deepminds-year-in-review`
+  - 有效日期 2017-12-21 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/enabling-continual-learning-in-neural-networks`
+  - 有效日期 2017-03-13 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-papers-nips-part-1`
+  - 有效日期 2016-12-02 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-papers-nips-part-2`
+  - 有效日期 2016-12-05 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-and-blizzard-to-release-starcraft-ii-as-an-ai-research-environment`
+  - 有效日期 2016-11-04 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-papers-nips-part-3`
+  - 有效日期 2016-12-07 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/differentiable-neural-computers`
+  - 有效日期 2016-10-12 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/announcing-the-partnership-on-ai-to-benefit-people-society`
+  - 有效日期 2016-09-28 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/applying-machine-learning-to-radiotherapy-planning-for-head-neck-cancer`
+  - 有效日期 2016-08-30 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/decoupled-neural-interfaces-using-synthetic-gradients`
+  - 有效日期 2016-08-29 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-ai-reduces-google-data-centre-cooling-bill-by-40`
+  - 有效日期 2016-07-20 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/announcing-deepmind-health-research-partnership-with-moorfields-eye-hospital`
+  - 有效日期 2016-05-07 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deep-reinforcement-learning`
+  - 有效日期 2016-06-17 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-and-blizzard-open-starcraft-ii-as-an-ai-research-environment`
+  - 有效日期 2017-08-09 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/game-theory-insights-into-asymmetric-multi-agent-games`
+  - 有效日期 2018-01-17 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/ai-and-neuroscience-a-virtuous-circle`
+  - 有效日期 2017-08-02 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/alphago-zero-starting-from-scratch`
+  - 有效日期 2017-10-18 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-expands-to-canada-with-new-research-office-in-edmonton-alberta`
+  - 有效日期 2017-07-05 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/agents-that-imagine-and-plan`
+  - 有效日期 2017-07-20 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/alphagos-next-move`
+  - 有效日期 2017-05-27 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/alphazero-shedding-new-light-on-chess-shogi-and-go`
+  - 有效日期 2018-12-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/our-collaborations-with-academia-to-advance-the-field-of-ai`
+  - 有效日期 2017-01-23 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/reinforcement-learning-with-unsupervised-auxiliary-tasks`
+  - 有效日期 2016-11-17 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/putting-patients-at-the-heart-of-deepmind-health`
+  - 有效日期 2016-09-21 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/open-sourcing-deepmind-lab`
+  - 有效日期 2016-12-03 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/learning-to-navigate-in-cities-without-a-map`
+  - 有效日期 2018-03-29 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/learning-by-playing`
+  - 有效日期 2018-02-28 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/navigating-with-grid-like-representations-in-artificial-agents`
+  - 有效日期 2018-05-09 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/prefrontal-cortex-as-a-meta-reinforcement-learning-system`
+  - 有效日期 2018-05-14 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/a-return-to-paris`
+  - 有效日期 2018-03-29 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/scalable-agent-architecture-for-distributed-training`
+  - 有效日期 2018-02-05 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/open-sourcing-psychlab`
+  - 有效日期 2018-01-26 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/learning-explanatory-rules-from-noisy-data`
+  - 有效日期 2018-01-29 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/high-fidelity-speech-synthesis-with-wavenet`
+  - 有效日期 2017-11-22 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/specifying-ai-safety-problems-in-simple-environments`
+  - 有效日期 2017-11-28 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/population-based-training-of-neural-networks`
+  - 有效日期 2017-11-27 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/sharing-our-insights-from-designing-with-clinicians`
+  - 有效日期 2017-11-10 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/strengthening-our-commitment-to-canadian-research`
+  - 有效日期 2017-10-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/the-hippocampus-as-a-predictive-map`
+  - 有效日期 2017-10-02 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/imagine-this-creating-new-visual-concepts-by-recombining-familiar-ones`
+  - 有效日期 2017-07-12 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/going-beyond-average-for-reinforcement-learning`
+  - 有效日期 2017-07-24 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/producing-flexible-behaviours-in-simulated-environments`
+  - 有效日期 2017-07-10 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/interpreting-deep-neural-networks-using-cognitive-psychology`
+  - 有效日期 2017-06-27 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/learning-through-human-feedback`
+  - 有效日期 2017-06-12 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/innovations-of-alphago`
+  - 有效日期 2017-04-10 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/preserving-outputs-precisely-while-adaptively-rescaling-targets`
+  - 有效日期 2018-09-13 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/safety-first-ai-for-autonomous-data-centre-cooling-and-industrial-control`
+  - 有效日期 2018-08-17 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/objects-that-sound`
+  - 有效日期 2018-08-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/measuring-abstract-reasoning-in-neural-networks`
+  - 有效日期 2018-07-11 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/neural-scene-representation-and-rendering`
+  - 有效日期 2018-06-14 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/understanding-agent-cooperation`
+  - 有效日期 2017-02-02 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/wavenet-a-generative-model-for-raw-audio`
+  - 有效日期 2016-09-08 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/why-doesnt-streams-use-ai`
+  - 有效日期 2017-11-29 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/understanding-deep-learning-through-neuron-deletion`
+  - 有效日期 2018-03-21 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/wavenet-launches-in-the-google-assistant`
+  - 有效日期 2017-10-04 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/open-sourcing-sonnet-a-new-library-for-constructing-neural-networks`
+  - 有效日期 2017-04-07 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/open-sourcing-trfl-a-library-of-reinforcement-learning-building-blocks`
+  - 有效日期 2018-10-17 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/learning-to-write-programs-that-generate-images`
+  - 有效日期 2018-03-27 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/stop-look-and-listen-to-the-people-you-want-to-help`
+  - 有效日期 2018-03-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/why-we-launched-deepmind-ethics-society`
+  - 有效日期 2017-10-03 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/exploring-the-mysteries-of-go-with-alphago-and-chinas-top-players`
+  - 有效日期 2017-04-10 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/trust-confidence-and-verifiable-data-audit`
+  - 有效日期 2017-03-09 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/distill-communicating-the-science-of-machine-learning`
+  - 有效日期 2017-03-20 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/our-first-coo-lila-ibrahim-takes-deepmind-to-the-next-level`
+  - 有效日期 2018-04-11 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/working-with-the-nhs-to-build-lifesaving-technology`
+  - 有效日期 2016-11-22 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepminds-work-in-2016-a-round-up`
+  - 有效日期 2017-01-03 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/researching-patient-deterioration-with-the-us-department-of-veterans-affairs`
+  - 有效日期 2018-02-22 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/independent-reviewers-release-first-annual-report-on-deepmind-health`
+  - 有效日期 2017-07-05 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/collaborating-with-patients-for-better-outcomes`
+  - 有效日期 2017-12-19 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/the-information-commissioner-the-royal-free-and-what-weve-learned`
+  - 有效日期 2017-07-03 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/scaling-streams-with-google`
+  - 有效日期 2018-11-13 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/expanding-our-research-on-breast-cancer-screening-to-japan`
+  - 有效日期 2018-10-04 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/using-ai-to-plan-head-and-neck-cancer-treatments`
+  - 有效日期 2018-09-13 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/royal-free-london-publishes-findings-of-legal-audit-in-use-of-streams`
+  - 有效日期 2018-06-13 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-health-response-to-independent-reviewers-report-2018`
+  - 有效日期 2018-06-15 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/a-neural-approach-to-relational-reasoning`
+  - 有效日期 2017-06-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/applying-machine-learning-to-mammography-screening-for-breast-cancer`
+  - 有效日期 2017-11-24 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/bringing-the-best-of-mobile-technology-to-imperial-college-healthcare-nhs-trust`
+  - 有效日期 2016-12-22 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/we-are-very-excited-to-announce-the-launch-of-deepmind-health`
+  - 有效日期 2016-02-24 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-meet-android`
+  - 有效日期 2018-05-08 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-papers-at-nips-2017`
+  - 有效日期 2017-12-01 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-papers-at-iclr-2018`
+  - 有效日期 2018-04-26 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/bringing-streams-to-yeovil-district-hospital-nhs-foundation-trust`
+  - 有效日期 2017-11-05 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-papers-at-icml-2017-part-three`
+  - 有效日期 2017-08-04 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-papers-at-icml-2017-part-two`
+  - 有效日期 2017-08-04 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-papers-at-icml-2017-part-one`
+  - 有效日期 2017-08-04 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/predicting-eye-disease-with-moorfields-eye-hospital`
+  - 有效日期 2018-11-05 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/enhancing-patient-safety-at-taunton-and-somerset-nhs-foundation-trust`
+  - 有效日期 2017-06-21 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/deepmind-papers-at-icml-2018`
+  - 有效日期 2018-07-09 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/a-major-milestone-for-the-treatment-of-eye-disease`
+  - 有效日期 2018-08-13 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://deepmind.google/blog/a-milestone-for-deepmind-health-and-streams`
+  - 有效日期 2017-02-27 早于 policy.since 2019-01-01，跳过
+
+---
+
+## 2026-08-30T12:29:17.742Z（mistral-ai）
+
+- 错误总数：0
+
+无错误。
+
+---
+
+## 2026-08-30T12:29:34.098Z（eleuther-ai）
+
+- 错误总数：0
+
+无错误。
+
+---
+
+## 2026-08-30T12:29:38.951Z（openai）
+
+- 错误总数：22
+
+### openai（22 条）
+
+- **fetch** `https://openai.com/index/introducing-gpt-rosalind`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/introducing-gpt-rosalind
+- **integrity** [outside-backfill-window] `https://openai.com/index/hugging-face-incident-and-the-road-ahead`
+  - 有效日期 May 12 早于 policy.since 2019-01-01，跳过
+- **fetch** `https://openai.com/index/building-codex-windows-sandbox`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/building-codex-windows-sandbox
+- **fetch** `https://openai.com/index/introducing-aardvark`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/introducing-aardvark
+- **fetch** `https://openai.com/index/scaling-coordinated-vulnerability-disclosure`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/scaling-coordinated-vulnerability-disclosure
+- **fetch** `https://openai.com/index/running-codex-safely`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/running-codex-safely
+- **fetch** `https://openai.com/index/disrupting-a-covert-iranian-influence-operation`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/disrupting-a-covert-iranian-influence-operation
+- **fetch** `https://openai.com/index/openai-appoints-retired-us-army-general`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/openai-appoints-retired-us-army-general
+- **fetch** `https://openai.com/index/scientific-computing-agentic-ai`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/scientific-computing-agentic-ai
+- **fetch** `https://openai.com/index/chatgpt-agent-system-card`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/chatgpt-agent-system-card
+- **fetch** `https://openai.com/index/scaling-social-science-research`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/scaling-social-science-research
+- **fetch** `https://openai.com/index/introducing-evmbench`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/introducing-evmbench
+- **fetch** `https://openai.com/index/our-commitment-to-community-safety`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/our-commitment-to-community-safety
+- **fetch** `https://openai.com/index/beyond-rate-limits`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/beyond-rate-limits
+- **fetch** `https://openai.com/index/openai-safety-update`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/openai-safety-update
+- **fetch** `https://openai.com/index/accelerating-science-gpt-5`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/accelerating-science-gpt-5
+- **fetch** `https://openai.com/index/advancing-youth-safety-in-emea`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/advancing-youth-safety-in-emea
+- **fetch** `https://openai.com/index/us-caisi-uk-aisi-ai-update`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/us-caisi-uk-aisi-ai-update
+- **fetch** `https://openai.com/index/bio-bug-bounty`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/bio-bug-bounty
+- **fetch** `https://openai.com/index/openai-frontier-governance-framework`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/openai-frontier-governance-framework
+- **fetch** `https://openai.com/index/mrc-supercomputer-networking`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/mrc-supercomputer-networking
+- **fetch** `https://openai.com/index/update-on-safety-and-security-practices`
+  - extractor: content too short (0 chars, minimum 200) for https://openai.com/index/update-on-safety-and-security-practices
+
+---
+
+## 2026-08-30T12:29:49.828Z（lilian-weng）
+
+- 错误总数：0
+
+无错误。
+
+---
+
+## 2026-08-30T12:30:36.094Z（github-engineering）
+
+- 错误总数：30
+
+### github-engineering（30 条）
+
+- **integrity** [todo-marker] `https://github.blog/engineering/user-experience/your-alt-text-passes-automated-checks-that-doesnt-mean-its-any-good`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/stretching-spokes`
+  - 有效日期 2017-10-13 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/moving-persistent-data-out-of-redis`
+  - 有效日期 2017-01-10 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/using-mysql-performance-schema-for-workload-analysis`
+  - 有效日期 2015-05-19 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/engineering-principles/deploying-branches-to-github-com`
+  - 有效日期 2015-06-02 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/platform-security/applying-machine-intelligence-to-security-alerts`
+  - 有效日期 2018-10-09 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/platform-security/githubs-csp-journey`
+  - 有效日期 2016-04-12 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/user-experience/a-formal-spec-for-github-markdown`
+  - 有效日期 2017-03-14 早于 policy.since 2019-01-01，跳过
+- **integrity** [todo-marker] `https://github.blog/engineering/engineering-principles/reducing-flaky-builds-by-18x`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/introducing-the-new-github-status-site`
+  - 有效日期 2018-12-11 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/platform-security/crypto-deprecation-notice`
+  - 有效日期 2017-02-27 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/platform-security/githubs-post-csp-journey`
+  - 有效日期 2017-01-19 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/upgrading-github-from-rails-3-2-to-5-2`
+  - 有效日期 2018-09-28 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/platform-security/githubs-bug-bounty-workflow`
+  - 有效日期 2017-02-22 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/mysql-testing-automation-at-github`
+  - 有效日期 2017-07-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/mysql-high-availability-at-github`
+  - 有效日期 2018-06-20 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/platform-security/behind-the-scenes-of-github-token-scanning`
+  - 有效日期 2018-10-17 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/introducing-glb`
+  - 有效日期 2016-09-22 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/architecture-optimization/how-four-native-developers-wrote-an-electron-app`
+  - 有效日期 2017-05-16 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/architecture-optimization/how-we-made-diff-pages-3x-faster`
+  - 有效日期 2016-12-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/enabling-split-authority-dns-with-octodns`
+  - 有效日期 2017-04-27 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/mitigating-replication-lag-and-reducing-read-load-with-freno`
+  - 有效日期 2017-10-13 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/engineering-principles/removing-jquery-from-github-frontend`
+  - 有效日期 2018-09-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/dns-infrastructure-at-github`
+  - 有效日期 2017-05-31 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/user-experience/driving-changes-from-designs`
+  - 有效日期 2018-04-12 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/engineering-principles/how-github-uses-github-to-document-github`
+  - 有效日期 2015-01-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/engineering-principles/eight-lessons-learned-hacking-on-github-pages-for-six-months`
+  - 有效日期 2015-04-27 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/architecture-optimization/delivering-octicons-with-svg`
+  - 有效日期 2016-02-22 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/yummy-cookies-across-domains`
+  - 有效日期 2013-04-09 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://github.blog/engineering/infrastructure/tcmalloc-and-mysql`
+  - 有效日期 2013-02-21 早于 policy.since 2019-01-01，跳过
+
+---
+
+## 2026-08-30T12:30:45.654Z（lastwhisper）
+
+- 错误总数：3
+
+### lastwhisper（3 条）
+
+- **integrity** [todo-marker] `https://keli-wen.github.io/One-Poem-Suffices/one-poem-suffices/context-engineering`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://keli-wen.github.io/One-Poem-Suffices/zen-of-harness-engineering/why-grill-me`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://keli-wen.github.io/One-Poem-Suffices/scaling-thoughts/2025-review`
+  - warn: 正文含 todo-marker 标记（提示性）
+
+---
+
+## 2026-08-30T12:30:57.174Z（hamel-husain）
+
+- 错误总数：1
+
+### hamel-husain（1 条）
+
+- **integrity** [template-placeholder] `https://hamel.dev/blog/posts/llm-judge`
+  - warn: 正文含 template-placeholder 标记（提示性）
+
+---
+
+## 2026-08-30T12:31:06.369Z（andrej-karpathy）
+
+- 错误总数：16
+
+### andrej-karpathy（16 条）
+
+- **integrity** [todo-marker] `https://karpathy.bearblog.dev/the-append-and-review-note`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [missing-published-date] `https://karpathy.github.io/2026/02/12/microgpt`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2022/03/14/lecun1989`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2019/04/25/recipe`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2016/09/07/phd`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2015/10/25/selfie`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2015/03/30/breaking-convnets`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2014/08/03/quantifying-productivity`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2014/07/02/visualizing-top-tweeps-with-t-sne-in-Javascript`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2014/07/01/switching-to-jekyll`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2014/07/03/feature-learning-escapades`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2014/04/26/datascience-weekly-interview`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2013/11/27/quantifying-hacker-news`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2013/11/23/chrome-extension-programming`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2012/10/22/state-of-computer-vision`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://karpathy.github.io/2011/04/27/manually-classifying-cifar10`
+  - published_at 缺失且无显式 fallback
+
+---
+
+## 2026-08-30T12:32:31.372Z（microsoft-research）
+
+- 错误总数：44
+
+### microsoft-research（44 条）
+
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/exploding-software-engineering-myths`
+  - 有效日期 2009-10-07 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/microsoft-makes-its-presence-felt-at-ghc`
+  - 有效日期 2010-09-28 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/hopper-event-inspiring-interest-cs`
+  - 有效日期 2012-10-05 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/project-premonition-bringing-researchers-together-to-detect-diseases-before-they-become-an-outbreak`
+  - 有效日期 2015-06-10 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/latest-microsoft-research-luminary-lucas-joppa-conservation-scientist`
+  - 有效日期 2013-12-16 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/gulwani-wins-2014-robin-milner-young-researcher-award`
+  - 有效日期 2014-07-01 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/jennifer-chayes-opens-inaugural-women-in-data-science-conference`
+  - 有效日期 2015-11-01 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/minimizing-trial-and-error-in-the-drug-discovery-process`
+  - 有效日期 2018-11-29 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/mind-meld-microsoft-research-style-2`
+  - 有效日期 2016-03-25 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/opening-the-door-to-innovation-winners-of-the-first-microsoft-open-source-challenge-announced`
+  - 有效日期 2016-04-26 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/equal-parts-passion-skill-key-microsoft-research-high-school-intern-projects`
+  - 有效日期 2017-10-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/microsoft-research-redmond-year-in-review`
+  - 有效日期 2011-12-31 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/20th-anniversary-gets-a-fitting-finale`
+  - 有效日期 2011-09-27 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/and-the-winners-are`
+  - 有效日期 2006-09-26 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/thinking-outside-of-the-black-box-of-machine-learning-on-the-long-quest-to-perfecting-automatic-speech-recognition`
+  - 有效日期 2018-08-31 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/encouraging-developers-and-manufacturers-to-innovate-with-eye-control`
+  - 有效日期 2018-10-31 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/microsoft-research-and-the-industrial-research-cycle`
+  - 有效日期 2017-01-30 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/microsoft-research-team-creates-seattle-gigapixel-artzoom-interactive-city-panorama`
+  - 有效日期 2014-01-27 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/researchers-build-nanoscale-computational-circuit-boards-dna`
+  - 有效日期 2017-07-24 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/dna-binding-rate`
+  - 有效日期 2017-11-08 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/expeditions-exploring-the-unknown`
+  - 有效日期 2016-02-26 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/microsoft-research-welcomes-landon-cox-senior-researcher-passion-privacy-empowering-users-worldwide`
+  - 有效日期 2018-05-15 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/microsoft-airsim-now-available-on-unity`
+  - 有效日期 2018-11-14 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/z3-wins-2015-acm-sigplan-award`
+  - 有效日期 2015-06-16 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/chose-stem-event-recap`
+  - 有效日期 2018-02-14 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/2013-seif-awards-support-researchers-in-software-engineering`
+  - 有效日期 2013-04-04 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/uist-showcases-novel-interfaces`
+  - 有效日期 2010-10-04 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/addressing-fairness-accountability-and-transparency-in-machine-learning`
+  - 有效日期 2014-12-22 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/dowhy-a-library-for-causal-inference`
+  - 有效日期 2018-08-21 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/microsoft-research-inria-joint-centre-inventing-today-tomorrows-world`
+  - 有效日期 2014-05-19 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/microsoft-shines-nsdi-18`
+  - 有效日期 2018-04-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/chronozoom-challenge-visualize-history-and-win`
+  - 有效日期 2013-11-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/12-18-14-equation-of-a-fuzzing-curve-part-1-2`
+  - 有效日期 2014-12-18 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/practice-and-theory-of-security-reviews`
+  - 有效日期 2014-07-18 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/security-reviews-the-heuristics-zoo-part-1-2`
+  - 有效日期 2014-07-23 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/estimating-hidden-bug-count-part-1-3`
+  - 有效日期 2014-09-30 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/is-pluto-a-planet`
+  - 有效日期 2016-05-25 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/equation-of-a-fuzzing-curve-part-2-2`
+  - 有效日期 2015-01-06 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/practice-and-theory-of-security-reviews-part-3`
+  - 有效日期 2014-08-04 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/security-reviews-the-heuristics-zoo-part-2-2`
+  - 有效日期 2014-07-28 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/estimating-hidden-bug-count-part-2-3`
+  - 有效日期 2014-09-30 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/genetic-algorithm-in-reverse-mode`
+  - 有效日期 2017-07-24 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/estimating-hidden-bug-count-part-3-3`
+  - 有效日期 2014-10-03 早于 policy.since 2019-01-01，跳过
+- **integrity** [outside-backfill-window] `https://www.microsoft.com/en-us/research/blog/microsoft-research-2018-10-memorable-blogs-topping-a-year-of-open-source-and-innovation`
+  - 有效日期 2018-12-27 早于 policy.since 2019-01-01，跳过
+
+---
+
+## 2026-08-30T12:33:23.582Z（sebastian-raschka）
+
+- 错误总数：1
+
+### sebastian-raschka（1 条）
+
+- **integrity** [todo-marker] `https://magazine.sebastianraschka.com/p/supporting-ahead-of-ai`
+  - warn: 正文含 todo-marker 标记（提示性）
+
+---
+
+## 2026-08-30T12:33:38.744Z（jay-alammar）
+
+- 错误总数：0
+
+无错误。
