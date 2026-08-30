@@ -22,29 +22,46 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkRehype from 'remark-rehype';
 import rehypeKatex from 'rehype-katex';
-import { createHighlighter, type Highlighter } from 'shiki';
+// 细粒度导入（shiki/core + 按需语言/主题模块）：shiki 主入口会把全量语言图
+// （cpp/emacs-lisp/wasm 引擎等）预打包进 server bundle（曾致 dist/server 14M），
+// 这里只带 13 种语言 + 1 主题，JS 引擎见 @shikijs/engine-javascript。
+import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
+import langJavascript from 'shiki/langs/javascript.mjs';
+import langTypescript from 'shiki/langs/typescript.mjs';
+import langJsx from 'shiki/langs/jsx.mjs';
+import langTsx from 'shiki/langs/tsx.mjs';
+import langPython from 'shiki/langs/python.mjs';
+import langJson from 'shiki/langs/json.mjs';
+import langBash from 'shiki/langs/bash.mjs';
+import langShell from 'shiki/langs/shell.mjs';
+import langHtml from 'shiki/langs/html.mjs';
+import langCss from 'shiki/langs/css.mjs';
+import langMarkdown from 'shiki/langs/markdown.mjs';
+import langYaml from 'shiki/langs/yaml.mjs';
+import langSql from 'shiki/langs/sql.mjs';
+import themeGithubLightDefault from 'shiki/themes/github-light-default.mjs';
 import { createJavaScriptRegexEngine } from '@shikijs/engine-javascript';
 import { visit } from 'unist-util-visit';
 import { toString } from 'hast-util-to-string';
 import type { Root, Element } from 'hast';
 import rehypeStringify from 'rehype-stringify';
 
-/** 博客代码块常用语言（控制 bundle 大小）。 */
+/** 博客代码块常用语言（按需加载，控制 bundle 大小）。 */
 const HIGHLIGHT_LANGS = [
-  'javascript',
-  'typescript',
-  'jsx',
-  'tsx',
-  'python',
-  'json',
-  'bash',
-  'shell',
-  'html',
-  'css',
-  'markdown',
-  'yaml',
-  'sql',
-] as const;
+  langJavascript,
+  langTypescript,
+  langJsx,
+  langTsx,
+  langPython,
+  langJson,
+  langBash,
+  langShell,
+  langHtml,
+  langCss,
+  langMarkdown,
+  langYaml,
+  langSql,
+];
 
 const HIGHLIGHT_THEME = 'github-light-default';
 
@@ -54,7 +71,7 @@ const HIGHLIGHT_THEME = 'github-light-default';
  * 创建强制走 WASM）。unified 的 use() 会以 attacher 工厂方式调用本函数
  * （plugin.call(processor, input)），故返回 transformer。
  */
-function rehypeHighlight(input: { highlighter: Highlighter }) {
+function rehypeHighlight(input: { highlighter: HighlighterCore }) {
   const { highlighter } = input;
   return (tree: Root) => {
     visit(tree, 'element', (node: Element, index, parent) => {
@@ -296,10 +313,10 @@ function isExternalHttpUrl(value: string, baseUrl: string | undefined): boolean 
   }
 }
 
-/** 预构建 highlighter（JS 引擎，无 WASM，Worker 兼容）。 */
-const highlighterPromise = createHighlighter({
-  themes: [HIGHLIGHT_THEME],
-  langs: [...HIGHLIGHT_LANGS],
+/** 预构建 highlighter（JS 引擎，无 WASM，Worker 兼容；细粒度模块导入控制 bundle）。 */
+const highlighterPromise = createHighlighterCore({
+  themes: [themeGithubLightDefault],
+  langs: HIGHLIGHT_LANGS,
   engine: createJavaScriptRegexEngine(),
 });
 

@@ -109,8 +109,6 @@ export interface SourceConfig {
   allow_non_article_paths?: boolean;
   /** 每次增量更新的篇数上限；未设则用 DEFAULT_LIMIT_PER_SOURCE。CLI `--limit` 仍可全局覆盖。 */
   limit?: number;
-  /** 发现策略：`auto`（默认）首个非空发现源即返回；`merge` 四路并集去重（覆盖更全，略慢）。 */
-  discovery_strategy?: 'auto' | 'merge';
   /** 子 sitemap 抓取上限；未设则用 DEFAULT_MAX_CHILD_SITEMAPS。 */
   max_child_sitemaps?: number;
   /** 清点（census）口径的发布年份下限；未设时 company 源用 2019、personal 源
@@ -176,13 +174,6 @@ export interface TranslationResult {
   translationStatus?: 'official-zh' | 'native-zh' | 'model';
   /** Official Simplified Chinese URL when model/official content has one. */
   originalZhUrl?: string;
-}
-
-export interface UpdateOptions {
-  rootDir: string;
-  dryRun: boolean;
-  sourceId?: string;
-  limit?: number;
 }
 
 export interface SourceUpdateResult {

@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { createTranslateClient, routeTranslator } from './translate';
 import { createTranslateV2Client } from './translate-v2';
 import { resolveAiProvider } from './ai-provider';
+import { appendErrorLedger, runWithConcurrency } from './concurrency';
 import { createFetchImpl } from './network';
 import { createUpdateRepositories } from './repository-factory';
 import { parseVersionFile } from '../../worker/domain/article';
@@ -168,43 +169,14 @@ async function scanMissingZh(rootDir: string, sourceId?: string): Promise<Pendin
   return pending;
 }
 
-async function runWithConcurrency<T>(
-  items: T[],
-  concurrency: number,
-  worker: (item: T, index: number) => Promise<void>,
-): Promise<void> {
-  let cursor = 0;
-  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
-    while (cursor < items.length) {
-      const index = cursor;
-      cursor += 1;
-      await worker(items[index], index);
-    }
-  });
-  await Promise.all(runners);
-}
-
-async function appendErrorLedger(rootDir: string, errorLog: string, section: string): Promise<void> {
-  const file = path.resolve(rootDir, errorLog);
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  let existing = '';
-  try {
-    existing = await fs.readFile(file, 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-  }
-  const header = existing ? '' : '# 批量翻译错误记录\n\n';
-  await fs.writeFile(file, `${header}${existing ? `${existing.replace(/\s+$/, '')}\n\n---\n\n` : ''}${section}`, 'utf8');
-}
-
 async function run() {
   const options = parseTranslateArgs(process.argv.slice(2));
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const logger = consoleLogger;
 
+  // AI_PROVIDER 未设时回落平铺变量，报错口径不变。
+  const provider = resolveAiProvider(process.env);
   if (!options.dryRun) {
-    // AI_PROVIDER 未设时回落平铺变量，报错口径不变。
-    const provider = resolveAiProvider(process.env);
     if (!provider.apiKey || !provider.baseUrl || !provider.model) {
       throw new Error('OPENAI_API_KEY, OPENAI_BASE_URL and TRANSLATION_MODEL are required (loaded from .env)');
     }
@@ -227,7 +199,6 @@ async function run() {
 
   const fetchImpl = createFetchImpl(logger);
   const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
-  const provider = resolveAiProvider(process.env);
   const common = {
     apiKey: provider.apiKey,
     baseUrl: provider.baseUrl,
@@ -246,7 +217,6 @@ async function run() {
 
   let success = 0;
   let failed = 0;
-  let skipped = 0;
   const errors: string[] = [];
   const startedAt = new Date().toISOString();
 
@@ -275,7 +245,7 @@ async function run() {
 
   const finishedAt = new Date().toISOString();
   logger.info('');
-  logger.info(`Done: translated=${success} failed=${failed} (skipped ${skipped})`);
+  logger.info(`Done: translated=${success} failed=${failed}`);
   logger.info(`Error ledger appended: ${options.errorLog}`);
 
   if (errors.length > 0) {
@@ -287,7 +257,7 @@ async function run() {
       ...errors.map((error) => `- \`${error}\``),
       '',
     ].join('\n');
-    await appendErrorLedger(rootDir, options.errorLog, section);
+    await appendErrorLedger(rootDir, options.errorLog, '# 批量翻译错误记录\n\n', section);
   }
 
   if (options.reportDir) {

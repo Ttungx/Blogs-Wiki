@@ -134,7 +134,7 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
       'update_mode', 'prefer_official_zh', 'zh_path_map', 'git_date', 'api',
       'article_paths', 'exclude_paths', 'url_date_pattern',
       'min_content_chars', 'quality_filter', 'allow_non_article_paths',
-      'limit', 'discovery_strategy', 'max_child_sitemaps', 'min_published_year', 'backfill',
+
     ]);
     for (const key of Object.keys(value)) {
       if (!ALLOWED_KEYS.has(key)) {
@@ -181,10 +181,6 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
       } else if (typeof value.domain === 'string' && value.extra_domains.includes(value.domain.trim().toLowerCase())) {
         issues.push({ path: `[${index}].extra_domains`, message: 'must not repeat `domain`' });
       }
-    }
-
-    if (value.discovery_strategy !== undefined && !['auto', 'merge'].includes(value.discovery_strategy as string)) {
-      issues.push({ path: `[${index}].discovery_strategy`, message: 'must be "auto" or "merge"' });
     }
 
     // backfill 策略（Stage 5 消费）。

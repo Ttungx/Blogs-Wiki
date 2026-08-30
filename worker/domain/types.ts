@@ -128,14 +128,6 @@ export interface SourceConfig {
   excludePaths?: string[];
 }
 
-/** 发现阶段的候选条目。 */
-export interface DiscoveredItem {
-  sourceId: string;
-  url: string;
-  title?: string;
-  publishedAt?: string;
-}
-
 /**
  * 抓取 + 提取后、翻译前的规范化文章。
  *

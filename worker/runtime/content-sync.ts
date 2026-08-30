@@ -367,7 +367,7 @@ export function parseSyncPayload(raw: string): SyncPayload {
   }
   const urls = new Set<string>();
   for (const [i, a] of articles.entries()) {
-    const key = `${a.sourceId}\u0000${a.originalUrl}`;
+    const key = articleKey(a.sourceId, a.originalUrl);
     if (urls.has(key)) {
       throw new SyncPayloadError(
         `duplicate (sourceId, originalUrl) in articles[${i}]: ${a.sourceId} / ${a.originalUrl}`,
@@ -386,7 +386,9 @@ export function parseSyncPayload(raw: string): SyncPayload {
   return { sources, articles, sql };
 }
 
-// ── 写入语句构建（幂等 upsert，语义与 D1ArticleRepository 一致） ──
+// ── 写入语句构建（幂等 upsert）。注意：与 d1-article-repository 是两套刻意
+// 不同的写入口径——本模块面向管线批量同步，可选字段（image_url/author/
+// excerpt 等）冲突时 COALESCE 保留现值；repo 面向单篇编排直接覆盖。 ──
 
 const SOURCE_UPSERT_SQL = `
   INSERT INTO sources (
@@ -486,23 +488,29 @@ function versionUpsert(db: D1Database, articleId: string, version: SyncVersion):
     );
 }
 
-function articleKey(article: SyncArticle): string {
-  return `${article.sourceId}\u0000${article.originalUrl}`;
+/** 去重/预检统一键：与 D1 UNIQUE(source_id, original_url) 同构。 */
+function articleKey(sourceId: string, originalUrl: string): string {
+  return `${sourceId}\u0000${originalUrl}`;
 }
 
-/** 预检：articles 引用的来源必须已存在（payload.sources 或 DB），避免 FK 失败。 */
-async function ensureSourcesExist(db: D1Database, payload: SyncPayload): Promise<void> {
-  const provided = new Set(payload.sources.map((s) => s.id));
-  const needed = new Set(payload.articles.map((a) => a.sourceId));
+/** 来源存在性点查核心：返回缺失的 sourceId 列表（两条写路径共用）。 */
+async function findMissingSources(db: D1Database, needed: Iterable<string>): Promise<string[]> {
   const missing: string[] = [];
   for (const id of needed) {
-    if (provided.has(id)) continue;
     const row = await db
       .prepare('SELECT 1 AS hit FROM sources WHERE id = ? LIMIT 1')
       .bind(id)
       .first();
     if (!row) missing.push(id);
   }
+  return missing;
+}
+
+/** 预检：articles 引用的来源必须已存在（payload.sources 或 DB），避免 FK 失败。 */
+async function ensureSourcesExist(db: D1Database, payload: SyncPayload): Promise<void> {
+  const provided = new Set(payload.sources.map((s) => s.id));
+  const needed = [...new Set(payload.articles.map((a) => a.sourceId))].filter((id) => !provided.has(id));
+  const missing = await findMissingSources(db, needed);
   if (missing.length > 0) {
     throw new SyncPayloadError(
       `articles reference unknown sources: ${missing.join(', ')}; include them in payload.sources or seed them first`,
@@ -510,28 +518,43 @@ async function ensureSourcesExist(db: D1Database, payload: SyncPayload): Promise
   }
 }
 
-/** 预检：按 (source_id, original_url) 分类已存在文章，用于统计 created/updated。 */
-async function findExistingArticleKeys(
+/** check 预检点查 SQL：articles 已存在命中。 */
+const ARTICLES_HIT_SQL = 'SELECT 1 AS hit FROM articles WHERE source_id = ? AND original_url = ? LIMIT 1';
+
+/**
+ * 按 (source_id, original_url) 分块批量点查（每 chunk ≤ D1_BATCH_LIMIT），
+ * 返回命中的 articleKey 集合。bindExtra 追加各 SQL 的额外绑定参数。
+ */
+async function pointQueryExistingKeys(
   db: D1Database,
-  articles: SyncArticle[],
+  items: ReadonlyArray<{ sourceId: string; url: string }>,
+  sql: string,
+  bindExtra?: (item: { sourceId: string; url: string }) => unknown[],
 ): Promise<Set<string>> {
   const existing = new Set<string>();
-  for (let i = 0; i < articles.length; i += D1_BATCH_LIMIT) {
-    const chunk = articles.slice(i, i + D1_BATCH_LIMIT);
+  for (let i = 0; i < items.length; i += D1_BATCH_LIMIT) {
+    const chunk = items.slice(i, i + D1_BATCH_LIMIT);
     const results = await db.batch(
-      chunk.map((a) =>
-        db
-          .prepare('SELECT 1 AS hit FROM articles WHERE source_id = ? AND original_url = ? LIMIT 1')
-          .bind(a.sourceId, a.originalUrl),
+      chunk.map((item) =>
+        db.prepare(sql).bind(item.sourceId, item.url, ...(bindExtra?.(item) ?? [])),
       ),
     );
     results.forEach((result, j) => {
       if (result && result.results && result.results.length > 0) {
-        existing.add(articleKey(chunk[j]!));
+        existing.add(articleKey(chunk[j]!.sourceId, chunk[j]!.url));
       }
     });
   }
   return existing;
+}
+
+/** 预检：按 (source_id, original_url) 分类已存在文章，用于统计 created/updated。 */
+function findExistingArticleKeys(db: D1Database, articles: SyncArticle[]): Promise<Set<string>> {
+  return pointQueryExistingKeys(
+    db,
+    articles.map((a) => ({ sourceId: a.sourceId, url: a.originalUrl })),
+    ARTICLES_HIT_SQL,
+  );
 }
 
 /**
@@ -555,7 +578,7 @@ async function prepareSyncWrite(
   let updated = 0;
 
   for (const article of payload.articles) {
-    if (existingKeys.has(articleKey(article))) {
+    if (existingKeys.has(articleKey(article.sourceId, article.originalUrl))) {
       updated += 1;
     } else {
       created += 1;
@@ -755,7 +778,12 @@ interface CheckPayload {
   items: CheckItem[];
 }
 
-function parseCheckPayload(raw: string): CheckPayload {
+/** {items:[...]} 信封解析：JSON/形状/上限校验后逐项交给 parseEntry（两端点共用）。 */
+function parseItemsEnvelope<T>(
+  raw: string,
+  maxItems: number,
+  parseEntry: (record: Record<string, unknown>, where: string) => T,
+): T[] {
   let obj: unknown;
   try {
     obj = JSON.parse(raw);
@@ -769,82 +797,47 @@ function parseCheckPayload(raw: string): CheckPayload {
   if (!Array.isArray(items)) {
     throw new SyncPayloadError('payload.items must be an array');
   }
-  if (items.length > MAX_CHECK_ITEMS) {
-    throw new SyncPayloadError(`too many items: ${items.length} (max ${MAX_CHECK_ITEMS})`);
+  if (items.length > maxItems) {
+    throw new SyncPayloadError(`too many items: ${items.length} (max ${maxItems})`);
   }
-  const parsed: CheckItem[] = [];
-  for (let i = 0; i < items.length; i += 1) {
+  return items.map((entry, i) => {
     const where = `items[${i}]`;
-    const entry = items[i];
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
       throw new SyncPayloadError(`${where} must be an object`);
     }
-    const record = entry as Record<string, unknown>;
-    const item: CheckItem = {
-      sourceId: requireString(record.sourceId, 'sourceId', where),
-      url: requireString(record.url, 'url', where),
-    };
-    if (!isValidHttpUrl(item.url)) {
-      throw new SyncPayloadError(`${where}.url must be an http(s) URL`);
-    }
-    parsed.push(item);
-  }
-  return { items: parsed };
+    return parseEntry(entry as Record<string, unknown>, where);
+  });
 }
 
-/** 按 (source_id, original_url) 分块批量查询已存在文章（复用 sync 预检模式）。 */
-async function findExistingCheckItems(
-  db: D1Database,
-  items: CheckItem[],
-): Promise<Set<string>> {
-  const existing = new Set<string>();
-  for (let i = 0; i < items.length; i += D1_BATCH_LIMIT) {
-    const chunk = items.slice(i, i + D1_BATCH_LIMIT);
-    const results = await db.batch(
-      chunk.map((item) =>
-        db
-          .prepare('SELECT 1 AS hit FROM articles WHERE source_id = ? AND original_url = ? LIMIT 1')
-          .bind(item.sourceId, item.url),
-      ),
-    );
-    results.forEach((result, j) => {
-      if (result && result.results && result.results.length > 0) {
-        existing.add(`${chunk[j]!.sourceId}\u0000${chunk[j]!.url}`);
+function parseCheckPayload(raw: string): CheckPayload {
+  return {
+    items: parseItemsEnvelope(raw, MAX_CHECK_ITEMS, (record, where) => {
+      const item: CheckItem = {
+        sourceId: requireString(record.sourceId, 'sourceId', where),
+        url: requireString(record.url, 'url', where),
+      };
+      if (!isValidHttpUrl(item.url)) {
+        throw new SyncPayloadError(`${where}.url must be an http(s) URL`);
       }
-    });
-  }
-  return existing;
+      return item;
+    }),
+  };
 }
 
-/** 查询 TTL 窗口内的门禁拒绝记录（source_items.status='skipped'），点查同构。 */
-async function findRejectedCheckItems(
-  db: D1Database,
-  items: CheckItem[],
-): Promise<Set<string>> {
-  const rejected = new Set<string>();
-  const since = `-${REJECTION_TTL_DAYS} days`;
-  for (let i = 0; i < items.length; i += D1_BATCH_LIMIT) {
-    const chunk = items.slice(i, i + D1_BATCH_LIMIT);
-    const results = await db.batch(
-      chunk.map((item) =>
-        db
-          .prepare(
-            `SELECT 1 AS hit FROM source_items
-             WHERE source_id = ? AND original_url = ?
-               AND status = 'skipped'
-               AND updated_at >= datetime('now', ?)
-             LIMIT 1`,
-          )
-          .bind(item.sourceId, item.url, since),
-      ),
-    );
-    results.forEach((result, j) => {
-      if (result && result.results && result.results.length > 0) {
-        rejected.add(`${chunk[j]!.sourceId}\u0000${chunk[j]!.url}`);
-      }
-    });
-  }
-  return rejected;
+/** TTL 窗口内的门禁拒绝缓存命中（check 预检第二查）。 */
+const REJECTED_HIT_SQL = `SELECT 1 AS hit FROM source_items
+  WHERE source_id = ? AND original_url = ?
+    AND status = 'skipped'
+    AND updated_at >= datetime('now', ?)
+  LIMIT 1`;
+
+function findExistingCheckItems(db: D1Database, items: CheckItem[]): Promise<Set<string>> {
+  return pointQueryExistingKeys(db, items, ARTICLES_HIT_SQL);
+}
+
+/** 查询 TTL 窗口内的门禁拒绝记录（source_items.status='skipped'）。 */
+function findRejectedCheckItems(db: D1Database, items: CheckItem[]): Promise<Set<string>> {
+  return pointQueryExistingKeys(db, items, REJECTED_HIT_SQL, () => [`-${REJECTION_TTL_DAYS} days`]);
 }
 
 /**
@@ -880,10 +873,10 @@ export async function handleContentCheck(
       findExistingCheckItems(env.DB, payload.items),
       findRejectedCheckItems(env.DB, payload.items),
     ]);
-    const existing = payload.items.filter((item) => {
-      const key = `${item.sourceId}\u0000${item.url}`;
-      return existingKeys.has(key) || rejectedKeys.has(key);
-    });
+    const existing = payload.items.filter((item) =>
+      existingKeys.has(articleKey(item.sourceId, item.url)) ||
+      rejectedKeys.has(articleKey(item.sourceId, item.url)),
+    );
     return json({ existing });
   } catch (error) {
     return json(
@@ -912,41 +905,19 @@ interface ItemsPayload {
 
 /** 解析并校验 items 上报载荷；结构/取值问题抛 SyncPayloadError（400）。 */
 export function parseItemsPayload(raw: string): ItemsPayload {
-  let obj: unknown;
-  try {
-    obj = JSON.parse(raw);
-  } catch {
-    throw new SyncPayloadError('invalid JSON');
-  }
-  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
-    throw new SyncPayloadError('payload must be a JSON object');
-  }
-  const items = (obj as { items?: unknown }).items;
-  if (!Array.isArray(items)) {
-    throw new SyncPayloadError('payload.items must be an array');
-  }
-  if (items.length > MAX_ITEMS) {
-    throw new SyncPayloadError(`too many items: ${items.length} (max ${MAX_ITEMS})`);
-  }
-  const parsed: RejectedEntry[] = [];
-  for (let i = 0; i < items.length; i += 1) {
-    const where = `items[${i}]`;
-    const entry = items[i];
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
-      throw new SyncPayloadError(`${where} must be an object`);
-    }
-    const record = entry as Record<string, unknown>;
-    const item: RejectedEntry = {
-      sourceId: requireString(record.sourceId, 'sourceId', where),
-      url: requireString(record.url, 'url', where),
-      code: requireString(record.code, 'code', where, 256),
-    };
-    if (!isValidHttpUrl(item.url)) {
-      throw new SyncPayloadError(`${where}.url must be an http(s) URL`);
-    }
-    parsed.push(item);
-  }
-  return { items: parsed };
+  return {
+    items: parseItemsEnvelope(raw, MAX_ITEMS, (record, where) => {
+      const item: RejectedEntry = {
+        sourceId: requireString(record.sourceId, 'sourceId', where),
+        url: requireString(record.url, 'url', where),
+        code: requireString(record.code, 'code', where, 256),
+      };
+      if (!isValidHttpUrl(item.url)) {
+        throw new SyncPayloadError(`${where}.url must be an http(s) URL`);
+      }
+      return item;
+    }),
+  };
 }
 
 /**
@@ -970,15 +941,7 @@ async function ensureSourcesExistForItems(
   db: D1Database,
   items: RejectedEntry[],
 ): Promise<void> {
-  const needed = new Set(items.map((item) => item.sourceId));
-  const missing: string[] = [];
-  for (const id of needed) {
-    const row = await db
-      .prepare('SELECT 1 AS hit FROM sources WHERE id = ? LIMIT 1')
-      .bind(id)
-      .first();
-    if (!row) missing.push(id);
-  }
+  const missing = await findMissingSources(db, new Set(items.map((item) => item.sourceId)));
   if (missing.length > 0) {
     throw new SyncPayloadError(`items reference unknown sources: ${missing.join(', ')}`);
   }

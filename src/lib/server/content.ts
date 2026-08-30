@@ -64,11 +64,6 @@ export function buildArticleId(blogId: string, slug: string): string {
   return `${blogId}/${slug}`;
 }
 
-/** 从 article id 提取 blogId 段。 */
-export function blogIdFromArticleId(articleId: string): string {
-  return articleId.split('/')[0] ?? articleId;
-}
-
 /**
  * 安全解析日期文本。缺失或无法解析时返回 null，
  * 调用方负责条件渲染，避免 `new Date(bad).toISOString()` 抛 RangeError 导致整页 500。

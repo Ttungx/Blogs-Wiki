@@ -26,6 +26,7 @@ import { loadSources } from './config';
 import { diagnoseSourceDiscovery } from './discovery';
 import { createFetchBackend, type FetchBackend } from './fetch-backend';
 import { createFetchImpl } from './network';
+import { appendErrorLedger, runWithConcurrency } from './concurrency';
 import {
   createUpdateRepositories,
   toDomainArticle,
@@ -159,7 +160,6 @@ interface SourceBackfillResult {
   eligibleByPolicy: number;
   skippedByDate: number;
   truncatedByMax: number;
-  duplicates: number;
   fetchedSuccess: number;
   fetchedFailed: number;
   earliestSaved: string | null;
@@ -197,22 +197,6 @@ function sortNewestFirst(items: DiscoveredArticle[]): DiscoveredArticle[] {
   });
 }
 
-async function runWithConcurrency<T>(
-  items: T[],
-  concurrency: number,
-  worker: (item: T, index: number) => Promise<void>,
-): Promise<void> {
-  let cursor = 0;
-  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
-    while (cursor < items.length) {
-      const index = cursor;
-      cursor += 1;
-      await worker(items[index], index);
-    }
-  });
-  await Promise.all(runners);
-}
-
 async function backfillSource(
   source: SourceConfig,
   options: CliOptions,
@@ -229,7 +213,6 @@ async function backfillSource(
     eligibleByPolicy: 0,
     skippedByDate: 0,
     truncatedByMax: 0,
-    duplicates: 0,
     fetchedSuccess: 0,
     fetchedFailed: 0,
     earliestSaved: null,
@@ -395,7 +378,7 @@ async function backfillSource(
   }
 
   logger.info(`[${source.id}] saved=${result.fetchedSuccess} failed=${result.fetchedFailed} ` +
-    `duplicates=${result.duplicates} earliest=${result.earliestSaved ?? '-'} latest=${result.latestSaved ?? '-'}`);
+    `earliest=${result.earliestSaved ?? '-'} latest=${result.latestSaved ?? '-'}`);
   return result;
 }
 
@@ -426,27 +409,6 @@ async function removeSourceOriginalFiles(rootDir: string, sourceId: string): Pro
       }
     }
   }
-}
-
-/**
- * 把本次运行追加进错误台账（保留历史），而非整体覆盖。并行 subagent 用
- * 各自 --errors 独立文件，主 agent 最后合并。
- */
-async function appendErrorLedger(
-  rootDir: string,
-  errorLog: string,
-  section: string,
-): Promise<void> {
-  const file = path.resolve(rootDir, errorLog);
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  let existing = '';
-  try {
-    existing = await fs.readFile(file, 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-  }
-  const header = existing ? '' : '# Backfill 原文抓取错误记录\n\n';
-  await fs.writeFile(file, `${header}${existing ? `${existing.replace(/\s+$/, '')}\n\n---\n\n` : ''}${section}`, 'utf8');
 }
 
 function renderAggregateErrorSection(
@@ -574,7 +536,6 @@ async function run() {
         eligibleByPolicy: 0,
         skippedByDate: 0,
         truncatedByMax: 0,
-        duplicates: 0,
         fetchedSuccess: 0,
         fetchedFailed: 1,
         earliestSaved: null,
@@ -594,7 +555,7 @@ async function run() {
 
   // 追加历史（保留每次运行记录），并行 subagent 用独立 --errors 文件。
   const section = renderAggregateErrorSection(generatedAt, scope, options.dryRun, results);
-  await appendErrorLedger(rootDir, options.errorLog, section);
+  await appendErrorLedger(rootDir, options.errorLog, '# Backfill 原文抓取错误记录\n\n', section);
   logger.info(`Error ledger appended: ${options.errorLog}`);
 
   if (options.reportDir) {

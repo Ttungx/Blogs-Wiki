@@ -24,8 +24,3 @@ export function loadActiveSources(sourceId?: string): SourceConfig[] {
   if (!sourceId) return active;
   return active.filter((s) => s.id === sourceId);
 }
-
-/** 返回所有来源（含 dry-run-only），用于审计/展示。 */
-export function loadAllSources(): SourceConfig[] {
-  return sources;
-}

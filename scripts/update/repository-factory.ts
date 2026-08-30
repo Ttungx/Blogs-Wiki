@@ -12,8 +12,6 @@ export {
   toDomainTranslation,
 } from '../../worker/domain/mappers';
 
-export type StorageBackend = 'file' | 'd1';
-
 export interface UpdateRepositories {
   articles: ArticleRepository;
   sourceState: SourceStateRepository;

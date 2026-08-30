@@ -140,6 +140,12 @@ export interface WriteArticleResult {
   created: boolean;
 }
 
+/**
+ * ⚠️ smoke-fixture 遗留路径：生产写入口是 FileArticleRepository（runner.ts
+ * 经 repository-factory），本函数当前仅被 smoke.ts 作为夹具引用，产出的
+ * 单文件 frontmatter（original_title/translated_title）是多语言重构前的
+ * 旧格式。不要用于生产；改造时需同步 smoke 的断言字段。
+ */
 export async function writeArticle(
   rootDir: string,
   blog: SourceConfig,

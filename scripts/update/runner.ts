@@ -186,12 +186,12 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
   const fetchImpl = options.fetchImpl ?? createFetchImpl(logger);
   const fetchBackend = options.fetchBackend ?? createFetchBackend(process.env.FETCH_BACKEND);
   const translate = buildTranslator(options.dryRun, options.translate, fetchImpl);
-  const pipeline = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase();
 
   logger.info(`Blogs Wiki update: ${options.dryRun ? 'dry run (discover + fetch only)' : 'full run'}`);
   logger.info(`Sources: ${sources.map((s) => s.id).join(', ') || '(none)'} | limit per source: ${limit === 0 ? 'unlimited' : limit}`);
-  if (!options.dryRun) logger.info(`Translation pipeline: ${pipeline}`);
   if (!options.dryRun) {
+    const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
+    logger.info(`Translation pipeline: ${forceV2 ? 'v2 (forced)' : 'v1 whole-article (v2 fallback >100K chars)'}`);
     logger.info(`Storage backend: ${(process.env.STORAGE_BACKEND ?? 'file').trim().toLowerCase()}`);
   }
   logger.info(`Fetch backend: ${fetchBackend.name}`);
