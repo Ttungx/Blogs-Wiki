@@ -30,7 +30,18 @@ export interface QualityGateOutcome {
   verdict: QualityVerdict;
   /** 仅 enforce 模式下 decision === 'reject' 时为 true */
   blocked: boolean;
+  /** 命中的确定性 URL 规则名（该簇不依赖模型分数） */
+  ruleHit?: string;
 }
+
+/**
+ * 已确诊的系统性误收簇（2026-08-30 人工复核结论，见 tran/CORRECTION_TASK_HANDOVER.md）：
+ * MSR research-focus 周刊为纯聚合页，模型分数漂移（0.35-0.95）无法一致处理，
+ * 走确定性规则否决，不依赖模型分数。新增规则须有复核证据支撑。
+ */
+const URL_REJECT_RULES: Array<{ name: string; pattern: RegExp }> = [
+  { name: 'msr-research-focus-weekly', pattern: /\/research-focus-/i },
+];
 
 export interface QualityModelArtifact {
   modelVersion: string;
@@ -140,13 +151,24 @@ export function appendShadowRecord(record: QualityShadowRecord, env: NodeJS.Proc
 export function evaluateQualityGate(
   article: { title?: string; contentMarkdown: string },
   mode: QualityGateMode,
-  options: { log?: (message: string) => void } = {},
+  options: { log?: (message: string) => void; url?: string } = {},
 ): QualityGateOutcome {
   if (mode === 'off') {
     return { mode, verdict: { score: 0, decision: 'keep', modelVersion: 'none', threshold: 0 }, blocked: false };
   }
   const model = loadQualityModel();
   const verdict = classifyArticleQuality(article, model);
+  const rule = options.url
+    ? URL_REJECT_RULES.find((r) => r.pattern.test(options.url!))
+    : undefined;
+  if (rule) {
+    const ruled: QualityVerdict = { ...verdict, decision: 'reject' };
+    if (mode === 'shadow') {
+      options.log?.(`quality-shadow: rule=${rule.name} wouldReject=true model=${verdict.modelVersion}`);
+      return { mode, verdict: ruled, blocked: false, ruleHit: rule.name };
+    }
+    return { mode, verdict: ruled, blocked: true, ruleHit: rule.name };
+  }
   if (mode === 'shadow') {
     options.log?.(`quality-shadow: score=${verdict.score.toFixed(4)} wouldReject=${verdict.decision === 'reject'} model=${verdict.modelVersion}`);
     return { mode, verdict, blocked: false };

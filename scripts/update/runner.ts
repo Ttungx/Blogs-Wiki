@@ -279,6 +279,7 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
           const gateMode = resolveQualityGateMode();
           const gate = evaluateQualityGate(article, gateMode, {
             log: (m) => logger.warn(`  ${item.url}: ${m}`),
+            url: item.url,
           });
           if (gateMode === 'shadow') {
             appendShadowRecord({

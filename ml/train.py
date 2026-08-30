@@ -350,8 +350,8 @@ def main_final():
         if tp == 0:
             continue
         print(f'{t_:.2f}  {tp/(tp+fp):.4f}  {wilson_lb(tp, tp+fp):.4f}    {tp/max(1,int(y[covered].sum())):.3f}  {fp}')
-    thr = pick_threshold(y[covered], oof[covered])
-    print(f'选点（prec≥0.80 且 FR≤3% 下最低阈值）: {thr}')
+    thr = 0.67  # 用户决策「大胆档」：shadow 期 wouldReject 标注宽度优先；FR@0.67≈4.8%（OOF），enforce 决策推迟到 shadow 证据
+    print(f'阈值（用户决策大胆档）: {thr}')
 
     # 2) 错误分析导出（False Reject 最高优先，plan §17）
     fr = [i for i in range(n) if y[i] == 0 and oof[i] >= thr]
@@ -370,7 +370,7 @@ def main_final():
     cv = TfidfVectorizer(analyzer=char_analyzer, min_df=5, sublinear_tf=True, norm=None)
     X = cv.fit_transform(texts)
     clf = fit_model(X, y, C=0.25, balanced=True)
-    version = 'v2-' + datetime.now(timezone.utc).strftime('%Y%m%d')
+    version = 'v3-' + datetime.now(timezone.utc).strftime('%Y%m%d')
     export(clf, cv, thr, version, y, oof, covered, train)
     gen_hardcases(version)
     print(f'artifact 已导出：{ART / version}')
@@ -442,8 +442,9 @@ def export(clf, char_v, threshold, version, y, oof, covered, train):
         vocab[names[j]] = [round(float(idf[j]), 6), round(float(w[j]), 6)]
     bias = float(clf.intercept_[0])
 
-    # 剪枝后模型在 OOF 上重打分（kept-only，与 TS 推理一致）
+    # pruned_score 仅用于 parity fixture 小样本打分（公式与 TS 推理一致）。
     kept_set = set(vocab)
+
     def pruned_score(text):
         t = normalize_text(text)
         counts = {}
@@ -457,7 +458,6 @@ def export(clf, char_v, threshold, version, y, oof, covered, train):
             idf_v, wv = vocab[g]
             s += wv * (1 + math.log(c)) * idf_v
         return 1 / (1 + math.exp(-s))
-    oof_pruned = np.array([pruned_score(train[i]['full_text']) if covered[i] else np.nan for i in range(len(train))])
     # 真·OOF 指标（unseen-source，来自 6 折留出预测；剪枝只影响 parity，不重算验证）
     ev_oof = eval_scores(y[covered], oof[covered],
                          slices=make_slices(train, np.where(covered)[0]), threshold=threshold)

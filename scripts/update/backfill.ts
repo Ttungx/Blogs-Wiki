@@ -333,6 +333,7 @@ async function backfillSource(
       const gateMode = resolveQualityGateMode();
       const qualityGate = evaluateQualityGate(article, gateMode, {
         log: (m) => logger.warn(`  - ${key}: ${m}`),
+        url: key,
       });
       if (gateMode === 'shadow') {
         appendShadowRecord({
