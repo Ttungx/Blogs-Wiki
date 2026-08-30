@@ -34,40 +34,7 @@ const blogs = defineCollection({
     })),
 });
 
-const articles = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/articles' }),
-  schema: z
-    .object({
-      blog_id: z.string().min(1),
-      original_url: webUrl,
-      language: z.enum(['en', 'zh-cn']),
-      is_original: z.boolean(),
-      image_url: webUrl.optional(),
-      title: z.string().min(1),
-      published_at: z.coerce.date(),
-      categories: z.array(category).default([]),
-      source_domain: z.string().min(1),
-      original_language: z.string().min(2).default('en'),
-      provenance: z.enum(['original', 'official-zh', 'native-zh', 'model']),
-      translation_model: z.string().min(1).optional(),
-      original_alt_url: webUrl.optional(),
-      version_at: z.coerce.date(),
-      author: z.string().min(1).optional(),
-      excerpt: z.string().min(1).optional(),
-      demo: z.boolean().default(false),
-    })
-    .transform((article) => ({
-      ...article,
-      blogId: article.blog_id,
-      originalUrl: article.original_url,
-      imageUrl: article.image_url,
-      publishedAt: article.published_at,
-      sourceDomain: article.source_domain,
-      originalLanguage: article.original_language,
-      versionAt: article.version_at,
-      translationModel: article.translation_model,
-      originalAltUrl: article.original_alt_url,
-    })),
-});
-
-export const collections = { blogs, articles };
+// 注：src/content/articles/（文件后端的本地工作目录）不再注册为 Astro 内容集合——
+// SSR 自 Phase 7 起全面读 D1，该集合已无消费者；注册反而会让回填期间的工作文件
+// 触发 schema 校验、打断 astro build（2026-08-30 全量回填时踩坑）。
+export const collections = { blogs };

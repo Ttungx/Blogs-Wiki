@@ -8,13 +8,10 @@
     "enabled": true
   },
   // 内容更新定时触发：每 15 分钟 ping Render runner 一次（单源轮转）。
-  // 25 源 × 15 分钟时间片取模 → 每源约 6.25 小时一更；
-  // ping 同时让免费实例保持常驻（约 720h/月 < 750h 免费额度），消除冷启动。
-  // ⚠️ 触发暂缓上线（2026-08-29）：crons 置空，自动工作流不启动；
-  //    上线放行时恢复 ["7,22,37,52 * * * *"] 再 deploy。
-  //    RUNNER_URL 部署 Render 服务后填实际地址，如 https://blogs-wiki-updater.onrender.com
+  // 2026-08-30 临时恢复（用户指令）：全量回填期 + 质量门禁 shadow 观察。
+  // 观察期结束如需再次暂缓：crons 置 [] 并重新 deploy（见 docs/go-live.md）。
   "triggers": {
-    "crons": []
+    "crons": ["7,22,37,52 * * * *"]
   },
   "vars": {
     "RUNNER_URL": "https://blogs-wiki-updater.onrender.com"
