@@ -456,6 +456,32 @@ function sourceUpsert(db: D1Database, source: SyncSource): D1PreparedStatement {
     );
 }
 
+/**
+ * 改名/换源预清理：文章身份迁移时避免主键冲突（kimi→moonshot 改名遗迹踩坑，
+ * 2026-08-30 moonshot 链路 HTTP 500 的根因）。
+ * 1) 新载荷 id 与既有行相同但 (source_id, original_url) 不同 → 删旧行
+ *    （子表 ON DELETE CASCADE 级联清理，新载荷自带全部版本）；
+ * 2) 同一 (source_id, original_url) 下 id 漂移（id 方案变更）→ 先删旧版本，
+ *    让新 id 下的版本写入不产生孤儿。
+ */
+const ARTICLE_ID_COLLISION_DELETE_SQL = `
+  DELETE FROM articles
+  WHERE id = ? AND NOT (source_id = ? AND original_url = ?)
+`;
+const ARTICLE_VERSION_STALE_DELETE_SQL = `
+  DELETE FROM article_versions
+  WHERE article_id IN (
+    SELECT id FROM articles WHERE source_id = ? AND original_url = ? AND id != ?
+  )
+`;
+
+function articleIdentityPreClean(db: D1Database, article: SyncArticle): D1PreparedStatement[] {
+  return [
+    db.prepare(ARTICLE_ID_COLLISION_DELETE_SQL).bind(article.id, article.sourceId, article.originalUrl),
+    db.prepare(ARTICLE_VERSION_STALE_DELETE_SQL).bind(article.sourceId, article.originalUrl, article.id),
+  ];
+}
+
 function articleUpsert(db: D1Database, article: SyncArticle): D1PreparedStatement {
   return db
     .prepare(ARTICLE_UPSERT_SQL)
@@ -584,6 +610,7 @@ async function prepareSyncWrite(
       created += 1;
     }
 
+    statements.push(...articleIdentityPreClean(db, article));
     statements.push(articleUpsert(db, article));
     for (const version of article.versions) {
       statements.push(versionUpsert(db, article.id, version));
