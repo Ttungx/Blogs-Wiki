@@ -1,7 +1,7 @@
 /**
  * 本地文章质量门禁扫描（stage 模式专用，用户决策 2026-08-31「入库但不上线」）。
  *
- * 遍历 src/content/articles/**/*.md，用当前模型逐篇打分，输出
+ * 遍历 src/content/articles 下所有 markdown 文件，用当前模型逐篇打分，输出
  * ml/local-quality-verdicts.jsonl（按相对路径对齐）：
  *   {"file":"anthropic/en/foo.md","score":0.98,"wouldReject":true,"modelVersion":"v3-..."}
  * import-local-articles.mjs 读取该文件：wouldReject 的文章 published=false
