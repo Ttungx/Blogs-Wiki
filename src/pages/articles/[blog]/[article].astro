@@ -17,7 +17,9 @@ if (!blogId || !slug) return new Response('Not Found', { status: 404 });
 
 const db = env.DB;
 // 默认路由只承载中文版本
-const articleData = await getArticle(db, blogId, slug, 'zh-cn');
+// 默认路由优先中文版；翻译缺失或演示版被清理时回退 en 原文，避免整页 404
+const articleData = (await getArticle(db, blogId, slug, 'zh-cn'))
+  ?? (await getArticle(db, blogId, slug, 'en'));
 if (!articleData) return new Response('Not Found', { status: 404 });
 
 // blogs 元数据仍从静态 collection 读取（构建期解析，SSR 可用）
