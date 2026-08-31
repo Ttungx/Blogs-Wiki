@@ -95,6 +95,7 @@ function buildChainScript(sourceId, limitArg) {
     'set -e',
     `npm run update -- --source ${JSON.stringify(sourceId)} --report logs/report${limitArg}`,
     `npm run translate:batch -- --source ${JSON.stringify(sourceId)} --report logs/report`,
+    'npm run quality-scan',
     'node scripts/import-local-articles.mjs --json --output logs/.tmp-import-articles.json',
     'node scripts/sync-local-articles.mjs --input logs/.tmp-import-articles.json',
     'echo CHAIN_OK',

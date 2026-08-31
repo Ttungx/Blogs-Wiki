@@ -89,6 +89,10 @@ export interface SyncArticle {
   sourceDomain: string;
   /** 省略 = 不触碰现有分类；提供（含空数组）= 整体替换。 */
   categories?: string[];
+  /** 入库但不上线（缺省 true）；false 的文章会保存但 SSR 不展示。 */
+  published?: boolean;
+  qualityScore?: number;
+  qualityModel?: string;
   versions: SyncVersion[];
 }
 
@@ -142,6 +146,14 @@ function requireString(value: unknown, field: string, where: string, max = 2048)
   }
   if (value.length > max) {
     throw new SyncPayloadError(`${field} in ${where} exceeds ${max} chars`);
+  }
+  return value;
+}
+
+function optionalNumber(value: unknown, key: string, where: string): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new SyncPayloadError(`invalid ${key} in ${where}: expected finite number`);
   }
   return value;
 }
@@ -255,6 +267,16 @@ function parseArticle(value: unknown, index: number): SyncArticle {
   const author = optionalString(obj.author, 'author', where, 256);
   if (imageUrl !== undefined) article.imageUrl = imageUrl;
   if (author !== undefined) article.author = author;
+
+  // 「入库但不上线」（stage）：缺省上线；quality 字段供复审与模型升级重评
+  if (obj.published !== undefined) {
+    if (typeof obj.published !== 'boolean') throw new SyncPayloadError(`invalid published in ${where}: expected boolean`);
+    article.published = obj.published;
+  }
+  const qualityScore = optionalNumber(obj.qualityScore, 'qualityScore', where);
+  const qualityModel = optionalString(obj.qualityModel, 'qualityModel', where, 64);
+  if (qualityScore !== undefined) article.qualityScore = qualityScore;
+  if (qualityModel !== undefined) article.qualityModel = qualityModel;
 
   if (obj.categories !== undefined) {
     if (!Array.isArray(obj.categories)) {
@@ -410,8 +432,8 @@ const SOURCE_UPSERT_SQL = `
 const ARTICLE_UPSERT_SQL = `
   INSERT INTO articles (
     id, source_id, original_url, original_language, published_at,
-    image_url, author, source_domain
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    image_url, author, source_domain, published, quality_score, quality_model
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(source_id, original_url) DO UPDATE SET
     id = excluded.id,
     original_language = excluded.original_language,
@@ -419,6 +441,9 @@ const ARTICLE_UPSERT_SQL = `
     image_url = COALESCE(excluded.image_url, articles.image_url),
     author = COALESCE(excluded.author, articles.author),
     source_domain = excluded.source_domain,
+    published = excluded.published,
+    quality_score = excluded.quality_score,
+    quality_model = excluded.quality_model,
     updated_at = datetime('now')
 `;
 
@@ -494,6 +519,9 @@ function articleUpsert(db: D1Database, article: SyncArticle): D1PreparedStatemen
       article.imageUrl ?? null,
       article.author ?? null,
       article.sourceDomain,
+      article.published ?? true,
+      article.qualityScore ?? null,
+      article.qualityModel ?? null,
     );
 }
 

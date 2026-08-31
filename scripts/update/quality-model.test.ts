@@ -80,6 +80,15 @@ test('off 模式不加载模型、不改变行为', () => {
   assert.equal(out.verdict.modelVersion, 'none');
 });
 
+test('stage 模式（入库但不上线）：与 shadow 同行为，不拦截', () => {
+  setQualityModelForTest(model);
+  const hot = hardcases.find((x) => x.category === 'announce_reject')!;
+  const out = evaluateQualityGate({ title: hot.title, contentMarkdown: hot.text }, 'stage', { url: hot.url });
+  assert.equal(out.blocked, false);
+  assert.equal(out.verdict.decision, 'reject');
+  assert.equal(resolveQualityGateMode({ QUALITY_GATE_MODE: 'stage' }), 'stage');
+});
+
 test('shadow 模式计算并记录 wouldReject，但不拦截', () => {
   setQualityModelForTest(model);
   const lines: string[] = [];

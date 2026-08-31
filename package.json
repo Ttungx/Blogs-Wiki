@@ -24,7 +24,8 @@
     "backfill": "tsx --env-file-if-exists=.env scripts/update/backfill.ts",
     "translate:batch": "tsx --env-file-if-exists=.env scripts/update/batch-translate.ts",
     "update": "tsx --env-file-if-exists=.env scripts/update/index.ts",
-    "update:dry": "tsx --env-file-if-exists=.env scripts/update/index.ts --dry-run"
+    "update:dry": "tsx --env-file-if-exists=.env scripts/update/index.ts --dry-run",
+    "quality-scan": "tsx --env-file-if-exists=.env scripts/update/quality-scan-local.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.0",

@@ -101,7 +101,7 @@ export async function getArticle(
               v.translation_model, v.original_alt_url, v.translated_at, v.updated_at
        FROM articles a
        JOIN article_versions v ON v.article_id = a.id AND v.language = ?
-       WHERE a.id = ?`,
+       WHERE a.id = ? AND a.published = 1`,
     )
     .bind(lang, articleId)
     .first<ArticleJoinRow>();
@@ -172,7 +172,7 @@ export async function listArticlesByBlog(
               v.title, v.excerpt, v.provenance
        FROM articles a
        JOIN article_versions v ON v.article_id = a.id AND v.language = ?
-       WHERE a.source_id = ?
+       WHERE a.source_id = ? AND a.published = 1
        ORDER BY a.published_at DESC`,
     )
     .bind(lang, sourceId)
@@ -214,6 +214,7 @@ export async function listAllArticlesForSearch(
       `SELECT a.id, a.source_id, a.source_domain, a.published_at, v.title
        FROM articles a
        JOIN article_versions v ON v.article_id = a.id AND v.language = ?
+       WHERE a.published = 1
        ORDER BY a.published_at DESC`,
     )
     .bind(lang)
@@ -267,6 +268,7 @@ export async function getArticleCountBySource(
       `SELECT a.source_id, COUNT(*) as count
        FROM articles a
        JOIN article_versions v ON v.article_id = a.id AND v.language = ?
+       WHERE a.published = 1
        GROUP BY a.source_id`,
     )
     .bind(lang)

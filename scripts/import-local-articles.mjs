@@ -116,6 +116,23 @@ function readSources() {
   }));
 }
 
+/** stage 门禁结论（ml/local-quality-verdicts.jsonl，quality-scan-local.ts 产出）。 */
+function readVerdicts() {
+  try {
+    const path = process.env.QUALITY_VERDICTS_FILE || join(ROOT, 'ml', 'local-quality-verdicts.jsonl');
+    const map = new Map();
+    for (const line of readFileSync(path, 'utf8').split('\n')) {
+      if (!line.trim()) continue;
+      const v = JSON.parse(line);
+      map.set(v.file, v);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+const verdicts = readVerdicts();
+
 function toSyncPayload() {
   const articles = [];
   for (const [articleId, versions_] of groups) {
@@ -132,11 +149,16 @@ function toSyncPayload() {
         categorySet.add(category);
       }
     }
+    // stage 门禁：以原文语言版本（en 优先）的判定决定整篇文章是否上线
+    const origVersion = versions_.find((v) => v.lang === (fm.original_language ?? 'en')) ?? versions_[0];
+    const verdict = origVersion ? verdicts.get(relative(ARTICLES_DIR, origVersion.file).replace(/\\/g, '/')) : undefined;
     articles.push({
       id: articleId,
       sourceId,
       originalUrl: fm.original_url,
       originalLanguage: fm.original_language ?? 'en',
+      published: verdict ? !verdict.wouldReject : true,
+      ...(verdict ? { qualityScore: verdict.score, qualityModel: verdict.modelVersion } : {}),
       publishedAt,
       ...(fm.image_url ? { imageUrl: fm.image_url } : {}),
       ...(fm.author ? { author: fm.author } : {}),

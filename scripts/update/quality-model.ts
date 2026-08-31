@@ -15,7 +15,9 @@ import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export type QualityGateMode = 'off' | 'shadow' | 'enforce';
+export type QualityGateMode = 'off' | 'shadow' | 'stage' | 'enforce';
+// stage=「入库但不上线」：文章照常保存，但不通过门禁的标注 published=false
+// （由 import 侧执行；runner 侧与 shadow 一样只记录，不拦截）
 
 export interface QualityVerdict {
   score: number;
@@ -112,7 +114,7 @@ export function classifyArticleQuality(
 /** QUALITY_GATE_MODE 解析：缺省/非法值一律 off（fail-safe，plan §21）。 */
 export function resolveQualityGateMode(env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env): QualityGateMode {
   const raw = (env.QUALITY_GATE_MODE ?? '').trim().toLowerCase();
-  if (raw === 'shadow' || raw === 'enforce') return raw;
+  if (raw === 'shadow' || raw === 'stage' || raw === 'enforce') return raw;
   return 'off';
 }
 
@@ -163,13 +165,13 @@ export function evaluateQualityGate(
     : undefined;
   if (rule) {
     const ruled: QualityVerdict = { ...verdict, decision: 'reject' };
-    if (mode === 'shadow') {
+    if (mode === 'shadow' || mode === 'stage') {
       options.log?.(`quality-shadow: rule=${rule.name} wouldReject=true model=${verdict.modelVersion}`);
       return { mode, verdict: ruled, blocked: false, ruleHit: rule.name };
     }
     return { mode, verdict: ruled, blocked: true, ruleHit: rule.name };
   }
-  if (mode === 'shadow') {
+  if (mode === 'shadow' || mode === 'stage') {
     options.log?.(`quality-shadow: score=${verdict.score.toFixed(4)} wouldReject=${verdict.decision === 'reject'} model=${verdict.modelVersion}`);
     return { mode, verdict, blocked: false };
   }
