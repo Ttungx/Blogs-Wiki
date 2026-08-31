@@ -499,11 +499,20 @@ const ARTICLE_VERSION_STALE_DELETE_SQL = `
     SELECT id FROM articles WHERE source_id = ? AND original_url = ? AND id != ?
   )
 `;
+// article_categories 无 ON DELETE CASCADE（0001:68），父表 id 漂移前必须同步清，
+// 否则父键更新触发子行 FK 失败（2026-08-31 本地全量入库踩坑）。
+const ARTICLE_CATEGORIES_STALE_DELETE_SQL = `
+  DELETE FROM article_categories
+  WHERE article_id IN (
+    SELECT id FROM articles WHERE source_id = ? AND original_url = ? AND id != ?
+  )
+`;
 
 function articleIdentityPreClean(db: D1Database, article: SyncArticle): D1PreparedStatement[] {
   return [
     db.prepare(ARTICLE_ID_COLLISION_DELETE_SQL).bind(article.id, article.sourceId, article.originalUrl),
     db.prepare(ARTICLE_VERSION_STALE_DELETE_SQL).bind(article.sourceId, article.originalUrl, article.id),
+    db.prepare(ARTICLE_CATEGORIES_STALE_DELETE_SQL).bind(article.sourceId, article.originalUrl, article.id),
   ];
 }
 
