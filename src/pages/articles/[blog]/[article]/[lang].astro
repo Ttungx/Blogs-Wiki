@@ -9,7 +9,7 @@ import LanguageSwitcher from '../../../../components/LanguageSwitcher.astro';
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import { sitePath } from '../../../../lib/urls';
 import { getArticle, getAvailableLanguages, listArticlesByBlog, parseDateSafe } from '../../../../lib/server/content';
-import { renderMarkdown } from '../../../../lib/server/markdown';
+import { getCachedOrRenderArticleHtml } from '../../../../lib/server/render-cache';
 import '../../../../styles/reader-typography.css';
 
 const { blog: blogId, article: slug, lang } = Astro.params;
@@ -28,7 +28,7 @@ const blog = blogs.find((b) => b.id === blogId);
 if (!blog) return new Response('Not Found', { status: 404 });
 
 // 渲染 markdown（D1 中的 content_markdown）
-const html = await renderMarkdown(articleData.contentMarkdown, { baseUrl: articleData.originalUrl });
+const html = await getCachedOrRenderArticleHtml(db, articleData.id, targetLang, articleData.contentMarkdown, articleData.originalUrl);
 
 const relatedLanguage = targetLang === 'en' ? 'en' : 'zh-cn';
 // 相关文章优先跟随当前阅读语言，避免 en 页首屏英文、列表突然回落中文。

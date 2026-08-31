@@ -9,17 +9,20 @@ import LanguageSwitcher from '../../../components/LanguageSwitcher.astro';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { sitePath } from '../../../lib/urls';
 import { getArticle, getAvailableLanguages, listArticlesByBlog, parseDateSafe } from '../../../lib/server/content';
-import { renderMarkdown } from '../../../lib/server/markdown';
+import { getCachedOrRenderArticleHtml } from '../../../lib/server/render-cache';
 import '../../../styles/reader-typography.css';
 
 const { blog: blogId, article: slug } = Astro.params;
 if (!blogId || !slug) return new Response('Not Found', { status: 404 });
 
 const db = env.DB;
-// 默认路由只承载中文版本
 // 默认路由优先中文版；翻译缺失或演示版被清理时回退 en 原文，避免整页 404
-const articleData = (await getArticle(db, blogId, slug, 'zh-cn'))
-  ?? (await getArticle(db, blogId, slug, 'en'));
+let articleLang = 'zh-cn';
+let articleData = await getArticle(db, blogId, slug, articleLang);
+if (!articleData) {
+  articleLang = 'en';
+  articleData = await getArticle(db, blogId, slug, articleLang);
+}
 if (!articleData) return new Response('Not Found', { status: 404 });
 
 // blogs 元数据仍从静态 collection 读取（构建期解析，SSR 可用）
@@ -28,7 +31,7 @@ const blog = blogs.find((b) => b.id === blogId);
 if (!blog) return new Response('Not Found', { status: 404 });
 
 // 渲染 markdown（D1 中的 content_markdown）
-const html = await renderMarkdown(articleData.contentMarkdown, { baseUrl: articleData.originalUrl });
+const html = await getCachedOrRenderArticleHtml(db, articleData.id, articleLang, articleData.contentMarkdown, articleData.originalUrl);
 
 // 原版标题：有 en 版本时显示，否则不显示
 const enArticle = await getArticle(db, blogId, slug, 'en');
