@@ -161,7 +161,7 @@ function toSyncPayload() {
       ...(verdict ? { qualityScore: verdict.score, qualityModel: verdict.modelVersion } : {}),
       publishedAt,
       ...(fm.image_url ? { imageUrl: fm.image_url } : {}),
-      ...(fm.author ? { author: fm.author } : {}),
+      ...(fm.author ? { author: fm.author.slice(0, 256) } : {}),
       sourceDomain: fm.source_domain,
       categories: [...categorySet],
       versions: versions_.map((version) => ({

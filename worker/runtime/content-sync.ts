@@ -489,6 +489,18 @@ function sourceUpsert(db: D1Database, source: SyncSource): D1PreparedStatement {
  * 2) 同一 (source_id, original_url) 下 id 漂移（id 方案变更）→ 先删旧版本，
  *    让新 id 下的版本写入不产生孤儿。
  */
+// article_categories 的 article_id 外键无 ON DELETE CASCADE（0001:68），
+// 任何「同 id 换身份」的删除前必须先清它，否则删父行违反 FK。
+// source_items.article_id 外键无 ON DELETE CASCADE（工作台表），删父行前必须清，
+// 否则同 id 换身份时（如 anthropic /research→/engineering 迁移路径）FK 失败。
+const SOURCE_ITEMS_BY_ARTICLE_DELETE_SQL = `
+  DELETE FROM source_items WHERE article_id = ?
+`;
+
+const ARTICLE_CATEGORIES_BY_ID_DELETE_SQL = `
+  DELETE FROM article_categories WHERE article_id = ?
+`;
+
 const ARTICLE_ID_COLLISION_DELETE_SQL = `
   DELETE FROM articles
   WHERE id = ? AND NOT (source_id = ? AND original_url = ?)
@@ -509,11 +521,18 @@ const ARTICLE_CATEGORIES_STALE_DELETE_SQL = `
 `;
 
 function articleIdentityPreClean(db: D1Database, article: SyncArticle): D1PreparedStatement[] {
-  return [
+  const stmts = [
+    db.prepare(SOURCE_ITEMS_BY_ARTICLE_DELETE_SQL).bind(article.id),
     db.prepare(ARTICLE_ID_COLLISION_DELETE_SQL).bind(article.id, article.sourceId, article.originalUrl),
     db.prepare(ARTICLE_VERSION_STALE_DELETE_SQL).bind(article.sourceId, article.originalUrl, article.id),
     db.prepare(ARTICLE_CATEGORIES_STALE_DELETE_SQL).bind(article.sourceId, article.originalUrl, article.id),
   ];
+  // 仅当本载荷提供 categories（随后会整体重建）时才预清——省略 categories 的
+  // 契约是「不触碰现有分类」（content-sync.test 有断言），此时不能动。
+  if (article.categories !== undefined) {
+    stmts.unshift(db.prepare(ARTICLE_CATEGORIES_BY_ID_DELETE_SQL).bind(article.id));
+  }
+  return stmts;
 }
 
 function articleUpsert(db: D1Database, article: SyncArticle): D1PreparedStatement {

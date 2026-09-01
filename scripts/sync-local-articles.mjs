@@ -45,6 +45,11 @@ function makeChunks() {
   const chunks = [];
   let current = { sources: payload.sources, articles: [] };
   for (const article of payload.articles) {
+    // 服务端单载荷文章上限 200（content-sync MAX_ITEMS），按数量分块
+    if (current.articles.length >= 200) {
+      chunks.push(current);
+      current = { sources: [], articles: [] };
+    }
     const candidate = { sources: current.sources, articles: [...current.articles, article] };
     if (current.articles.length > 0 && encodedBytes(candidate) > MAX_BODY_BYTES) {
       chunks.push(current);
@@ -65,18 +70,30 @@ let created = 0;
 let updated = 0;
 for (const [index, chunk] of chunks.entries()) {
   const body = JSON.stringify(chunk);
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-      'content-length': String(Buffer.byteLength(body)),
-    },
-    body,
-  });
-  const text = await response.text();
-  if (!response.ok) {
-    throw new Error(`content sync failed (chunk ${index + 1}/${chunks.length}, HTTP ${response.status}): ${text}`);
+  // 网络抖动重试（本地代理/免费实例偶发 ECONNRESET）；幂等 upsert 安全重放
+  let response = null;
+  let text = '';
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${token}`,
+          'content-type': 'application/json',
+          'content-length': String(Buffer.byteLength(body)),
+        },
+        body,
+      });
+      text = await response.text();
+    } catch (error) {
+      if (attempt === 3) throw error;
+      await new Promise((r) => setTimeout(r, 1500 * attempt));
+      continue;
+    }
+    break;
+  }
+  if (!response || !response.ok) {
+    throw new Error(`content sync failed (chunk ${index + 1}/${chunks.length}, HTTP ${response ? response.status : 'network'}): ${text}`);
   }
   let result;
   try {
