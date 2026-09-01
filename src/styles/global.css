@@ -431,8 +431,8 @@
     max-width: 100%;
     min-width: 0;
     flex: 0 0 auto;
-    animation: shelf-in 500ms both;
-    animation-delay: calc(var(--shelf-index) * 55ms);
+    animation: shelf-in 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(var(--shelf-index) * 30ms);
   }
 
   .shelf-card > a {
@@ -734,7 +734,9 @@
     grid-template-columns: 100px minmax(0, 1fr) 248px;
     gap: 34px;
     align-items: center;
-    padding-block: 10px;
+    /* 行高统一：102px = 图片高 248/3.35≈74 + 上下 14px padding；无图行与有图行同高 */
+    min-height: 102px;
+    padding-block: 14px;
     transition: opacity 160ms ease;
   }
 
@@ -796,6 +798,31 @@
     overflow: hidden;
     border-radius: 6px;
     background: var(--paper-soft);
+  }
+
+  .article-list-more {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    padding-block: 26px 8px;
+  }
+
+  .article-list-more button {
+    padding: 10px 22px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 160ms ease, color 160ms ease;
+  }
+
+  .article-list-more button:hover {
+    border-color: var(--ink);
+    color: var(--ink);
   }
 
   .reader-header {
@@ -1244,11 +1271,16 @@
   @keyframes shelf-in {
     from {
       opacity: 0;
-      transform: translateY(7px);
+      filter: blur(9px);
+      transform: translateY(9px) scale(0.98);
+    }
+    55% {
+      opacity: 1;
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      filter: blur(0);
+      transform: translateY(0) scale(1);
     }
   }
 
