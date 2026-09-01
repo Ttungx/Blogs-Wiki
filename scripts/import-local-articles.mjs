@@ -54,6 +54,15 @@ function esc(value) {
   return "'" + String(value).replace(/'/g, "''") + "'";
 }
 
+// 与 src/lib/text.ts cleanTitle 同构：行首 Markdown 标记 + 标签状 token + 空白归一。
+function cleanTitle(title) {
+  return String(title)
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/<\/?[A-Za-z][^<>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function isoDate(value) {
   if (!value) return null;
   // 支持 "2024-12-19" 与 "2026-05-22T12:00:00.000Z"
@@ -166,7 +175,7 @@ function toSyncPayload() {
       categories: [...categorySet],
       versions: versions_.map((version) => ({
         language: version.lang,
-        title: version.fm.title,
+        title: cleanTitle(version.fm.title),
         contentMarkdown: version.body,
         ...(version.fm.excerpt ? { excerpt: version.fm.excerpt } : {}),
         provenance: version.fm.provenance ?? (version.lang === 'en' ? 'original' : 'model'),
@@ -218,7 +227,7 @@ for (const [articleId, versions_] of groups) {
   for (const v of versions_) {
     sql.push(
       `INSERT INTO article_versions (article_id, language, title, content_markdown, excerpt, provenance, translation_model, original_alt_url, translated_at, updated_at) ` +
-      `VALUES (${esc(articleId)}, ${esc(v.lang)}, ${esc(v.fm.title)}, ${esc(v.body)}, ` +
+      `VALUES (${esc(articleId)}, ${esc(v.lang)}, ${esc(cleanTitle(v.fm.title))}, ${esc(v.body)}, ` +
       `${esc(v.fm.excerpt)}, ${esc(v.fm.provenance ?? 'model')}, ${esc(v.fm.translation_model)}, ${esc(v.fm.original_alt_url)}, ` +
       `${esc(v.fm.provenance === 'model' ? isoDate(v.fm.version_at) : null)}, datetime('now')) ` +
       `ON CONFLICT(article_id, language) DO UPDATE SET title=excluded.title, content_markdown=excluded.content_markdown, ` +

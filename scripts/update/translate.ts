@@ -1,4 +1,5 @@
 import { categoryPrompt, normalizeCategories } from './classify';
+import { cleanTitle } from '../../src/lib/text';
 import { assertMathIntegrity } from './content-integrity';
 import { isNativeChinese, protectMarkdown, restoreMarkdown } from './translation-plan';
 import type { ExtractedArticle, FetchLike, TranslateArticle } from './types';
@@ -366,7 +367,7 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
 
       const rawTitle = parsed.translated_title;
       const translatedTitle = typeof rawTitle === 'string' && rawTitle.trim() !== ''
-        ? rawTitle.trim()
+        ? cleanTitle(rawTitle)
         : article.title;
 
       const rawContent = parsed.content_markdown;

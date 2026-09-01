@@ -1,4 +1,5 @@
 import { categoryPrompt, normalizeCategories } from './classify';
+import { cleanTitle } from '../../src/lib/text';
 import { assertMathIntegrity } from './content-integrity';
 import { createTranslationPlan, restoreMarkdown } from './translation-plan';
 import {
@@ -202,7 +203,7 @@ export function createTranslateV2Client(options: TranslateV2Options): TranslateA
     }
 
     const translatedTitle = plan.title
-      ? await translateChunk(options, endpoint, plan.title.source, ['<title>'])
+      ? cleanTitle(await translateChunk(options, endpoint, plan.title.source, ['<title>']))
       : article.title;
 
     const translatedBodies: string[] = [];
