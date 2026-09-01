@@ -5,6 +5,7 @@ import SearchPanel from '../components/SearchPanel.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { listAllArticlesForSearch, parseDateSafe } from '../lib/server/content';
 import { sitePath } from '../lib/urls';
+import { fixTitleSpacing } from '../lib/text';
 
 export const prerender = false;
 
@@ -33,9 +34,14 @@ const items = [
     const publishedAt = parseDateSafe(article.publishedAt);
     // D1 文章 id 为 `blogId/slug`，slug 取首个斜杠之后的部分。
     const slug = article.id.split('/').slice(1).join('/');
+    // 搜索结果英文标题第一行 + 中文标题第二行：复用 SearchPanel 的 originalTitle
+    // 渲染与 searchable 索引（中文搜索不受影响）；无英文原题时保持单行。
+    const zhTitle = fixTitleSpacing(article.title);
+    const enTitle = fixTitleSpacing(article.originalTitle ?? article.title);
     return {
       kind: 'article' as const,
-      title: article.title,
+      title: enTitle,
+      ...(enTitle !== zhTitle ? { originalTitle: zhTitle } : {}),
       subtitle: blogNames.get(article.sourceId) ?? article.sourceDomain,
       url: sitePath(`articles/${article.sourceId}/${slug}/`),
       ...(publishedAt ? { date: dateFormatter.format(publishedAt) } : {}),

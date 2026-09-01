@@ -39,6 +39,11 @@ export interface ArticleListItem {
   excerpt: string | null;
   provenance: string;
   language: string;
+  /**
+   * 英文原题：仅当展示版本为翻译、原文非中文（zh 原生无需英文行）且与展示
+   * 标题不同时携带。列表页第二行展示用。
+   */
+  originalTitle?: string;
 }
 
 interface ArticleJoinRow {
@@ -157,6 +162,12 @@ interface ArticleListRow {
   title: string;
   excerpt: string | null;
   provenance: string;
+  /** 展示版本语言（zh-cn 优先，缺译回退原文语言）。 */
+  lang: string;
+  /** 原文语言（基础码：en/zh/es…）。 */
+  original_language: string;
+  /** 原文版本标题（无原文版本时为 null）。 */
+  original_title: string | null;
 }
 
 /**
@@ -169,8 +180,9 @@ export async function listArticlesByBlog(
 ): Promise<ArticleListItem[]> {
   const result = await db
     .prepare(
-      `SELECT a.id, a.source_id, a.published_at, a.image_url, a.author,
-              v.title, v.excerpt, v.provenance, v.language AS lang
+      `SELECT a.id, a.source_id, a.published_at, a.image_url, a.author, a.original_language,
+              v.title, v.excerpt, v.provenance, v.language AS lang,
+              o.title AS original_title
        FROM articles a
        JOIN article_versions v ON v.article_id = a.id
          AND v.language = (
@@ -178,6 +190,7 @@ export async function listArticlesByBlog(
            WHERE w.article_id = a.id
            ORDER BY CASE w.language WHEN 'zh-cn' THEN 0 ELSE 1 END, w.language
            LIMIT 1)
+       LEFT JOIN article_versions o ON o.article_id = a.id AND o.language = a.original_language
        WHERE a.published = 1 AND a.source_id = ?
        ORDER BY a.published_at DESC`,
     )
@@ -195,6 +208,11 @@ export async function listArticlesByBlog(
     provenance: row.provenance,
     // 中文优先列表：非 zh 版本返回 en 时携带语言供 UI 标注
     language: row.lang,
+    ...(row.original_title &&
+    !row.original_language.startsWith('zh') &&
+    row.original_title !== row.title
+      ? { originalTitle: row.original_title }
+      : {}),
   }));
 }
 
@@ -205,6 +223,8 @@ export interface ArticleSearchItem {
   sourceDomain: string;
   publishedAt: string;
   title: string;
+  /** 英文原题（同 ArticleListItem 规则），搜索页英文第一行用。 */
+  originalTitle?: string;
   categories: string[];
 }
 
@@ -219,7 +239,8 @@ export async function listAllArticlesForSearch(
 ): Promise<ArticleSearchItem[]> {
   const result = await db
     .prepare(
-      `SELECT a.id, a.source_id, a.source_domain, a.published_at, v.title
+      `SELECT a.id, a.source_id, a.source_domain, a.published_at, a.original_language,
+              v.title, o.title AS original_title
        FROM articles a
        JOIN article_versions v ON v.article_id = a.id
          AND v.language = (
@@ -227,6 +248,7 @@ export async function listAllArticlesForSearch(
            WHERE w.article_id = a.id
            ORDER BY CASE w.language WHEN 'zh-cn' THEN 0 ELSE 1 END, w.language
            LIMIT 1)
+       LEFT JOIN article_versions o ON o.article_id = a.id AND o.language = a.original_language
        WHERE a.published = 1
        ORDER BY a.published_at DESC`,
     )
@@ -235,7 +257,9 @@ export async function listAllArticlesForSearch(
       source_id: string;
       source_domain: string;
       published_at: string;
+      original_language: string;
       title: string;
+      original_title: string | null;
     }>();
 
   if (result.results.length === 0) return [];
@@ -263,6 +287,11 @@ export async function listAllArticlesForSearch(
     sourceDomain: row.source_domain,
     publishedAt: row.published_at,
     title: row.title,
+    ...(row.original_title &&
+    !row.original_language.startsWith('zh') &&
+    row.original_title !== row.title
+      ? { originalTitle: row.original_title }
+      : {}),
     categories: categoriesByArticle.get(row.id) ?? [],
   }));
 }

@@ -6,7 +6,8 @@ import BlogMark from '../../components/BlogMark.astro';
 import CategoryPill from '../../components/CategoryPill.astro';
 import RemoteImage from '../../components/RemoteImage.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { sitePath } from '../../lib/urls';
+import { sitePath, basePath, imagePath } from '../../lib/urls';
+import { fixTitleSpacing } from '../../lib/text';
 import { listArticlesByBlog, parseDateSafe, type ArticleListItem } from '../../lib/server/content';
 
 export const prerender = false;
@@ -34,6 +35,26 @@ function imageFor(article: ArticleListItem): string | undefined {
 }
 
 const [featuredArticle, ...remainingArticles] = articles;
+
+// 列表默认 SSR 渲染 featured 之外的前 10 条；其余以内联 JSON 交给客户端
+// 「展开更多」（+10 / +50）逐批插入，无 JS 时优雅降级为前 10 条。
+const INITIAL_VISIBLE = 10;
+const visibleArticles = remainingArticles.slice(0, INITIAL_VISIBLE);
+const deferredArticles = remainingArticles.slice(INITIAL_VISIBLE).map((article) => {
+  const date = parseDateSafe(article.publishedAt);
+  const image = imageFor(article);
+  return {
+    slug: slugFromArticleId(article.id),
+    title: fixTitleSpacing(article.title),
+    ...(article.originalTitle ? { originalTitle: fixTitleSpacing(article.originalTitle) } : {}),
+    year: date ? String(date.getFullYear()) : '',
+    day: date ? `/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}` : '',
+    datetime: date?.toISOString() ?? '',
+    ...(image ? { image: imagePath(image) ?? '' } : {}),
+  };
+});
+const deferredSerialized = JSON.stringify(deferredArticles).replace(/</g, '\\u003c');
+
 const featuredImage = featuredArticle ? imageFor(featuredArticle) : undefined;
 const featuredDate = featuredArticle ? parseDateSafe(featuredArticle.publishedAt) : null;
 const featuredDateText = featuredDate
@@ -86,7 +107,12 @@ const featuredDateText = featuredDate
           >
             <span class="featured-article-copy">
               <span class="eyebrow">Latest · 最新</span>
-              <strong>{featuredArticle.title}</strong>
+              <strong>{fixTitleSpacing(featuredArticle.title)}</strong>
+              {featuredArticle.originalTitle && (
+                <span class="featured-article-original" lang="en">
+                  {fixTitleSpacing(featuredArticle.originalTitle)}
+                </span>
+              )}
               {featuredArticle.excerpt && (
                 <span class="featured-article-excerpt">{featuredArticle.excerpt}</span>
               )}
@@ -116,12 +142,13 @@ const featuredDateText = featuredDate
         <span>按原文发表日期排序 <i aria-hidden="true">⌄</i></span>
       </header>
 
-      <div class="article-list">
-        {remainingArticles.length ? remainingArticles.map((article) => (
+      <div class="article-list" data-article-list>
+        {visibleArticles.length ? visibleArticles.map((article) => (
           <ArticleRow
             blogId={blog.id}
             slug={slugFromArticleId(article.id)}
             title={article.title}
+            originalTitle={article.originalTitle}
             publishedAt={article.publishedAt}
             categories={[]}
             imageUrl={imageFor(article)}
@@ -133,6 +160,67 @@ const featuredDateText = featuredDate
           </div>
         ) : null}
       </div>
+
+      {deferredArticles.length > 0 && (
+        <div class="article-list-more" data-article-more>
+          <button type="button" data-more-step="10">展开更多 +10</button>
+          <button type="button" data-more-step="50">展开 50 篇</button>
+        </div>
+      )}
     </section>
   </main>
+
+  {deferredArticles.length > 0 && (
+    <>
+      <script id="article-deferred" type="application/json" set:html={deferredSerialized} is:inline />
+      <script is:inline define:vars={{ blogId: blog.id, basePath }}>
+        (() => {
+          const dataNode = document.querySelector('#article-deferred');
+          const list = document.querySelector('[data-article-list]');
+          const moreBox = document.querySelector('[data-article-more]');
+          if (!dataNode || !list || !moreBox) return;
+          let items;
+          try {
+            items = JSON.parse(dataNode.textContent || '[]');
+          } catch {
+            return;
+          }
+          if (!Array.isArray(items) || items.length === 0) return;
+
+          const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+          ));
+
+          // 与 ArticleRow.astro 输出同构（categories 恒为空，pill 容器省略）
+          const rowHtml = (item) => {
+            const href = `${basePath}articles/${blogId}/${item.slug}/`;
+            const time = item.datetime
+              ? `<time datetime="${esc(item.datetime)}"><span>${esc(item.year)}</span><span>${esc(item.day)}</span></time>`
+              : '';
+            const original = item.originalTitle
+              ? `<span class="article-row-original" lang="en">${esc(item.originalTitle)}</span>`
+              : '';
+            const image = item.image
+              ? `<span class="article-row-image" aria-hidden="true"><img src="${esc(item.image)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.closest('.article-row-image')?.remove()"></span>`
+              : '';
+            return `<article class="article-row${item.image ? '' : ' article-row--no-image'}">`
+              + `<a href="${esc(href)}" aria-label="阅读：${esc(item.title)}">`
+              + `${time}<span class="article-row-main"><span class="article-row-title">${esc(item.title)}</span>${original}</span>`
+              + `${image}</a></article>`;
+          };
+
+          let cursor = 0;
+          const loadMore = (step) => {
+            const batch = items.slice(cursor, cursor + step);
+            for (const item of batch) list.insertAdjacentHTML('beforeend', rowHtml(item));
+            cursor += batch.length;
+            if (cursor >= items.length) moreBox.hidden = true;
+          };
+          moreBox.querySelectorAll('button[data-more-step]').forEach((button) => {
+            button.addEventListener('click', () => loadMore(Number(button.dataset.moreStep) || 10));
+          });
+        })();
+      </script>
+    </>
+  )}
 </BaseLayout>

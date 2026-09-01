@@ -2,6 +2,7 @@
 import CategoryPill from './CategoryPill.astro';
 import RemoteImage from './RemoteImage.astro';
 import { sitePath } from '../lib/urls';
+import { fixTitleSpacing } from '../lib/text';
 import { parseDateSafe } from '../lib/server/content';
 
 interface Props {
@@ -24,12 +25,15 @@ const {
   imageUrl,
 } = Astro.props;
 const date = parseDateSafe(publishedAt instanceof Date ? publishedAt.toISOString() : publishedAt);
+// 撇号空格修复（翻译产物常见 "we' re"）：标题与英文原题统一处理
+const displayTitle = fixTitleSpacing(title);
+const displayOriginal = originalTitle ? fixTitleSpacing(originalTitle) : undefined;
 // 中文是默认语言，列表项链接到不带语言段的路由
 const href = sitePath(`articles/${blogId}/${slug}/`);
 ---
 
 <article class:list={['article-row', { 'article-row--no-image': !imageUrl }]}>
-  <a href={href} aria-label={`阅读：${title}`}>
+  <a href={href} aria-label={`阅读：${displayTitle}`}>
     {date && (
       <time datetime={date.toISOString()}>
         <span>{date.getFullYear()}</span>
@@ -37,8 +41,8 @@ const href = sitePath(`articles/${blogId}/${slug}/`);
       </time>
     )}
     <span class="article-row-main">
-      <span class="article-row-title">{title}</span>
-      {originalTitle && <span class="article-row-original" lang="en">{originalTitle}</span>}
+      <span class="article-row-title">{displayTitle}</span>
+      {displayOriginal && <span class="article-row-original" lang="en">{displayOriginal}</span>}
       <span class="article-row-categories">
         {categories.map((category) => <CategoryPill label={category} quiet />)}
       </span>
