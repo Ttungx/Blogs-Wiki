@@ -85,3 +85,22 @@ export function resolveAiProvider(env: AiProviderEnv = process.env): AiProviderC
   const slot = selector as AiProviderSlotId;
   return readSlot(env, slot);
 }
+
+/**
+ * 双服务商对（用户决策 2026-08-31）：AI_PROVIDER 为主、AI_PROVIDER_FALLBACK 为回退，
+ * 两个槽位同时启用——翻译批量由主服务商承载，失败自动回退到备用；每个服务商
+ * 的并发上限为 batch-translate 的 --concurrency（默认 2）。
+ */
+export function resolveAiProviderPair(env: AiProviderEnv = process.env): AiProviderConfig[] {
+  const primary = resolveAiProvider(env);
+  const fallbackSlot = trimmed(env.AI_PROVIDER_FALLBACK);
+  if (!fallbackSlot) return [primary];
+  if (!(SLOT_IDS as readonly string[]).includes(fallbackSlot)) {
+    throw new Error(`AI_PROVIDER_FALLBACK must be one of ${SLOT_IDS.join(', ')}, got "${fallbackSlot}"`);
+  }
+  const fallback = readSlot(env, fallbackSlot as AiProviderSlotId);
+  if (fallbackSlot === trimmed(env.AI_PROVIDER)) {
+    throw new Error(`AI_PROVIDER_FALLBACK must differ from AI_PROVIDER (both "${fallbackSlot}")`);
+  }
+  return [primary, fallback];
+}

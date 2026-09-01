@@ -91,9 +91,14 @@ function buildChainScript(sourceId, limitArg) {
   // 单条链：发现/去重/抓取/翻译 → 补翻缺失译文 → 生成本地 payload → 分片推送 D1。
   // translate:batch 只补本地 corpus 缺 zh 版本的原文（断点续传），单篇失败
   // 只记错误台账不退出，不会拖垮链条；随后 import+sync 把新译文一并推上 D1。
+  // RUNNER_BACKFILL=true（生产回填期）：把增量 update 换成历史 backfill——
+  // Render 自抓全量历史并翻译，兼容本地回填文件不在容器内的现状（2026-08-31）。
+  const fetchStep = process.env.RUNNER_BACKFILL === 'true'
+    ? `npm run backfill -- --source ${JSON.stringify(sourceId)}${limitArg}`
+    : `npm run update -- --source ${JSON.stringify(sourceId)} --report logs/report${limitArg}`;
   return [
     'set -e',
-    `npm run update -- --source ${JSON.stringify(sourceId)} --report logs/report${limitArg}`,
+    fetchStep,
     `npm run translate:batch -- --source ${JSON.stringify(sourceId)} --report logs/report`,
     'npm run quality-scan',
     'node scripts/import-local-articles.mjs --json --output logs/.tmp-import-articles.json',

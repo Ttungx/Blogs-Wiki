@@ -21,7 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTranslateClient, routeTranslator } from './translate';
 import { createTranslateV2Client } from './translate-v2';
-import { resolveAiProvider } from './ai-provider';
+import { resolveAiProviderPair, type AiProviderConfig } from './ai-provider';
 import { appendErrorLedger, runWithConcurrency } from './concurrency';
 import { createFetchImpl } from './network';
 import { createUpdateRepositories } from './repository-factory';
@@ -29,7 +29,7 @@ import { parseVersionFile } from '../../worker/domain/article';
 import { CATEGORIES } from '../../src/config/categories';
 import type { ExtractedArticle, Logger } from './types';
 
-const DEFAULT_CONCURRENCY = 4;
+const DEFAULT_CONCURRENCY = 2; // 每服务商默认并发 2（用户决策）
 const DEFAULT_ERROR_LOG = path.join('docs', 'batch-translate-errors.md');
 
 interface CliOptions {
@@ -174,8 +174,7 @@ async function run() {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const logger = consoleLogger;
 
-  // AI_PROVIDER 未设时回落平铺变量，报错口径不变。
-  const provider = resolveAiProvider(process.env);
+  const provider = resolveAiProviderPair(process.env)[0]; // 兼容旧引用（报错口径由 resolveAiProviderPair 保持）
   if (!options.dryRun) {
     if (!provider.apiKey || !provider.baseUrl || !provider.model) {
       throw new Error('OPENAI_API_KEY, OPENAI_BASE_URL and TRANSLATION_MODEL are required (loaded from .env)');
@@ -199,19 +198,21 @@ async function run() {
 
   const fetchImpl = createFetchImpl(logger);
   const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
-  const common = {
-    apiKey: provider.apiKey,
-    baseUrl: provider.baseUrl,
-    model: provider.model,
-    reasoningEffort: provider.reasoningEffort,
-    fetchImpl,
-  } as const;
-  // 默认 V1 整篇一次；TRANSLATION_PIPELINE=v2 强制 V2；超长（>100K 字符）兜底 V2。
-  const translate = routeTranslator(
-    createTranslateClient(common),
-    createTranslateV2Client(common),
-    forceV2,
-  );
+  // 双服务商（用户决策 2026-08-31）：AI_PROVIDER 为主、AI_PROVIDER_FALLBACK 为回退，
+  // 池并发 = --concurrency × 服务商数（默认每服务商 2）。
+  const providers = resolveAiProviderPair(process.env);
+  const makeTranslate = (p: AiProviderConfig) => {
+    const common = {
+      apiKey: p.apiKey,
+      baseUrl: p.baseUrl,
+      model: p.model,
+      reasoningEffort: p.reasoningEffort,
+      fetchImpl,
+    } as const;
+    return routeTranslator(createTranslateClient(common), createTranslateV2Client(common), forceV2);
+  };
+  const translates = providers.map((p) => makeTranslate(p));
+  logger.info(`Translation providers: ${providers.map((p) => p.model).join(' → ')}（主→回退）`);
   logger.info(`Translation pipeline: ${forceV2 ? 'v2 (forced)' : 'v1 whole-article (v2 fallback >100k chars)'}`);
   const repositories = createUpdateRepositories({ rootDir, backend: 'file' });
 
@@ -220,27 +221,35 @@ async function run() {
   const errors: string[] = [];
   const startedAt = new Date().toISOString();
 
-  await runWithConcurrency(targets, options.concurrency, async (item) => {
-    try {
-      const translation = await translate(item.article, CATEGORIES);
-      await repositories.articles.saveVersion({
-        articleId: item.articleId,
-        language: 'zh-cn',
-        title: translation.translatedTitle,
-        contentMarkdown: translation.contentMarkdown,
-        provenance: 'model',
-        translationModel: translation.model,
-        translatedAt: new Date().toISOString(),
-        categories: translation.categories,
-      });
-      success += 1;
-      logger.info(`  + ${item.articleId} (${translation.translatedTitle})`);
-    } catch (error) {
-      failed += 1;
-      const message = error instanceof Error ? error.message : String(error);
-      errors.push(`${item.articleId} | ${item.article.url}: ${message}`);
-      logger.error(`  - ${item.articleId}: ${message}`);
+  await runWithConcurrency(targets, options.concurrency * translates.length, async (item) => {
+    let lastError: unknown;
+    for (let i = 0; i < translates.length; i += 1) {
+      try {
+        const translation = await translates[i](item.article, CATEGORIES);
+        await repositories.articles.saveVersion({
+          articleId: item.articleId,
+          language: 'zh-cn',
+          title: translation.translatedTitle,
+          contentMarkdown: translation.contentMarkdown,
+          provenance: 'model',
+          translationModel: translation.model,
+          translatedAt: new Date().toISOString(),
+          categories: translation.categories,
+        });
+        success += 1;
+        logger.info(`  + ${item.articleId} (${translation.translatedTitle})`);
+        return;
+      } catch (error) {
+        lastError = error;
+        if (i < translates.length - 1) {
+          logger.warn(`  ! ${item.articleId}: ${providers[i].model} 失败，回退 ${providers[i + 1].model}（${error instanceof Error ? error.message.slice(0, 80) : error}）`);
+        }
+      }
     }
+    failed += 1;
+    const message = lastError instanceof Error ? lastError.message : String(lastError);
+    errors.push(`${item.articleId} | ${item.article.url}: ${message}`);
+    logger.error(`  - ${item.articleId}: ${message}`);
   });
 
   const finishedAt = new Date().toISOString();
