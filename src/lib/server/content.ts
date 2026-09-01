@@ -38,6 +38,7 @@ export interface ArticleListItem {
   title: string;
   excerpt: string | null;
   provenance: string;
+  language: string;
 }
 
 interface ArticleJoinRow {
@@ -169,13 +170,18 @@ export async function listArticlesByBlog(
   const result = await db
     .prepare(
       `SELECT a.id, a.source_id, a.published_at, a.image_url, a.author,
-              v.title, v.excerpt, v.provenance
+              v.title, v.excerpt, v.provenance, v.language AS lang
        FROM articles a
-       JOIN article_versions v ON v.article_id = a.id AND v.language = ?
-       WHERE a.source_id = ? AND a.published = 1
+       JOIN article_versions v ON v.article_id = a.id
+         AND v.language = (
+           SELECT w.language FROM article_versions w
+           WHERE w.article_id = a.id
+           ORDER BY CASE w.language WHEN 'zh-cn' THEN 0 ELSE 1 END, w.language
+           LIMIT 1)
+       WHERE a.published = 1 AND a.source_id = ?
        ORDER BY a.published_at DESC`,
     )
-    .bind(lang, sourceId)
+    .bind(sourceId)
     .all<ArticleListRow>();
 
   return result.results.map((row) => ({
@@ -187,6 +193,8 @@ export async function listArticlesByBlog(
     title: row.title,
     excerpt: row.excerpt,
     provenance: row.provenance,
+    // 中文优先列表：非 zh 版本返回 en 时携带语言供 UI 标注
+    language: row.lang,
   }));
 }
 
@@ -213,11 +221,15 @@ export async function listAllArticlesForSearch(
     .prepare(
       `SELECT a.id, a.source_id, a.source_domain, a.published_at, v.title
        FROM articles a
-       JOIN article_versions v ON v.article_id = a.id AND v.language = ?
+       JOIN article_versions v ON v.article_id = a.id
+         AND v.language = (
+           SELECT w.language FROM article_versions w
+           WHERE w.article_id = a.id
+           ORDER BY CASE w.language WHEN 'zh-cn' THEN 0 ELSE 1 END, w.language
+           LIMIT 1)
        WHERE a.published = 1
        ORDER BY a.published_at DESC`,
     )
-    .bind(lang)
     .all<{
       id: string;
       source_id: string;
@@ -261,17 +273,15 @@ export async function listAllArticlesForSearch(
  */
 export async function getArticleCountBySource(
   db: D1Database,
-  lang = 'zh-cn',
+  _lang = 'zh-cn',
 ): Promise<Map<string, number>> {
   const result = await db
     .prepare(
       `SELECT a.source_id, COUNT(*) as count
        FROM articles a
-       JOIN article_versions v ON v.article_id = a.id AND v.language = ?
        WHERE a.published = 1
        GROUP BY a.source_id`,
     )
-    .bind(lang)
     .all<{ source_id: string; count: number }>();
 
   return new Map(result.results.map((r) => [r.source_id, r.count]));
