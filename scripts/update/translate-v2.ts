@@ -5,6 +5,8 @@ import {
   ModelJsonError,
   parseModelJson,
   requestChatCompletion,
+  envPositiveInt,
+  resolveTranslationMaxTokens,
 } from './translate';
 import type {
   ChatMessage,
@@ -26,15 +28,16 @@ export interface TranslateV2Options {
   /** chat/completions 的 max_tokens（思考型模型需要大预算）。 */
   maxTokens?: number;
   fetchImpl?: FetchLike;
-  /** Token cap per body chunk passed to the planner (default 1200). */
+  /** Token cap per body chunk passed to the planner (default 8000, env TRANSLATION_MAX_CHUNK_TOKENS). */
   maxChunkTokens?: number;
   /** OpenAI/DeepSeek 兼容 reasoning_effort（如 low/high/max），经 ocx 透传。 */
   reasoningEffort?: string;
 }
 
 const DEFAULT_TIMEOUT_MS = 300_000;
-const DEFAULT_MAX_TOKENS = 16_000;
-const DEFAULT_MAX_CHUNK_TOKENS = 1_200;
+// 1200 是已弃用 step-3.7 的遗留经验值（防思考占满预算）；输出预算 128K 后
+// 放大到 8000 大幅减少长文分块请求数（64 chunk 上限 × 8000 ≈ 512K token 容量）。
+const DEFAULT_MAX_CHUNK_TOKENS = 8_000;
 const RETRY_JSON_HINT =
   '\n\nYour previous response was not valid JSON. You MUST output only valid JSON matching the required shape, with no extra text.';
 
@@ -94,7 +97,7 @@ async function classifyArticle(
     model: options.classifyModel ?? options.model,
     messages,
     response_format: { type: 'json_object' },
-    max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
+    max_tokens: options.maxTokens ?? resolveTranslationMaxTokens(),
   };
   const reasoningEffort = options.reasoningEffort?.trim() || undefined;
   if (reasoningEffort) body.reasoning_effort = reasoningEffort;
@@ -134,7 +137,7 @@ async function translateChunk(
     model: options.model,
     messages,
     response_format: { type: 'json_object' },
-    max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
+    max_tokens: options.maxTokens ?? resolveTranslationMaxTokens(),
   };
   const reasoningEffort = options.reasoningEffort?.trim() || undefined;
   if (reasoningEffort) body.reasoning_effort = reasoningEffort;
@@ -180,7 +183,10 @@ export function createTranslateV2Client(options: TranslateV2Options): TranslateA
       url: article.url,
       sourceLanguage: article.originalLanguage,
       officialZh: article.contentSource === 'official-zh',
-      chunk: { maxTokens: options.maxChunkTokens },
+      chunk: {
+        maxTokens: options.maxChunkTokens
+          ?? envPositiveInt('TRANSLATION_MAX_CHUNK_TOKENS', DEFAULT_MAX_CHUNK_TOKENS),
+      },
     });
 
     const classified = await classifyArticle(options, endpoint, article, categories);

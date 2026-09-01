@@ -1,6 +1,8 @@
 /**
- * Translation planning scaffold: pure functions, no I/O, not wired into
- * the production translate pipeline.
+ * Translation planning scaffold: pure functions, no I/O. Production wiring:
+ * translate.ts imports protectMarkdown/restoreMarkdown（V1 保护/恢复），
+ * translate-v2.ts imports createTranslationPlan + restoreMarkdown（分块执行），
+ * translate.ts 的 routeTranslator 借 isNativeChinese 把中文正文直通 V2 passthrough。
  *
  * Responsibilities:
  *  - Parse Markdown into a remark (mdast) AST (GFM enabled).

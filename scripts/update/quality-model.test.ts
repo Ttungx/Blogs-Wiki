@@ -24,7 +24,7 @@ const fixture = JSON.parse(readFileSync(join(ART_DIR, 'parity_fixture.json'), 'u
   samples: Array<{ id: string; title: string; text: string; label: string; score: number }>;
 };
 const hardcases = JSON.parse(readFileSync(join(ART_DIR, 'hardcases.json'), 'utf8')) as Array<{
-  category: string; id: string; title: string; text: string; label: string; pyScore: number;
+  category: string; id: string; url?: string; title: string; text: string; label: string; pyScore: number;
 }>;
 
 test('parity：TS 分数与 Python 导出一致（浮点容差 1e-6）', () => {

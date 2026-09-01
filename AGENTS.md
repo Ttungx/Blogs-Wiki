@@ -58,7 +58,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 - free：OpenAI 兼容网关；`MODEL_REASONING_EFFORT=low`（high 会因 reasoning 吃满 max_tokens 致输出空；Gemini 端点不接受 default）。429 退避内置（2 次）；prompt 可能被留存训练，只传公开内容。
 - paid 回退三件套；本地多服务商槽位 `AI_PROVIDER=1|2|3`（见 `scripts/update/ai-provider.ts`，Render 生产 env 无选择器、行为不变）。本地网络受限 `USE_PROXY=true` + `PROXY_URL`；个别站点 TLS 指纹拦截时抓取自动回退系统 curl。
-- 默认 V1 整篇翻译；`TRANSLATION_PIPELINE=v2` 强制分块；单篇 >100K 字符自动兜底 V2。
+- 默认 V1 整篇翻译（单次输出预算 128K token，`TRANSLATION_MAX_TOKENS` 可调）；官方中文 / 原生中文正文直通 V2 passthrough（仅 1 次分类请求，不再白耗整篇调用）；`TRANSLATION_PIPELINE=v2` 强制分块（块输出上限 8000 token，`TRANSLATION_MAX_CHUNK_TOKENS` 可调）；单篇 >200K 字符自动兜底 V2。
 
 ## 路书（docs/，先读再动手）
 

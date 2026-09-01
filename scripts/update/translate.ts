@@ -1,18 +1,39 @@
 import { categoryPrompt, normalizeCategories } from './classify';
 import { assertMathIntegrity } from './content-integrity';
-import { protectMarkdown, restoreMarkdown } from './translation-plan';
+import { isNativeChinese, protectMarkdown, restoreMarkdown } from './translation-plan';
 import type { ExtractedArticle, FetchLike, TranslateArticle } from './types';
 
 /**
- * 超长兜底阈值：单篇正文 >100K 字符（≈25K token）时改走 V2 分块，防止 V1
- * 整篇塞入触发空输出（V2 引入动机，见 commit 215814d）。其余一律 V1 整篇
- * 一次——吞吐远高于分块（V2 实测 3000-3600 字符/分钟，V1 单次调用）。
+ * 超长兜底阈值：单篇正文 >200K 字符（≈50K token）时改走 V2 分块，防止 V1
+ * 整篇塞入触发空输出（V2 引入动机，见 commit 215814d）。输出预算提升到
+ * 128K token 后 V1 可整篇消化更长文章，阈值相应从 100K 上调。其余一律
+ * V1 整篇一次——吞吐远高于分块（V2 实测 3000-3600 字符/分钟，V1 单次调用）。
  */
-export const SUPER_LONG_THRESHOLD = 100_000;
+export const SUPER_LONG_THRESHOLD = 200_000;
+
+/** 解析正整数 env（缺失/非法回退默认值）。 */
+export function envPositiveInt(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+}
 
 /**
- * 包装 V1/V2 客户端为按篇幅路由的单一 translator（runner 与 batch-translate 共用，
+ * 单次 chat/completions 输出预算（token）：默认 128K，`TRANSLATION_MAX_TOKENS`
+ * 可覆盖。注意部分网关/模型实际输出上限更低（如 Gemini flash-lite 64K），
+ * 上游对 max_tokens 报 400 时调小即可。
+ */
+export function resolveTranslationMaxTokens(): number {
+  return envPositiveInt('TRANSLATION_MAX_TOKENS', 128_000);
+}
+
+/**
+ * 包装 V1/V2 客户端为按内容路由的单一 translator（runner 与 batch-translate 共用，
  * 单一来源防漂移）。
+ * - 中文正文（官方中文 / CJK 占比过半）直通 V2 passthrough：plan 判定
+ *   official-zh / native-zh 后仅发 1 次分类请求——V1 会把中文再“翻译”一遍，
+ *   白耗一次整篇调用且可能损坏原文
  * - `forceV2`（TRANSLATION_PIPELINE=v2）显式强制全部分块
  * - 单篇 contentMarkdown > SUPER_LONG_THRESHOLD 兜底走 V2 分块
  * - 其余一律 V1 整篇一次
@@ -22,10 +43,17 @@ export function routeTranslator(
   v2: TranslateArticle,
   forceV2: boolean,
 ): TranslateArticle {
-  return (article, categories) =>
-    forceV2 || article.contentMarkdown.length > SUPER_LONG_THRESHOLD
-      ? v2(article, categories)
-      : v1(article, categories);
+  return (article, categories) => {
+    if (
+      forceV2 ||
+      article.contentSource === 'official-zh' ||
+      isNativeChinese(article.contentMarkdown) ||
+      article.contentMarkdown.length > SUPER_LONG_THRESHOLD
+    ) {
+      return v2(article, categories);
+    }
+    return v1(article, categories);
+  };
 }
 
 export interface TranslateOptions {
@@ -53,7 +81,6 @@ export interface RetryOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 300_000;
-const DEFAULT_MAX_TOKENS = 16_000;
 const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
   maxRetries: 2,
   retryDelayMs: 15_000,
@@ -292,7 +319,7 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
   const endpoint = `${options.baseUrl.replace(/\/+$/, '').replace(/\/chat\/completions$/i, '')}/chat/completions`;
   const model = options.model;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
+  const maxTokens = options.maxTokens ?? resolveTranslationMaxTokens();
   const retryOptions = options.retryOptions ?? {};
   const reasoningEffort = options.reasoningEffort?.trim() || undefined;
   const fetchImpl = options.fetchImpl ?? fetch;
