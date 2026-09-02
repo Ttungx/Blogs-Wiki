@@ -2,6 +2,9 @@ node_modules/
 dist/
 .astro/
 .env
+model_provider
+.tmp-import-articles.json
+/temp-*
 .DS_Store
 *.log
 .zcode/

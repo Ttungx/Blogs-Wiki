@@ -2,7 +2,7 @@
 
 > 当前状态：**Worker cron 已紧急暂停**（`wrangler.deploy.jsonc` `crons=[]`，2026-09-02）。
 > 原因：链尾每 15 分钟全量 import+sync，D1 免费档日写入 10 万行被打到 90%。调查与恢复闸门见 [`d1-write-budget.md`](d1-write-budget.md)。
-> 增量 sync 方案 A/B/C 已在 `feat-d1-write-budget` 落地（本地四道门禁全绿），**合并部署前禁止只把 cron 打开**；恢复走 `d1-write-budget.md` §9 检查单。
+> 增量 sync 方案 A/B/C 已合并 `main`（`edd58b5`），**尚未部署**；部署并跑完 `d1-write-budget.md` §9 前禁止只把 cron 打开。
 
 ## 上线两前置（业务决策，非技术）
 
