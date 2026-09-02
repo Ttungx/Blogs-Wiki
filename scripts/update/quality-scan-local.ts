@@ -9,8 +9,12 @@
  *
  * 仅在 QUALITY_GATE_MODE=stage 时产出；off/shadow/enforce 下清空输出（影子观察期
  * 不改变上线行为）。重跑覆盖。
+ *
+ * 用法：quality-scan [--source <id>]
+ *   --source <id>   只扫该源目录（render-runner 链尾逐源调用，禁止每轮扫全库）
+ *   不带 --source = 显式运维全扫（消耗模型调用，勿绑 15 分钟链）
  */
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +23,13 @@ import { classifyArticleQuality, loadQualityModel, resolveQualityGateMode } from
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ARTICLES_DIR = join(ROOT, 'src', 'content', 'articles');
 const OUT = resolve(process.env.QUALITY_VERDICTS_FILE ?? join(ROOT, 'ml', 'local-quality-verdicts.jsonl'));
+
+const sourceArgIndex = process.argv.findIndex((arg) => arg === '--source' || arg.startsWith('--source='));
+const sourceId = sourceArgIndex === -1
+  ? ''
+  : process.argv[sourceArgIndex]!.startsWith('--source=')
+    ? process.argv[sourceArgIndex]!.slice('--source='.length)
+    : process.argv[sourceArgIndex + 1] ?? '';
 
 mkdirSync(dirname(OUT), { recursive: true });
 
@@ -42,7 +53,26 @@ function walk(dir: string): string[] {
   return out;
 }
 
-for (const file of walk(ARTICLES_DIR)) {
+// 逐源调用只覆写该源的 verdict 条目（保留其余源的既有结论，供运维复审）；
+// 不带 --source 的全扫整体覆盖（历史行为）。
+let mergedLines: string[] = [];
+if (sourceId) {
+  try {
+    const before = readFileSync(OUT, 'utf8');
+    mergedLines = before
+      .split('\n')
+      .filter((l) => l.trim() && !l.includes(`"file":"${sourceId}/`));
+  } catch { /* 无旧文件 */ }
+}
+
+const scanBase = sourceId ? join(ARTICLES_DIR, sourceId) : ARTICLES_DIR;
+if (sourceId && !existsSync(scanBase)) {
+  console.log(`quality-scan: source ${sourceId} 无本地 corpus，跳过（0 篇）`);
+  writeFileSync(OUT, mergedLines.join('\n') + (mergedLines.length ? '\n' : ''), 'utf8');
+  process.exit(0);
+}
+
+for (const file of walk(scanBase)) {
   const raw = readFileSync(file, 'utf8');
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(raw);
   if (!m) continue;
@@ -62,5 +92,6 @@ for (const file of walk(ARTICLES_DIR)) {
   written += 1;
 }
 
-writeFileSync(OUT, lines.join('\n') + '\n', 'utf8');
-console.log(`quality-scan: ${written} 篇已打分（stage）→ ${relative(ROOT, OUT)}｜模型 ${model.modelVersion}｜阈值 ${model.threshold}`);
+mergedLines.push(...lines);
+writeFileSync(OUT, mergedLines.join('\n') + (mergedLines.length ? '\n' : ''), 'utf8');
+console.log(`quality-scan: ${written} 篇已打分（stage）→ ${relative(ROOT, OUT)}｜模型 ${model.modelVersion}｜阈值 ${model.threshold}｜范围 ${sourceId ? `source:${sourceId}` : '全部'}`);

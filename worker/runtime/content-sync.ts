@@ -33,6 +33,7 @@
  *    拒绝 DDL/DQL/事务控制与内嵌分号；幂等性由上传方保证（如 ON CONFLICT）。
  */
 
+import { createHash } from 'node:crypto';
 import { excerptFromMarkdown } from '../domain/article';
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 
@@ -48,6 +49,37 @@ export const MAX_SOURCES = 200;
 export const MAX_SQL_STATEMENTS = 200;
 /** D1 batch 单批语句上限（Cloudflare 文档限制）。 */
 export const D1_BATCH_LIMIT = 100;
+/** 内容指纹算法版本：变更时全库重算跳过判定（等价于一次全量刷新）。 */
+export const CONTENT_HASH_VERSION = 'v1';
+
+/**
+ * 版本级内容指纹（阶段 B，D1 写入预算）：单个语言版本「可比较内容」的
+ * SHA-256。输入 = 该版本的 language/title/content_markdown/excerpt/
+ * provenance/translation_model/original_alt_url。显式排除时间戳（translatedAt
+ * 是过程时间不是内容）。
+ *
+ * 每个版本独立指纹、独立存于 article_versions.content_hash——改一个版本
+ * 只重写该版本行，其它版本指纹不变，不会互相误伤。**不碰**
+ * article_versions.rendered_html/rendered_hash（SSR 渲染缓存专用，
+ * 见 src/lib/server/render-cache.ts）。
+ *
+ * @param version 版本
+ * @param articleId 文章 id（加盐，防止跨文章同内容串指纹）
+ */
+export function computeVersionContentHash(version: SyncVersion, articleId: string): string {
+  const hash = createHash('sha256');
+  hash.update(CONTENT_HASH_VERSION);
+  hash.update(`\u0000${articleId}\u0000${version.language}`);
+  hash.update(`\u0000${version.title}\u0000${version.contentMarkdown}`);
+  hash.update(`\u0000${version.provenance}\u0000${version.excerpt ?? ''}`);
+  hash.update(`\u0000${version.translationModel ?? ''}\u0000${version.originalAltUrl ?? ''}`);
+  return hash.digest('hex');
+}
+
+/** 幂等判定的哈希相等比较（比较字符串相等即可，不为时序用途）。 */
+function hashEqual(a: string | null | undefined, b: string | null | undefined): boolean {
+  return a != null && b != null && a === b;
+}
 
 // ── 领域类型（桥接契约） ─────────────────────────────
 
@@ -112,6 +144,8 @@ export interface ContentSyncResult {
     created: number;
     /** 本次已存在、被刷新（含版本/分类更新）的文章数。 */
     updated: number;
+    /** 内容指纹相同、整篇跳过（零写入）的文章数。 */
+    skipped: number;
   };
   sql: {
     statements: number;
@@ -432,8 +466,8 @@ const SOURCE_UPSERT_SQL = `
 const ARTICLE_UPSERT_SQL = `
   INSERT INTO articles (
     id, source_id, original_url, original_language, published_at,
-    image_url, author, source_domain, published, quality_score, quality_model
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    image_url, author, source_domain, published, quality_score, quality_model, updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
   ON CONFLICT(source_id, original_url) DO UPDATE SET
     id = excluded.id,
     original_language = excluded.original_language,
@@ -444,14 +478,26 @@ const ARTICLE_UPSERT_SQL = `
     published = excluded.published,
     quality_score = excluded.quality_score,
     quality_model = excluded.quality_model,
-    updated_at = datetime('now')
+    updated_at = CASE
+      WHEN articles.id IS excluded.id
+        AND articles.original_language IS excluded.original_language
+        AND articles.published_at IS excluded.published_at
+        AND articles.image_url IS COALESCE(excluded.image_url, articles.image_url)
+        AND articles.author IS COALESCE(excluded.author, articles.author)
+        AND articles.source_domain IS excluded.source_domain
+        AND articles.published IS excluded.published
+        AND articles.quality_score IS excluded.quality_score
+        AND articles.quality_model IS excluded.quality_model
+      THEN articles.updated_at
+      ELSE datetime('now')
+    END
 `;
 
 const VERSION_UPSERT_SQL = `
   INSERT INTO article_versions (
     article_id, language, title, content_markdown, excerpt, provenance,
-    translation_model, original_alt_url, translated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    translation_model, original_alt_url, translated_at, content_hash, updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
   ON CONFLICT(article_id, language) DO UPDATE SET
     title = excluded.title,
     content_markdown = excluded.content_markdown,
@@ -460,7 +506,19 @@ const VERSION_UPSERT_SQL = `
     translation_model = COALESCE(excluded.translation_model, article_versions.translation_model),
     original_alt_url = COALESCE(excluded.original_alt_url, article_versions.original_alt_url),
     translated_at = COALESCE(article_versions.translated_at, excluded.translated_at),
-    updated_at = datetime('now')
+    content_hash = excluded.content_hash,
+    updated_at = CASE
+      WHEN article_versions.title IS excluded.title
+        AND article_versions.content_markdown IS excluded.content_markdown
+        AND article_versions.excerpt IS COALESCE(excluded.excerpt, article_versions.excerpt)
+        AND article_versions.provenance IS excluded.provenance
+        AND article_versions.translation_model IS COALESCE(excluded.translation_model, article_versions.translation_model)
+        AND article_versions.original_alt_url IS COALESCE(excluded.original_alt_url, article_versions.original_alt_url)
+        AND article_versions.translated_at IS COALESCE(article_versions.translated_at, excluded.translated_at)
+        AND article_versions.content_hash IS excluded.content_hash
+      THEN article_versions.updated_at
+      ELSE datetime('now')
+    END
 `;
 
 function sourceUpsert(db: D1Database, source: SyncSource): D1PreparedStatement {
@@ -553,7 +611,7 @@ function articleUpsert(db: D1Database, article: SyncArticle): D1PreparedStatemen
     );
 }
 
-function versionUpsert(db: D1Database, articleId: string, version: SyncVersion): D1PreparedStatement {
+function versionUpsert(db: D1Database, articleId: string, version: SyncVersion, contentHash: string): D1PreparedStatement {
   const excerpt = version.excerpt ?? (excerptFromMarkdown(version.contentMarkdown) || null);
   return db
     .prepare(VERSION_UPSERT_SQL)
@@ -567,6 +625,7 @@ function versionUpsert(db: D1Database, articleId: string, version: SyncVersion):
       version.translationModel ?? null,
       version.originalAltUrl ?? null,
       version.provenance === 'model' ? (version.translatedAt ?? new Date().toISOString()) : null,
+      contentHash,
     );
 }
 
@@ -602,6 +661,218 @@ async function ensureSourcesExist(db: D1Database, payload: SyncPayload): Promise
 
 /** check 预检点查 SQL：articles 已存在命中。 */
 const ARTICLES_HIT_SQL = 'SELECT 1 AS hit FROM articles WHERE source_id = ? AND original_url = ? LIMIT 1';
+
+/**
+ * 阶段 B 幂等判定（docs/d1-write-budget.md）：重复 payload / 内容未变的文章
+ * 应整篇跳过、零写入。点查既有行（文章 id + 每版本 content_hash + 分类），
+ * 与载荷做相等比较，全等则跳过整组写入语句。
+ *
+ * content_hash 由服务端独立计算并持久化（见 computeVersionContentHash 与
+ * VERSION_UPSERT_SQL 的 content_hash 列），比较的是「内容指纹」而非原文，
+ * 不碰 article_versions.rendered_hash（SSR 渲染缓存语义，见 render-cache.ts）。
+ */
+
+/** 预检行：既有文章 id + 身份字段 + 各版本内容指纹 + 分类集合（无文章时为空）。 */
+interface ExistingArticleRow {
+  articleId: string | null;
+  /** 现网每版本已存指纹：language → content_hash。 */
+  versionHashes: Map<string, string> | null;
+  /** 现网分类集合（有序）；null = 文章不存在。 */
+  categories: string[] | null;
+  /** 现网文章身份可见字段（articles 行）；null = 文章不存在。 */
+  identity: {
+    originalLanguage: string;
+    publishedAt: string;
+    imageUrl: string | null;
+    author: string | null;
+    sourceDomain: string;
+    published: boolean;
+    qualityScore: number | null;
+    qualityModel: string | null;
+  } | null;
+}
+
+/** 点查：一篇文章的身份 + 全部版本指纹 + 分类（每篇 1 条 SQL，返回整行）。 */
+async function pointQueryExistingArticle(
+  db: D1Database,
+  article: SyncArticle,
+): Promise<ExistingArticleRow> {
+  const rows = await db
+    .prepare(
+      `SELECT
+         a.id AS article_id,
+         a.original_language AS original_language,
+         a.published_at AS published_at,
+         a.image_url AS image_url,
+         a.author AS author,
+         a.source_domain AS source_domain,
+         a.published AS published,
+         a.quality_score AS quality_score,
+         a.quality_model AS quality_model,
+         v.language AS language,
+         v.content_hash AS content_hash,
+         c.category_name AS category_name
+       FROM articles a
+       LEFT JOIN article_versions v ON v.article_id = a.id
+       LEFT JOIN article_categories c ON c.article_id = a.id
+       WHERE a.source_id = ? AND a.original_url = ?
+       ORDER BY v.language, c.category_name`,
+    )
+    .bind(article.sourceId, article.originalUrl)
+    .all();
+  const found = rows.results ?? [];
+  if (found.length === 0) {
+    return { articleId: null, versionHashes: null, categories: null, identity: null };
+  }
+  return parseExistingArticleRow(article, found);
+}
+
+/** 解析点查行 → ExistingArticleRow（join 后每篇文章可能占多行）。 */
+function parseExistingArticleRow(
+  article: SyncArticle,
+  found: Record<string, unknown>[],
+): ExistingArticleRow {
+  const first = found[0] as any;
+  const articleId = String(first.article_id);
+  const versionHashes = new Map<string, string>();
+  const categorySet = new Set<string>();
+  for (const row of found) {
+    const r = row as any;
+    if (r.language != null && r.content_hash != null) {
+      versionHashes.set(String(r.language), String(r.content_hash));
+    }
+    if (r.category_name != null) categorySet.add(String(r.category_name));
+  }
+  return {
+    articleId,
+    versionHashes,
+    categories: [...categorySet].sort(),
+    identity: {
+      originalLanguage: String(first.original_language),
+      publishedAt: String(first.published_at),
+      imageUrl: first.image_url != null ? String(first.image_url) : null,
+      author: first.author != null ? String(first.author) : null,
+      sourceDomain: String(first.source_domain),
+      published: first.published === 1 || first.published === true,
+      qualityScore: first.quality_score != null ? Number(first.quality_score) : null,
+      qualityModel: first.quality_model != null ? String(first.quality_model) : null,
+    },
+  };
+}
+
+/** 批量点查（阶段 B）：只查既有文章（key 命中 existingKeys 的子集），
+ * 按 chunk 分批发 db.batch，避免逐篇串行 round-trip。 */
+async function pointQueryExistingArticles(
+  db: D1Database,
+  articles: SyncArticle[],
+  existingKeys: Set<string>,
+): Promise<Map<string, ExistingArticleRow>> {
+  const targets = articles.filter((a) => existingKeys.has(articleKey(a.sourceId, a.originalUrl)));
+  const out = new Map<string, ExistingArticleRow>();
+  for (let i = 0; i < targets.length; i += D1_BATCH_LIMIT) {
+    const chunk = targets.slice(i, i + D1_BATCH_LIMIT);
+    const results = await db.batch(
+      chunk.map((item) =>
+        db
+          .prepare(
+            `SELECT
+               a.id AS article_id,
+               a.original_language AS original_language,
+               a.published_at AS published_at,
+               a.image_url AS image_url,
+               a.author AS author,
+               a.source_domain AS source_domain,
+               a.published AS published,
+               a.quality_score AS quality_score,
+               a.quality_model AS quality_model,
+               v.language AS language,
+               v.content_hash AS content_hash,
+               c.category_name AS category_name
+             FROM articles a
+             LEFT JOIN article_versions v ON v.article_id = a.id
+             LEFT JOIN article_categories c ON c.article_id = a.id
+             WHERE a.source_id = ? AND a.original_url = ?
+             ORDER BY v.language, c.category_name`,
+          )
+          .bind(item.sourceId, item.originalUrl),
+      ),
+    );
+    results.forEach((result, j) => {
+      const found = result?.results ?? [];
+      if (found.length === 0) return;
+      const item = chunk[j]!;
+      out.set(articleKey(item.sourceId, item.originalUrl), parseExistingArticleRow(item, found as any[]));
+    });
+  }
+  return out;
+}
+
+/** 载荷分类（有序）；载荷省略分类时视为不触碰现有分类（undefined）。 */
+function sortedCategories(article: SyncArticle): string[] | undefined {
+  if (article.categories === undefined) return undefined;
+  return [...article.categories].sort();
+}
+
+/**
+ * 版本指纹一致性（阶段 B）：现网该语言版本的 content_hash 与载荷重算结果
+ * 相等 → 该版本未变。现网无该版本（含 hash 为空）→ 需要写入。
+ */
+function versionHashMatches(
+  existingHashes: Map<string, string> | null | undefined,
+  articleId: string,
+  version: SyncVersion,
+): boolean {
+  if (!existingHashes) return false;
+  const existing = existingHashes.get(version.language);
+  if (existing == null) return false;
+  return hashEqual(existing, computeVersionContentHash(version, articleId));
+}
+
+/**
+ * 身份可见字段相等（跳过判定用）：载荷省略某字段 = 「不要求改它」，视同相等
+ * （与 upsert 的 COALESCE(excluded, existing) 语义一致）；提供则必须与现网
+ * 完全一致才算未变。身份任一变化都走 upsert 路径（published/quality_* 等
+ * 不在版本指纹里，必须在此拦截，否则会被 skip 吞掉）。
+ */
+function identityMatches(article: SyncArticle, identity: ExistingArticleRow['identity']): boolean {
+  if (!identity) return false;
+  if (identity.originalLanguage !== article.originalLanguage) return false;
+  if (identity.publishedAt !== article.publishedAt) return false;
+  if (identity.sourceDomain !== article.sourceDomain) return false;
+  if (article.imageUrl != null && identity.imageUrl !== article.imageUrl) return false;
+  if (article.author != null && identity.author !== article.author) return false;
+  if (article.published !== undefined && identity.published !== article.published) return false;
+  if (article.qualityScore != null && identity.qualityScore !== article.qualityScore) return false;
+  if (article.qualityModel != null && identity.qualityModel !== article.qualityModel) return false;
+  return true;
+}
+
+/**
+ * 整篇跳过判定：既有文章 id 一致 + 身份可见字段一致 + 每个语言版本内容指纹
+ * 一致 + 分类集合一致 → 整篇跳过（零写入，连预清理与 upsert 都不发）。
+ * 任一不同 → false，走增量更新（身份字段变化只更新 articles 那几列、
+ * 不会重写全部版本）。
+ */
+function isArticleUnchanged(existing: ExistingArticleRow, article: SyncArticle): boolean {
+  if (existing.articleId !== article.id) return false;
+  if (!identityMatches(article, existing.identity)) return false;
+  if (existing.versionHashes == null || existing.categories == null) return false;
+  if (existing.versionHashes.size !== article.versions.length) return false;
+  for (const version of article.versions) {
+    if (!versionHashMatches(existing.versionHashes, article.id, version)) return false;
+  }
+  const payloadCategories = sortedCategories(article);
+  if (payloadCategories == null) return false;
+  if (payloadCategories.join('\u0000') !== existing.categories.join('\u0000')) return false;
+  return true;
+}
+
+/** 分类集合是否与现网一致（用于是否跳过分类重建）。 */
+function categoriesUnchanged(existingCategories: string[] | null, article: SyncArticle): boolean {
+  const payloadCategories = sortedCategories(article);
+  if (payloadCategories == null || existingCategories == null) return false;
+  return payloadCategories.join('\u0000') === existingCategories.join('\u0000');
+}
 
 /**
  * 按 (source_id, original_url) 分块批量点查（每 chunk ≤ D1_BATCH_LIMIT），
@@ -640,14 +911,18 @@ function findExistingArticleKeys(db: D1Database, articles: SyncArticle[]): Promi
 }
 
 /**
- * 构建全部写入语句并分类 created/updated。
+ * 构建全部写入语句并分类 created/updated/skipped。
  * 语句顺序：sources upsert → 每篇 (article upsert → versions upsert →
  * categories 整体替换) → sql 直通语句。同一 batch 内保持该顺序。
+ *
+ * 阶段 B（docs/d1-write-budget.md）：逐篇点查既有行，hash 相同整篇跳过
+ * （零写入，连预清理都不发）；只对实际变化的字段发 upsert；分类集合相等
+ * 不动，不等才 diff 重建。
  */
 async function prepareSyncWrite(
   db: D1Database,
   payload: SyncPayload,
-): Promise<{ statements: D1PreparedStatement[]; created: number; updated: number }> {
+): Promise<{ statements: D1PreparedStatement[]; created: number; updated: number; skipped: number }> {
   await ensureSourcesExist(db, payload);
 
   const statements: D1PreparedStatement[] = [];
@@ -656,34 +931,53 @@ async function prepareSyncWrite(
   }
 
   const existingKeys = await findExistingArticleKeys(db, payload.articles);
+  const existingRows = await pointQueryExistingArticles(db, payload.articles, existingKeys);
   let created = 0;
   let updated = 0;
+  let skipped = 0;
 
   for (const article of payload.articles) {
-    if (existingKeys.has(articleKey(article.sourceId, article.originalUrl))) {
-      updated += 1;
-    } else {
+    const key = articleKey(article.sourceId, article.originalUrl);
+    const existing = existingKeys.has(key) ? (existingRows.get(key) ?? null) : null;
+    if (existing == null) {
       created += 1;
+    } else {
+      // 阶段 B：整篇跳过判定（身份 id + 全部版本指纹 + 分类全等 → 零写入）。
+      if (isArticleUnchanged(existing, article)) {
+        skipped += 1;
+        continue;
+      }
+      updated += 1;
+      // 稳定路径（既行 id 相同）：跳过预清理的 4~5 条 DELETE（改名/id 漂移
+      // 专用，B4）。身份字段变化只走条件 upsert，版本/分类按差异增量写。
+      if (existing.articleId !== article.id) {
+        statements.push(...articleIdentityPreClean(db, article));
+      }
     }
 
-    statements.push(...articleIdentityPreClean(db, article));
     statements.push(articleUpsert(db, article));
     for (const version of article.versions) {
-      statements.push(versionUpsert(db, article.id, version));
+      // 版本指纹相同则跳过该版本 upsert（B2：不发无谓的 updated_at=now）。
+      if (existing == null || !versionHashMatches(existing.versionHashes, article.id, version)) {
+        statements.push(versionUpsert(db, article.id, version, computeVersionContentHash(version, article.id)));
+      }
     }
     if (article.categories !== undefined) {
-      statements.push(db.prepare('DELETE FROM article_categories WHERE article_id = ?').bind(article.id));
-      for (const category of article.categories) {
-        statements.push(
-          db
-            .prepare('INSERT INTO categories (name) VALUES (?) ON CONFLICT(name) DO NOTHING')
-            .bind(category),
-        );
-        statements.push(
-          db
-            .prepare('INSERT INTO article_categories (article_id, category_name) VALUES (?, ?)')
-            .bind(article.id, category),
-        );
+      // 分类 diff（B3）：集合相等不动，不等才 DELETE+INSERT 重建。
+      if (existing == null || existing.categories == null || !categoriesUnchanged(existing.categories, article)) {
+        statements.push(db.prepare('DELETE FROM article_categories WHERE article_id = ?').bind(article.id));
+        for (const category of article.categories) {
+          statements.push(
+            db
+              .prepare('INSERT INTO categories (name) VALUES (?) ON CONFLICT(name) DO NOTHING')
+              .bind(category),
+          );
+          statements.push(
+            db
+              .prepare('INSERT INTO article_categories (article_id, category_name) VALUES (?, ?)')
+              .bind(article.id, category),
+          );
+        }
       }
     }
   }
@@ -692,7 +986,7 @@ async function prepareSyncWrite(
     statements.push(db.prepare(statement));
   }
 
-  return { statements, created, updated };
+  return { statements, created, updated, skipped };
 }
 
 /** 执行同步：分批 db.batch() 写入，返回统计。 */
@@ -700,7 +994,7 @@ export async function executeContentSync(
   db: D1Database,
   payload: SyncPayload,
 ): Promise<ContentSyncResult> {
-  const { statements, created, updated } = await prepareSyncWrite(db, payload);
+  const { statements, created, updated, skipped } = await prepareSyncWrite(db, payload);
 
   let batches = 0;
   for (let i = 0; i < statements.length; i += D1_BATCH_LIMIT) {
@@ -714,6 +1008,7 @@ export async function executeContentSync(
       received: payload.articles.length,
       created,
       updated,
+      skipped,
     },
     sql: {
       statements: payload.sql.length,

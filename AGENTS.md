@@ -46,7 +46,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 ## 内容更新（链路细节见 docs/go-live.md）
 
 - 链路：Worker cron（表达式 `7,22,37,52 * * * *`）→ ping Render `/run?key=` → runner 单源轮转 → update → translate:batch → import+sync 写 D1。`scheduled` 必须挂在 default export 上。
-- **2026-09-02 紧急暂停 cron**（`crons=[]` 已 deploy）：链尾全量 import+sync 把 D1 日写入打到 90%。恢复前必读并落地 [`docs/d1-write-budget.md`](docs/d1-write-budget.md)，禁止只改回 cron。
+- **2026-09-02 紧急暂停 cron**（`crons=[]` 已 deploy）：链尾全量 import+sync 把 D1 日写入打到 90%。修复方案（阶段 A 链尾增量 + B content-sync 指纹跳过 + C 运维闸门）代码已在 `feat-d1-write-budget` 落地、本地四道门禁全绿，**未合并部署前 cron 保持空**；恢复走 [`docs/d1-write-budget.md`](docs/d1-write-budget.md) §9 检查单，禁止只改回 cron。
 - 去重四层：URL 规范化（`urls.ts`）→ D1 点查预检（articles + 90 天拒绝缓存，fail-open）→ `source_items` 拒绝负缓存（`/api/content-sync/items` 上报）→ 写入按 `(source_id, original_url)` 幂等。
 - `POST /api/trigger` 返回 410；GitHub Actions 内容更新与 Cloudflare Workflow 均已退役（备份：gitignored `workflow-backup/`），不作为运维依据。
 
@@ -65,13 +65,13 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 - `blog-source-registry.md`：来源适配状态唯一权威；改来源前必读。
 - `ci-cd.md`：CI/CD 触发边界、发布流程、密钥分层、泄密应急。
-- `go-live.md`：上线 runbook。`d1-write-budget.md`：D1 日写入爆炸调查与增量 sync 方案（未实施前 cron 保持空）。
+- `go-live.md`：上线 runbook。`d1-write-budget.md`：D1 日写入爆炸调查与增量 sync 方案（A/B/C 已落地，cron 恢复前保持空）。
 - `update-pipeline-v2.md`：V2 翻译管线说明。
 - `migration-to-cloudflare.md`：迁移路线图（Phase 1-8 完成）。
 
 ## 当前状态
 
-写路径代码全部就绪。**Worker cron 已暂停**（D1 日写入配额，见 `docs/d1-write-budget.md`）。质量门禁生产为 `QUALITY_GATE_MODE=stage`。其余待办：增量 sync 后再恢复 cron、Phase 9 FTS5、历史英文补翻。
+写路径代码全部就绪。**Worker cron 已暂停**（D1 日写入配额，见 `docs/d1-write-budget.md`）。质量门禁生产为 `QUALITY_GATE_MODE=stage`。其余待办：A/B/C 合并部署并恢复 cron（§9 检查单）、Phase 9 FTS5、历史英文补翻。
 
 ## 搜索、输出与探索委托纪律
 

@@ -4,30 +4,78 @@
  * 用途：Workers Free 计划 CPU 限制（10ms）无法运行真实翻译 Workflow，
  * 用本地已有的文章文件（en + zh-cn 双版本）填充 D1，立即上线内容。
  *
- * 用法：node scripts/import-local-articles.mjs
- * 生成 SQL 后自动执行：wrangler d1 execute blogs-wiki --remote --file
+ * 用法：
+ *   node scripts/import-local-articles.mjs [--json|--sql] [--source <id>]
+ *     [--since <ISO>] [--full] [--root <dir>] [--output <file>]
+ *
+ * 增量模式（render-runner 链尾用）：
+ *   --source <id>   只 walk src/content/articles/<id>/，不扫全库
+ *   --since <ISO>   只收文件 mtime >= 该时刻；无命中文件时输出空 payload
+ *                  （sync-local-articles 对空 payload 直接跳过，不再 POST）
+ * 显式运维全量（一条链 ≈ 1～2 万行写入，见 docs/d1-write-budget.md）：
+ *   不带 --source/--since，等价于历史行为。
+ *
+ * 生成 JSON 后由 sync-local-articles 分片 POST /api/content-sync；
+ * --sql 模式生成 SQL：wrangler d1 execute blogs-wiki --remote --file
  */
 
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import YAML from 'yaml';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const ARTICLES_DIR = join(ROOT, 'src', 'content', 'articles');
+
+function argValue(name, fallback) {
+  const prefix = `--${name}=`;
+  const index = process.argv.findIndex((arg) => arg === `--${name}` || arg.startsWith(prefix));
+  if (index === -1) return fallback;
+  return process.argv[index].startsWith(prefix)
+    ? process.argv[index].slice(prefix.length)
+    : process.argv[index + 1] ?? '';
+}
+
+function argValues(name) {
+  const prefix = `--${name}=`;
+  const values = [];
+  process.argv.forEach((arg, index) => {
+    if (arg === `--${name}`) values.push(process.argv[index + 1] ?? '');
+    else if (arg.startsWith(prefix)) values.push(arg.slice(prefix.length));
+  });
+  return values;
+}
 
 const args = process.argv.slice(2);
 const format = args.includes('--json') ? 'json' : 'sql';
+const sourceIds = argValues('source').filter(Boolean);
+const since = argValue('since', '');
+const full = args.includes('--full');
+const rootOverride = argValue('root', '');
+const ARTICLES_DIR = join(rootOverride ? resolve(rootOverride) : ROOT, 'src', 'content', 'articles');
 const outputArgIndex = args.findIndex((arg) => arg === '--output' || arg.startsWith('--output='));
+const outputDefault = join(ROOT, format === 'json' ? '.tmp-import-articles.json' : '.tmp-import-articles.sql');
 const output = outputArgIndex === -1
-  ? (format === 'json' ? join(ROOT, '.tmp-import-articles.json') : join(ROOT, '.tmp-import-articles.sql'))
-  : join(ROOT, args[outputArgIndex].startsWith('--output=')
-    ? args[outputArgIndex].slice('--output='.length)
-    : args[outputArgIndex + 1] ?? '');
+  ? outputDefault
+  : isAbsolute(args[outputArgIndex].startsWith('--output=') ? args[outputArgIndex].slice('--output='.length) : args[outputArgIndex + 1] ?? '')
+    ? args[outputArgIndex].startsWith('--output=') ? args[outputArgIndex].slice('--output='.length) : args[outputArgIndex + 1] ?? ''
+    : join(ROOT, args[outputArgIndex].startsWith('--output=') ? args[outputArgIndex].slice('--output='.length) : args[outputArgIndex + 1] ?? '');
 if (!output || output === ROOT) {
   throw new Error('--output requires a file path');
+}
+if (!full && (sourceIds.length > 0 || since)) {
+  // 增量模式：SQL 直连没有 skip 语义，任何写都按全量计数——禁止。
+  if (format === 'sql') throw new Error('增量模式必须 --json（content-sync 有指纹跳过）；显式全量请不带 --source/--since');
+}
+let sinceMs = 0;
+if (since) {
+  const parsed = Date.parse(since);
+  if (Number.isNaN(parsed)) throw new Error(`--since must be an ISO timestamp, got "${since}"`);
+  sinceMs = parsed;
+}
+for (const id of sourceIds) {
+  if (id.includes('/')) throw new Error('--source must be a source id without slash');
 }
 
 function walk(dir) {
@@ -71,8 +119,26 @@ function isoDate(value) {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-const files = walk(ARTICLES_DIR);
-console.log(`Found ${files.length} article files`);
+// 增量收集：--source 可给多个，各只 walk 该源目录；文章级 mtime 判断在分组后
+// 统一做（任一版本文件 mtime >= since 即整篇纳入，保证原文与译文版本不拆散）。
+// 无 --source/--since = 显式全量（运维命令，见 docs/d1-write-budget.md）。
+const walkBases = sourceIds.length > 0 ? sourceIds.map((id) => join(ARTICLES_DIR, id)) : [ARTICLES_DIR];
+const files = walkBases.flatMap((base) => (existsSync(base) ? walk(base) : []));
+const rawFiles = files.map((file) => ({
+  file,
+  rel: relative(ARTICLES_DIR, file).replace(/\\/g, '/'),
+}));
+if (rawFiles.length === 0) {
+  // 本轮无新/变更文件：不空跑全量。JSON 模式产出空 articles（sync 端整体跳过），
+  // SQL 直连模式拒绝空跑（显式运维应直接不带过滤）。
+  if (format === 'json') {
+    const empty = { sources: [], articles: [] };
+    writeFileSync(output, `${JSON.stringify(empty)}\n`, 'utf8');
+    console.log('No article files; JSON written with 0 articles');
+    process.exit(0);
+  }
+  throw new Error('no article files found（全量请去掉 --since/--source 或确认目录非空）');
+}
 
 // 永久拉黑（tombstone）守卫：import 是唯一绕过发现层、能把已移除源文章重导进
 // D1 的旁路。blog_id 命中 blocked-sources.json 即跳过（与 loadSources 门禁同源）。
@@ -87,24 +153,31 @@ function readBlockedIds() {
 }
 const blockedIds = readBlockedIds();
 
-// 按 blogId/slug 分组，收集每个文件
+// 按 blogId/slug 分组。文章粒度判断「本轮变化」：该篇任一版本文件 mtime 在
+// since 之后即整篇纳入（含其旧版本文件——重译/新译只会新增/覆盖语言文件，
+// 文章身份与 categories 取全版本并集，不能只带新文件）。
 const groups = new Map();
 let skipped = 0;
 let blockedSkipped = 0;
-for (const file of files) {
+for (const { file, rel } of rawFiles) {
   const parsed = parseMarkdown(file);
   if (!parsed) { skipped++; continue; }
   const fm = parsed.frontmatter;
   if (!fm.blog_id || !fm.title) { skipped++; continue; }
   if (blockedIds.has(fm.blog_id)) { blockedSkipped++; continue; }
-  const rel = relative(ARTICLES_DIR, file).replace(/\\/g, '/');
   const parts = rel.split('/'); // blogId/lang/slug.md
   const blogId = parts[0];
   const lang = parts[1];
   const slug = parts.slice(2).join('/').replace(/\.md$/, '');
   const key = `${blogId}/${slug}`;
   if (!groups.has(key)) groups.set(key, []);
-  groups.get(key).push({ file, fm, body: parsed.body, lang, blogId, slug });
+  groups.get(key).push({ file, rel, mtimeMs: statSync(file).mtimeMs, fm, body: parsed.body, lang, blogId, slug });
+}
+
+if (sinceMs > 0) {
+  for (const [key, versions] of groups) {
+    if (!versions.some((v) => v.mtimeMs >= sinceMs)) groups.delete(key);
+  }
 }
 
 console.log(`Grouped into ${groups.size} articles (${skipped} skipped, ${blockedSkipped} blocked-skipped)`);

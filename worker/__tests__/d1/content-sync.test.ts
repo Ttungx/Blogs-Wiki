@@ -221,7 +221,7 @@ describe('content-sync 写入与幂等', () => {
     expect(source).toMatchObject({ name: 'Sync Blog', domain: 'sync.example' });
   });
 
-  test('重复提交幂等：created=0、行数不变', async () => {
+  test('重复提交幂等：created=0、updated=0、整篇 skip（零写入）', async () => {
     const payload = makePayload();
     const article = payload.articles[0]!;
 
@@ -230,7 +230,9 @@ describe('content-sync 写入与幂等', () => {
 
     const second = await handleContentSync(post(JSON.stringify(payload)), syncEnv());
     expect(second.status).toBe(200);
-    expect(await second.json()).toMatchObject({ articles: { received: 1, created: 0, updated: 1 } });
+    expect(await second.json()).toMatchObject({
+      articles: { received: 1, created: 0, updated: 0, skipped: 1 },
+    });
 
     const count = await rowCount('articles');
     const versions = await env.DB
@@ -239,6 +241,120 @@ describe('content-sync 写入与幂等', () => {
       .first<{ count: number }>();
     expect(count).toBeGreaterThanOrEqual(1);
     expect(versions?.count).toBe(2);
+  });
+
+  test('阶段 B：内容不变时重复提交不刷新 updated_at', async () => {
+    const payload = makePayload();
+    const article = payload.articles[0]!;
+    await handleContentSync(post(JSON.stringify(payload)), syncEnv());
+
+    // 哨兵时间：若服务端仍无条件 updated_at=now 会被冲掉，skip 路径则保留。
+    const sentinel = '2099-01-01 00:00:00';
+    await env.DB
+      .prepare('UPDATE articles SET updated_at = ? WHERE id = ?')
+      .bind(sentinel, article.id)
+      .run();
+    await env.DB
+      .prepare('UPDATE article_versions SET updated_at = ? WHERE article_id = ?')
+      .bind(sentinel, article.id)
+      .run();
+
+    const second = await handleContentSync(post(JSON.stringify(payload)), syncEnv());
+    expect(second.status).toBe(200);
+    expect(await second.json()).toMatchObject({ articles: { received: 1, skipped: 1 } });
+
+    const articleRow = await env.DB
+      .prepare('SELECT updated_at FROM articles WHERE id = ?')
+      .bind(article.id)
+      .first<{ updated_at: string }>();
+    expect(articleRow?.updated_at).toBe(sentinel);
+    const versionRows = await env.DB
+      .prepare('SELECT updated_at FROM article_versions WHERE article_id = ?')
+      .bind(article.id)
+      .all<{ updated_at: string }>();
+    for (const row of versionRows.results) expect(row.updated_at).toBe(sentinel);
+  });
+
+  test('身份字段变化（published/quality）不被 skip 吞掉', async () => {
+    const payload = makePayload();
+    const article = payload.articles[0]!;
+    await handleContentSync(post(JSON.stringify(payload)), syncEnv());
+
+    // 只翻 published + 内容全不变 → 必须走 upsert，不能整篇 skip。
+    const flipped: SyncPayload = {
+      sources: [],
+      articles: [{ ...article, published: false }],
+      sql: [],
+    };
+    const response = await handleContentSync(post(JSON.stringify(flipped)), syncEnv());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ articles: { received: 1, updated: 1 } });
+
+    const row = await env.DB
+      .prepare('SELECT published FROM articles WHERE id = ?')
+      .bind(article.id)
+      .first<{ published: number }>();
+    expect(row?.published).toBe(0);
+  });
+
+  test('分类 diff：集合相等时不动 article_categories 行', async () => {
+    const payload = makePayload();
+    const article = payload.articles[0]!;
+    await handleContentSync(post(JSON.stringify(payload)), syncEnv());
+
+    // 记录 rowid：若分类被 DELETE+INSERT 重建，rowid 会变；未触碰则保留。
+    const before = await env.DB
+      .prepare('SELECT rowid FROM article_categories WHERE article_id = ?')
+      .bind(article.id)
+      .first<{ rowid: number }>();
+
+    // 内容也变一点（保证走 updated 路径而非整篇 skip），但分类不变。
+    const touched: SyncPayload = {
+      sources: [],
+      articles: [
+        {
+          ...article,
+          versions: [
+            {
+              ...article.versions[0]!,
+              title: 'First Post (touched)',
+              contentMarkdown: '# Hello\n\nOriginal body (edited).',
+            },
+            article.versions[1]!,
+          ],
+        },
+      ],
+      sql: [],
+    };
+    const response = await handleContentSync(post(JSON.stringify(touched)), syncEnv());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ articles: { received: 1, updated: 1 } });
+
+    // 分类集合没变 → 不该 DELETE+INSERT（rowid 哨兵保留）。
+    const after = await env.DB
+      .prepare('SELECT rowid FROM article_categories WHERE article_id = ?')
+      .bind(article.id)
+      .first<{ rowid: number }>();
+    expect(after).toEqual(before);
+  });
+
+  test('分类 diff：集合变化时重建', async () => {
+    const payload = makePayload();
+    const article = payload.articles[0]!;
+    await handleContentSync(post(JSON.stringify(payload)), syncEnv());
+
+    const recat: SyncPayload = {
+      sources: [],
+      articles: [{ ...article, categories: ['AI', 'LLM'] }],
+      sql: [],
+    };
+    const response = await handleContentSync(post(JSON.stringify(recat)), syncEnv());
+    expect(response.status).toBe(200);
+    const cats = await env.DB
+      .prepare('SELECT category_name FROM article_categories WHERE article_id = ? ORDER BY category_name')
+      .bind(article.id)
+      .all<{ category_name: string }>();
+    expect(cats.results.map((r) => r.category_name)).toEqual(['AI', 'LLM']);
   });
 
   test('省略可选字段时保留现值（COALESCE），不覆盖', async () => {

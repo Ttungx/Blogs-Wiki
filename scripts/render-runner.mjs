@@ -13,10 +13,14 @@
  *   每 6 小时更新一次（Worker cron `7,22,37,52 * * * *` 与切片同频）。
  *   ping 同时让免费实例保持常驻（约 720h/月 < 750h 免费额度），消除冷启动。
  * - 触发即返回：spawn 子进程异步执行整条链（update → translate:batch 补翻
- *   → import → sync），HTTP 立即 202，绕开平台路由超时；进度看日志文件
- *   与 Render 日志流。
+ *   → quality-scan → import → sync），HTTP 立即 202，绕开平台路由超时；
+ *   进度看日志文件与 Render 日志流。
+ * - ⚠️ D1 写入预算（2026-09-02 起，docs/d1-write-budget.md）：链尾 import/sync
+ *   严格按本源 `--source` + `--since startedAt` 收本轮产物；无新文件则产出
+ *   0 篇 payload，sync 直接跳过不 POST。链上不再存在整库全量步骤。
  * - 幂等兜底：漏跑/重复跑无害——content-sync 按 (source_id, original_url)
- *   去重；管线 CONTENT_SYNC_CHECK_URL 预检避免重复抓取+翻译（含 90 天内
+ *   去重，且 B 阶段起按内容指纹跳过未变化文章（重复 payload 零写入）；
+ *   管线 CONTENT_SYNC_CHECK_URL 预检避免重复抓取+翻译（含 90 天内
  *   门禁拒绝负缓存，经 /api/content-sync/items 上报）。
  * - 忙碌保护：同一时刻最多一条链在跑；忙时返回 202 busy，下轮自动补位。
  *
@@ -87,22 +91,28 @@ function pruneLogs() {
 let busy = false;
 let lastRun = null;
 
-function buildChainScript(sourceId, limitArg) {
-  // 单条链：发现/去重/抓取/翻译 → 补翻缺失译文 → 生成本地 payload → 分片推送 D1。
+function buildChainScript(sourceId, limitArg, startedAt) {
+  // 单条链：发现/去重/抓取/翻译 → 补翻缺失译文 → 质量打分（仅本源）→
+  // 本轮产物（本源 + mtime >= startedAt）→ 分片推送 D1。
   // translate:batch 只补本地 corpus 缺 zh 版本的原文（断点续传），单篇失败
   // 只记错误台账不退出，不会拖垮链条；随后 import+sync 把新译文一并推上 D1。
+  // ⚠️ D1 写入预算（docs/d1-write-budget.md）：链尾 import/sync 必须锁定本源
+  // + startedAt 增量，禁止整库全量（每日写入曾打到 9 万行）。无新文件时
+  // import 产出 0 篇 payload，sync 直接跳过，不 POST。
   // RUNNER_BACKFILL=true（生产回填期）：把增量 update 换成历史 backfill——
   // Render 自抓全量历史并翻译，兼容本地回填文件不在容器内的现状（2026-08-31）。
   const fetchStep = process.env.RUNNER_BACKFILL === 'true'
     ? `npm run backfill -- --source ${JSON.stringify(sourceId)}${limitArg}`
     : `npm run update -- --source ${JSON.stringify(sourceId)} --report logs/report${limitArg}`;
+  const sourceArg = `--source ${JSON.stringify(sourceId)}`;
+  const sinceArg = `--since ${JSON.stringify(startedAt)}`;
   return [
     'set -e',
     fetchStep,
-    `npm run translate:batch -- --source ${JSON.stringify(sourceId)} --report logs/report`,
-    'npm run quality-scan',
-    'node scripts/import-local-articles.mjs --json --output logs/.tmp-import-articles.json',
-    'node scripts/sync-local-articles.mjs --input logs/.tmp-import-articles.json',
+    `npm run translate:batch -- ${sourceArg} --report logs/report`,
+    `npm run quality-scan -- ${sourceArg}`,
+    `node scripts/import-local-articles.mjs --json ${sinceArg} ${sourceArg} --output logs/.tmp-import-articles.json`,
+    `node scripts/sync-local-articles.mjs --input logs/.tmp-import-articles.json`,
     'echo CHAIN_OK',
   ].join('\n');
 }
@@ -127,7 +137,7 @@ function startUpdateChain(sourceId, limitArg) {
     fd = openSync(logFile, 'a');
     const child = spawn(
       SHELL,
-      ['-c', buildChainScript(sourceId, limitArg)],
+      ['-c', buildChainScript(sourceId, limitArg, startedAt)],
       { cwd: ROOT, detached: true, stdio: ['ignore', fd, fd], env: process.env },
     );
     child.on('close', (code) => {
