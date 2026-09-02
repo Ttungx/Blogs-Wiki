@@ -1,8 +1,8 @@
 # 完整上线 Runbook（go-live）
 
-> 当前状态：**Worker cron 已恢复**（`wrangler.deploy.jsonc` `crons=["7,22,37,52 * * * *"]`）。
-> 2026-09-02 现场验证：`scheduled ping -> HTTP 202`，Render `/status` 单源轮转 running。
-> 质量门禁生产为 stage（入库但 wouldReject 不上架）；翻译积压仍靠 `translate:batch` 本地 corpus 补。
+> 当前状态：**Worker cron 已紧急暂停**（`wrangler.deploy.jsonc` `crons=[]`，2026-09-02）。
+> 原因：链尾每 15 分钟全量 import+sync，D1 免费档日写入 10 万行被打到 90%。调查与恢复闸门见 [`d1-write-budget.md`](d1-write-budget.md)。
+> 未落地增量 sync 之前 **禁止只把 cron 打开**。
 
 ## 上线两前置（业务决策，非技术）
 

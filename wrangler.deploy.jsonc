@@ -7,11 +7,10 @@
   "observability": {
     "enabled": true
   },
-  // 内容更新定时触发：每 15 分钟 ping Render runner 一次（单源轮转）。
-  // 2026-08-30 临时恢复（用户指令）：全量回填期 + 质量门禁 shadow 观察。
-  // 观察期结束如需再次暂缓：crons 置 [] 并重新 deploy（见 docs/go-live.md）。
+  // 2026-09-02 紧急暂停：每 15 分钟链尾全量 import+sync 打爆 D1 日写入配额。
+  // 恢复前必须先落地增量 sync（见 docs/d1-write-budget.md），禁止只把 cron 打开。
   "triggers": {
-    "crons": ["7,22,37,52 * * * *"]
+    "crons": []
   },
   "vars": {
     "RUNNER_URL": "https://blogs-wiki-updater.onrender.com"
