@@ -118,6 +118,45 @@ export function resolveQualityGateMode(env: NodeJS.ProcessEnv | Record<string, s
   return 'off';
 }
 
+/**
+ * 落盘的 verdict 条目（quality-scan-local.ts 的 JSONL 行）。threshold/mtimeMs
+ * 是增量扫描指纹：三者（mtime、模型版本、阈值）都不变才能复用旧结论。
+ */
+export interface StoredQualityVerdict {
+  file: string;
+  score: number;
+  wouldReject: boolean;
+  modelVersion: string;
+  threshold?: number;
+  mtimeMs?: number;
+}
+
+/** 增量扫描复用判定：文件未改动且模型（版本+阈值）未升级才可复用。 */
+export function isVerdictFresh(
+  prev: StoredQualityVerdict | undefined,
+  model: QualityModelArtifact,
+  mtimeMs: number,
+): boolean {
+  return (
+    prev !== undefined &&
+    prev.mtimeMs === mtimeMs &&
+    prev.modelVersion === model.modelVersion &&
+    prev.threshold === model.threshold
+  );
+}
+
+/** 规范化序列化：新旧结论共用同一字段顺序，保证逐次运行间 diff 稳定。 */
+export function verdictLine(v: StoredQualityVerdict): string {
+  return JSON.stringify({
+    file: v.file,
+    score: v.score,
+    wouldReject: v.wouldReject,
+    modelVersion: v.modelVersion,
+    threshold: v.threshold,
+    mtimeMs: v.mtimeMs,
+  });
+}
+
 export interface QualityShadowRecord {
   sourceId: string;
   url: string;

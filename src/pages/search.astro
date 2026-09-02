@@ -3,7 +3,8 @@ import { env } from 'cloudflare:workers';
 import { staticBlogs } from '../data/blogs-static';
 import SearchPanel from '../components/SearchPanel.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { listAllArticlesForSearch, parseDateSafe } from '../lib/server/content';
+import { parseDateSafe } from '../lib/server/content';
+import { getSearchListCached } from '../lib/server/search-cache';
 import { sitePath } from '../lib/urls';
 import { fixTitleSpacing } from '../lib/text';
 
@@ -12,8 +13,9 @@ export const prerender = false;
 // 博客元数据来自静态集合（轻量）；文章清单改读 D1——
 // 此前 getCollection('articles') 会把全部文章正文打进服务端 bundle，
 // 是 Worker 64MiB 体积上限超限的元凶。
+// 10 分钟 TTL 缓存：内容 15 分钟一更，避免每次搜索页加载都全表读。
 const blogs = staticBlogs;
-const zhArticles = await listAllArticlesForSearch(env.DB, 'zh-cn');
+const zhArticles = await getSearchListCached(env.DB, 'zh-cn');
 
 const blogNames = new Map(blogs.map((blog) => [blog.id, blog.data.name]));
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {

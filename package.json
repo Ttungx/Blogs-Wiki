@@ -18,7 +18,7 @@
     "test:quality": "tsx --test scripts/update/quality-model.test.ts",
     "test:worker": "tsx --test worker/__tests__/*.test.ts",
     "test:d1": "vitest run",
-    "test:markdown": "tsx --test src/lib/server/markdown.test.ts src/lib/server/content.test.ts",
+    "test:markdown": "tsx --test src/lib/server/markdown.test.ts src/lib/server/content.test.ts src/lib/server/search-cache.test.ts",
     "audit:source": "tsx --env-file-if-exists=.env scripts/update/audit.ts",
     "block:source": "tsx scripts/update/block-source.ts",
     "backfill": "tsx --env-file-if-exists=.env scripts/update/backfill.ts",

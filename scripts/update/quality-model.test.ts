@@ -12,9 +12,11 @@ import { test } from 'node:test';
 import {
   classifyArticleQuality,
   evaluateQualityGate,
+  isVerdictFresh,
   loadQualityModel,
   resolveQualityGateMode,
   setQualityModelForTest,
+  verdictLine,
   type QualityModelArtifact,
 } from './quality-model';
 
@@ -70,6 +72,33 @@ test('QUALITY_GATE_MODE 缺省/非法值一律 off（fail-safe）', () => {
   assert.equal(resolveQualityGateMode({ QUALITY_GATE_MODE: 'yes' }), 'off');
   assert.equal(resolveQualityGateMode({ QUALITY_GATE_MODE: 'SHADOW' }), 'shadow');
   assert.equal(resolveQualityGateMode({ QUALITY_GATE_MODE: 'enforce' }), 'enforce');
+});
+
+test('isVerdictFresh：mtime/model/threshold 三者全同才复用（增量扫描）', () => {
+  const prev = { file: 's/en/a.md', score: 0.1, wouldReject: false, modelVersion: 'v3-x', threshold: 0.5, mtimeMs: 1000 };
+  const model = { modelVersion: 'v3-x', threshold: 0.5 } as QualityModelArtifact;
+
+  assert.equal(isVerdictFresh(prev, model, 1000), true);
+  assert.equal(isVerdictFresh(undefined, model, 1000), false); // 新文件
+  assert.equal(isVerdictFresh(prev, model, 2000), false); // 文件改动
+  // 模型升级（版本或阈值任一变化）→ 全量重扫
+  assert.equal(isVerdictFresh(prev, { ...model, modelVersion: 'v4-y' }, 1000), false);
+  assert.equal(isVerdictFresh(prev, { ...model, threshold: 0.4 }, 1000), false);
+  // 旧 schema（无指纹字段）一律重扫一次
+  assert.equal(
+    isVerdictFresh(
+      { file: 's/en/a.md', score: 0.1, wouldReject: false, modelVersion: 'v3-x' },
+      model,
+      1000,
+    ),
+    false,
+  );
+});
+
+test('verdictLine：新旧结论共用同一字段顺序（diff 稳定）', () => {
+  const line = verdictLine({ file: 's/en/a.md', score: 0.1, wouldReject: false, modelVersion: 'v3-x', threshold: 0.5, mtimeMs: 1000 });
+  assert.deepEqual(JSON.parse(line), { file: 's/en/a.md', score: 0.1, wouldReject: false, modelVersion: 'v3-x', threshold: 0.5, mtimeMs: 1000 });
+  assert.equal(JSON.parse(line).file, 's/en/a.md');
 });
 
 test('off 模式不加载模型、不改变行为', () => {
