@@ -8,7 +8,7 @@ import CategoryPill from '../../../components/CategoryPill.astro';
 import LanguageSwitcher from '../../../components/LanguageSwitcher.astro';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { sitePath } from '../../../lib/urls';
-import { getArticle, getAvailableLanguages, listArticlesByBlog, parseDateSafe } from '../../../lib/server/content';
+import { getArticle, getPreferredArticle, getAvailableLanguages, listArticlesByBlog, parseDateSafe } from '../../../lib/server/content';
 import { getCachedOrRenderArticleHtml } from '../../../lib/server/render-cache';
 import '../../../styles/reader-typography.css';
 
@@ -16,14 +16,11 @@ const { blog: blogId, article: slug } = Astro.params;
 if (!blogId || !slug) return new Response('Not Found', { status: 404 });
 
 const db = env.DB;
-// 默认路由优先中文版；翻译缺失或演示版被清理时回退 en 原文，避免整页 404
-let articleLang = 'zh-cn';
-let articleData = await getArticle(db, blogId, slug, articleLang);
-if (!articleData) {
-  articleLang = 'en';
-  articleData = await getArticle(db, blogId, slug, articleLang);
-}
-if (!articleData) return new Response('Not Found', { status: 404 });
+// 默认路由优先中文：zh-cn → zh（官方/原生中文）→ en，避免只有 zh 的文章 404
+const preferred = await getPreferredArticle(db, blogId, slug);
+if (!preferred) return new Response('Not Found', { status: 404 });
+const articleLang = preferred.language;
+const articleData = preferred.article;
 
 // blogs 元数据仍从静态 collection 读取（构建期解析，SSR 可用）
 const blogs = staticBlogs;

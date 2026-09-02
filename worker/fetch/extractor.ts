@@ -23,6 +23,7 @@
 import { parseHTML } from 'linkedom';
 import { collapseCarousels, type CarouselNode } from './carousel-collapse';
 import { DEFAULT_MIN_CONTENT_CHARS as MIN_CONTENT_CHARS } from '../../scripts/update/constants';
+import { isGhostPublishedAt } from '../../scripts/update/git-date';
 
 /**
  * 归一化 Defuddle 的 published 值：
@@ -47,8 +48,11 @@ function normalizePublished(raw: string): string {
  * （当前文章），相关推荐等后续值不取。
  */
 function resolveNextJsCreatedAt(html: string): string {
-  const match = html.match(/_createdAt\\?":\\?"([^\\"]+)/);
-  return match?.[1]?.trim() ?? '';
+  for (const match of html.matchAll(/_createdAt\\?":\\?"([^\\"]+)/g)) {
+    const value = match[1]?.trim() ?? '';
+    if (value && !isGhostPublishedAt(value)) return value;
+  }
+  return '';
 }
 
 /**
@@ -222,7 +226,11 @@ export async function extractArticle(input: ExtractionInput): Promise<Extraction
   return {
     title: (result.title ?? '').trim(),
     author: (result.author ?? '').trim(),
-    publishedAt: normalizePublished(result.published ?? '') || resolveNextJsCreatedAt(html),
+    publishedAt: (() => {
+      const fromDefuddle = normalizePublished(result.published ?? '');
+      if (fromDefuddle && !isGhostPublishedAt(fromDefuddle)) return fromDefuddle;
+      return resolveNextJsCreatedAt(html);
+    })(),
     imageUrl: (result.image ?? '').trim(),
     originalLanguage: (result.language ?? 'en').trim().split(/[_-]/)[0]?.toLowerCase() || 'en',
     contentMarkdown,

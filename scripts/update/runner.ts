@@ -27,12 +27,19 @@ import { DEFAULT_LIMIT_PER_SOURCE } from './constants';
 import { checkArticleIntegrity } from './backfill-integrity';
 import { appendShadowRecord, evaluateQualityGate, resolveQualityGateMode, type QualityVerdict } from './quality-model';
 
-/** 质量门禁失败（永久）：内容不合格，标记处理避免下轮重抓。 */
+/** 质量门禁失败：内容不合格。默认永久跳过；部分码（日期抽取失败）可重试。 */
 class IntegrityGateError extends Error {
   constructor(readonly codes: string[]) {
     super(`integrity gate failed: ${codes.join(', ')}`);
     this.name = 'IntegrityGateError';
   }
+}
+
+/** 抽取层可能随后修好（如可见日期解析），不应永久拉黑。 */
+const RETRYABLE_INTEGRITY_CODES = new Set(['missing-published-date']);
+
+function isRetryableIntegrity(codes: readonly string[]): boolean {
+  return codes.length > 0 && codes.every((code) => RETRYABLE_INTEGRITY_CODES.has(code));
 }
 
 /** 质量模型自动拒绝（plan §30 可恢复：不写 processed 终态，仅进 90 天负缓存）。 */
@@ -339,19 +346,24 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
           result.failed += 1;
           summary.failed += 1;
           if (error instanceof IntegrityGateError) {
-            // 内容不合格（永久）：非 dry-run 时标记处理避免下轮重抓。
-            if (!options.dryRun) {
+            const retryable = isRetryableIntegrity(error.codes);
+            // 永久不合格才 markProcessed + 负缓存；缺日期等可重试码放行下轮。
+            if (!options.dryRun && !retryable) {
               await repositories.sourceState.markProcessed(source.id, item.url);
               seenBySource.get(source.id)?.add(item.url);
+              integrityRejections.push({ url: item.url, code: error.codes.join(', ') });
             }
-            integrityRejections.push({ url: item.url, code: error.codes.join(', ') });
             result.errors.push({
               url: item.url,
               kind: 'integrity',
               code: error.codes.join(', '),
               message: error.message,
             });
-            logger.warn(`  ${item.url}: ${error.message} (content rejected; will not retry)`);
+            logger.warn(
+              retryable
+                ? `  ${item.url}: ${error.message} (will retry)`
+                : `  ${item.url}: ${error.message} (content rejected; will not retry)`,
+            );
           } else if (error instanceof QualityGateError) {
             // 质量模型拒绝（plan §30 可恢复）：不 markProcessed，只上报负缓存
             // （90 天 TTL），模型升级后自动重新评估；code 记录模型版本与分数供审计。

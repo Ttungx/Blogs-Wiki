@@ -439,25 +439,6 @@ export const staticBlogs: StaticBlogEntry[] = [
     }
   },
   {
-    "id": "tencent-cloud",
-    "data": {
-      "name": "腾讯云开发者社区",
-      "type": "company",
-      "author": "腾讯云",
-      "description": "腾讯云开发者社区，覆盖 AI / LLM / Agent 与云工程实践。",
-      "homepageUrl": "https://cloud.tencent.com/",
-      "blogUrl": "https://cloud.tencent.com/developer/",
-      "domain": "cloud.tencent.com",
-      "logo": "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.94.0/icons/tencentcloud-color.svg",
-      "logoScale": 0.9,
-      "categories": [
-        "AI",
-        "Engineering / Infrastructure"
-      ],
-      "demo": true
-    }
-  },
-  {
     "id": "z-ai",
     "data": {
       "name": "Z.ai",
@@ -465,7 +446,7 @@ export const staticBlogs: StaticBlogEntry[] = [
       "author": "Z.ai",
       "description": "Z.ai 的 GLM 模型、Agent、长上下文与 AI Coding 技术文章。",
       "homepageUrl": "https://z.ai/",
-      "blogUrl": "https://z.ai/blog",
+      "blogUrl": "https://z.ai/",
       "domain": "z.ai",
       "logo": "/vendors/z-ai.svg",
       "logoScale": 0.9,

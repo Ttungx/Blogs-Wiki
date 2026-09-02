@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-08-29T01:55:23.490Z",
+  "updated_at": "2026-09-02T08:11:01.563Z",
   "records": {
     "cloudflare": {
       "domain": "blog.cloudflare.com",
@@ -1542,6 +1542,17 @@
       "urls": [
         "https://paulgraham.com/greatwork.html"
       ]
+    },
+    "tencent-cloud": {
+      "domain": "cloud.tencent.com",
+      "blocked_at": "2026-09-02",
+      "collected_from": [
+        "corpus-archive",
+        "src\\content\\articles",
+        "processed-urls"
+      ],
+      "count": 0,
+      "urls": []
     }
   }
 }

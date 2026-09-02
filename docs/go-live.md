@@ -1,7 +1,8 @@
 # 完整上线 Runbook（go-live）
 
-> 当前状态：**代码与脚手架全部就绪，自动触发暂缓**（`wrangler.deploy.jsonc` 的 `crons=[]`）。
-> 放行前有两个业务前置， cleared 之前不许恢复 cron：
+> 当前状态：**Worker cron 已恢复**（`wrangler.deploy.jsonc` `crons=["7,22,37,52 * * * *"]`）。
+> 2026-09-02 现场验证：`scheduled ping -> HTTP 202`，Render `/status` 单源轮转 running。
+> 质量门禁生产为 stage（入库但 wouldReject 不上架）；翻译积压仍靠 `translate:batch` 本地 corpus 补。
 
 ## 上线两前置（业务决策，非技术）
 

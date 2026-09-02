@@ -78,6 +78,27 @@ export function isCandidateArticle(url: string, source: SourceConfig): boolean {
   });
 }
 
+const GZIP_MAGIC_0 = 0x1f;
+const GZIP_MAGIC_1 = 0x8b;
+
+/** 将抓取字节解码为文本；`.gz` sitemap 或 gzip 魔数时先解压。 */
+export async function decodeFetchedBytes(url: string, bytes: Uint8Array): Promise<string> {
+  const gzipMagic = bytes.length >= 2 && bytes[0] === GZIP_MAGIC_0 && bytes[1] === GZIP_MAGIC_1;
+  const urlLooksGzip = /\.gz(?:\?|$)/i.test(url);
+  if (!gzipMagic && !urlLooksGzip) {
+    return new TextDecoder().decode(bytes);
+  }
+  try {
+    const payload = new Uint8Array(bytes.byteLength);
+    payload.set(bytes);
+    const stream = new Blob([payload]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return await new Response(stream).text();
+  } catch {
+    if (!gzipMagic) return new TextDecoder().decode(bytes);
+    throw new Error(`gzip decode failed for ${url}`);
+  }
+}
+
 async function fetchText(fetchImpl: FetchLike, url: string, context: string): Promise<string> {
   try {
     const response = await fetchImpl(url, {
@@ -88,7 +109,7 @@ async function fetchText(fetchImpl: FetchLike, url: string, context: string): Pr
       signal: AbortSignal.timeout(25_000),
     });
     if (!response.ok) throw new Error(`${context}: HTTP ${response.status} ${response.statusText}`);
-    return await response.text();
+    return decodeFetchedBytes(url, new Uint8Array(await response.arrayBuffer()));
   } catch (error) {
     // 部分 CDN（openai.com 等）按 Node TLS 指纹拦截 403，但接受 curl 的
     // TLS 栈；回退系统 curl 一次（与 fetch 层行为一致）。
@@ -108,7 +129,9 @@ async function fetchText(fetchImpl: FetchLike, url: string, context: string): Pr
           maxBuffer: 20 * 1024 * 1024,
           timeout: 25_000,
         });
-        return stdout;
+        const bytes = new Uint8Array(stdout.length);
+        for (let i = 0; i < stdout.length; i += 1) bytes[i] = stdout.charCodeAt(i) & 0xff;
+        return decodeFetchedBytes(url, bytes);
       }
     }
     throw error;

@@ -170,6 +170,38 @@ interface ArticleListRow {
   original_title: string | null;
 }
 
+/** 列表/搜索展示语言：简体译文 > 其它中文原文 > 其余（通常 en）。 */
+const DISPLAY_LANGUAGE_ORDER_SQL = `CASE
+  WHEN w.language IN ('zh-cn', 'zh-hans', 'zh-hans-cn') THEN 0
+  WHEN w.language = 'zh' OR w.language LIKE 'zh-%' THEN 1
+  ELSE 2
+END`;
+
+export const DISPLAY_LANGUAGE_FALLBACKS = ['zh-cn', 'zh', 'en'] as const;
+
+export function rankDisplayLanguage(language: string): number {
+  const lang = language.trim().toLowerCase();
+  if (lang === 'zh-cn' || lang === 'zh-hans' || lang === 'zh-hans-cn') return 0;
+  if (lang === 'zh' || lang.startsWith('zh-')) return 1;
+  return 2;
+}
+
+/**
+ * 中文优先取文：zh-cn → zh（官方/原生中文原文）→ en。
+ * 避免只有 `zh` 版本的文章在默认路由 404，或被 en 抢先展示。
+ */
+export async function getPreferredArticle(
+  db: D1Database,
+  blogId: string,
+  slug: string,
+): Promise<{ article: ArticleDetail; language: string } | null> {
+  for (const language of DISPLAY_LANGUAGE_FALLBACKS) {
+    const article = await getArticle(db, blogId, slug, language);
+    if (article) return { article, language };
+  }
+  return null;
+}
+
 /**
  * 列出某来源的文章（指定语言版本），按发布日期降序。
  */
@@ -188,7 +220,7 @@ export async function listArticlesByBlog(
          AND v.language = (
            SELECT w.language FROM article_versions w
            WHERE w.article_id = a.id
-           ORDER BY CASE w.language WHEN 'zh-cn' THEN 0 ELSE 1 END, w.language
+           ORDER BY ${DISPLAY_LANGUAGE_ORDER_SQL}, w.language
            LIMIT 1)
        LEFT JOIN article_versions o ON o.article_id = a.id AND o.language = a.original_language
        WHERE a.published = 1 AND a.source_id = ?
@@ -243,11 +275,11 @@ export async function listAllArticlesForSearch(
               v.title, o.title AS original_title
        FROM articles a
        JOIN article_versions v ON v.article_id = a.id
-         AND v.language = (
-           SELECT w.language FROM article_versions w
-           WHERE w.article_id = a.id
-           ORDER BY CASE w.language WHEN 'zh-cn' THEN 0 ELSE 1 END, w.language
-           LIMIT 1)
+          AND v.language = (
+            SELECT w.language FROM article_versions w
+            WHERE w.article_id = a.id
+            ORDER BY ${DISPLAY_LANGUAGE_ORDER_SQL}, w.language
+            LIMIT 1)
        LEFT JOIN article_versions o ON o.article_id = a.id AND o.language = a.original_language
        WHERE a.published = 1
        ORDER BY a.published_at DESC`,

@@ -12,6 +12,9 @@ import type { FetchLike, SourceConfig } from './types';
 
 export const USER_AGENT = 'BlogsWikiBot/0.1 (+https://github.com; article fetch)';
 
+/** Anthropic 全站 Next.js 模板里的幽灵 `_createdAt`，不是文章发布日期。 */
+const GHOST_PUBLISHED_AT_MS = Date.parse('2023-11-03T16:49:36Z');
+
 /** 规范化日期字符串为 YYYY-MM-DD 或 ISO 8601；无法解析返回 null。 */
 export function normalizeDate(value: string): string | null {
   const trimmed = value.trim();
@@ -19,6 +22,12 @@ export function normalizeDate(value: string): string | null {
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
   const date = new Date(trimmed);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+/** 拒绝 Anthropic 页面模板泄漏的固定幽灵日期，回退 sitemap lastmod / 其它候选。 */
+export function isGhostPublishedAt(value: string): boolean {
+  const time = Date.parse(value.trim());
+  return !Number.isNaN(time) && time === GHOST_PUBLISHED_AT_MS;
 }
 
 /** 把文章 URL 解析为 git 仓库内的源文件路径（见 SourceConfig.git_date）。 */

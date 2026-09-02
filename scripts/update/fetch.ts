@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { proxyUrlFor } from './network';
-import { USER_AGENT, normalizeDate, resolveGitDate, resolveGitFilePath } from './git-date';
+import { USER_AGENT, normalizeDate, isGhostPublishedAt, resolveGitDate } from './git-date';
 import { urlDateFromPattern } from './url-date';
 import { findOfficialChineseUrl, mapToOfficialZhPath } from './localization';
 import type { DiscoveredArticle, ExtractedArticle, FetchLike, SourceConfig } from './types';
@@ -258,7 +258,7 @@ function resolvePublishedAt(document: Document, discovered: DiscoveredArticle): 
   for (const candidate of candidates) {
     if (!candidate) continue;
     const normalized = normalizeDate(candidate);
-    if (normalized) return normalized;
+    if (normalized && !isGhostPublishedAt(normalized)) return normalized;
   }
   if (discovered.publishedAt) {
     const normalized = normalizeDate(discovered.publishedAt);

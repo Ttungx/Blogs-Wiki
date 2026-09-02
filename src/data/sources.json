@@ -412,7 +412,7 @@
     "name": "Z.ai",
     "type": "company",
     "homepage_url": "https://z.ai/",
-    "blog_url": "https://z.ai/blog",
+    "blog_url": "https://z.ai/",
     "domain": "z.ai",
     "update_mode": "dry-run-only",
     "article_paths": [
@@ -459,32 +459,6 @@
       "^/latest/",
       "^/author/",
       "^/category/"
-    ]
-  },
-  {
-    "id": "tencent-cloud",
-    "name": "腾讯云开发者社区",
-    "type": "company",
-    "homepage_url": "https://cloud.tencent.com/",
-    "blog_url": "https://cloud.tencent.com/developer/",
-    "domain": "cloud.tencent.com",
-    "update_mode": "dry-run-only",
-    "article_paths": [
-      "^/developer/article/\\d+$"
-    ],
-    "exclude_paths": [
-      "^/developer/article/write",
-      "^/developer/ask",
-      "^/developer/video",
-      "^/developer/salon",
-      "^/developer/competition",
-      "^/developer/special",
-      "^/developer/learning",
-      "^/developer/mcp",
-      "^/developer/user",
-      "^/developer/search",
-      "^/developer/column",
-      "^/developer/zone"
     ]
   },
   {

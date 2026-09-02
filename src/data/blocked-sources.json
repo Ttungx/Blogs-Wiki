@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-08-29T01:55:23.486Z",
+  "updated_at": "2026-09-02T08:11:01.561Z",
   "blocked": [
     {
       "id": "cloudflare",
@@ -54,6 +54,15 @@
       "blocked_at": "2026-08-28",
       "reason": "2026-08-28 用户指令：文章量过大，不匹配站点定位",
       "url_count": 700,
+      "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
+    },
+    {
+      "id": "tencent-cloud",
+      "name": "腾讯云开发者社区",
+      "domain": "cloud.tencent.com",
+      "blocked_at": "2026-09-02",
+      "reason": "腾讯云开发者社区为巨大 UGC（官方+第三方+媒体转载混排），边界太差；停止作为生产索引",
+      "url_count": 0,
       "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
     }
   ]

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseDateSafe } from './content';
+import { parseDateSafe, rankDisplayLanguage } from './content';
 
 test('D1 datetime(now) 无时区字符串按 UTC 解析', () => {
   // D1 datetime('now') 返回 "YYYY-MM-DD HH:mm:ss"（UTC，无 Z）。
@@ -51,4 +51,13 @@ test('空值返回 null', () => {
 test('无法解析的文本返回 null', () => {
   assert.equal(parseDateSafe('not-a-date'), null);
   assert.equal(parseDateSafe('2026-13-99'), null);
+});
+
+test('展示语言：zh-cn 优于 zh，zh 优于 en', () => {
+  assert.equal(rankDisplayLanguage('zh-cn'), 0);
+  assert.equal(rankDisplayLanguage('zh-hans'), 0);
+  assert.equal(rankDisplayLanguage('zh'), 1);
+  assert.equal(rankDisplayLanguage('zh-tw'), 1);
+  assert.equal(rankDisplayLanguage('en'), 2);
+  assert.ok(rankDisplayLanguage('zh') < rankDisplayLanguage('en'));
 });

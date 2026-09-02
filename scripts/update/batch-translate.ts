@@ -181,7 +181,11 @@ async function run() {
     }
   }
 
-  const pending = await scanMissingZh(rootDir, options.sourceId);
+  const pending = (await scanMissingZh(rootDir, options.sourceId)).sort((a, b) => {
+    const aTime = Date.parse(a.article.publishedAt) || 0;
+    const bTime = Date.parse(b.article.publishedAt) || 0;
+    return bTime - aTime;
+  });
   const targets = options.limit !== undefined && options.limit > 0
     ? pending.slice(0, options.limit)
     : pending;

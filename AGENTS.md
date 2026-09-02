@@ -34,7 +34,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 - push main / PR = **只跑门禁**；发版 = `npm version x` + push `v*` tag → 门禁 → release-guard（tag 与 package.json 一致）→ 部署 Worker（D1 migration + wrangler deploy）+ Render（API 触发）。**平时提交永不部署。**
 - Actions 只管 CI/CD，**内容更新 cron 永不回 Actions**（算力在 Render）。
-- secrets 四层（GitHub Actions / CF Worker / Render env / 本地 .env）详见 docs/ci-cd.md；`CLOUDFLARE_API_TOKEN` 待用户配置，缺省时 deploy 优雅跳过。
+- secrets 四层（GitHub Actions / CF Worker / Render env / 本地 .env）详见 docs/ci-cd.md；`CLOUDFLARE_API_TOKEN` 已配置，缺省时 deploy 仍会优雅跳过。
 
 ## 架构硬约束（⚠️ 违反必炸）
 
@@ -45,7 +45,7 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 ## 内容更新（链路细节见 docs/go-live.md）
 
-- 链路：Worker cron（`7,22,37,52 * * * *`，**当前 crons=[] 自动触发暂缓**，放行见 go-live.md）→ ping Render `/run?key=` → runner 时间片取模选源（20 源 × 15 分钟一片）→ spawn：`update`（发现 → check 预检 → 抓取 → 门禁 → 翻译 → 持久化）→ `translate:batch` 补翻 → `import-local-articles` → `sync-local-articles` 分片写 D1。202 触发即返回；忙碌保护单链；漏跑/重跑幂等无害。
+- 链路：Worker cron（`7,22,37,52 * * * *`，**2026-09-02 已恢复并验证** `scheduled ping -> HTTP 202`）→ ping Render `/run?key=` → runner 时间片取模选源（active 源 × 15 分钟一片）→ spawn：`update`（发现 → check 预检 → 抓取 → 门禁 → 翻译 → 持久化）→ `translate:batch` 补翻 → `import-local-articles` → `sync-local-articles` 分片写 D1。202 触发即返回；忙碌保护单链；漏跑/重跑幂等无害。`scheduled` 必须挂在 default export 对象上（见 `scripts/inject-worker-entry.js`），独立 named export 会被 CF 忽略。
 - 去重四层：URL 规范化（`urls.ts`）→ D1 点查预检（articles + 90 天拒绝缓存，fail-open）→ `source_items` 拒绝负缓存（`/api/content-sync/items` 上报）→ 写入按 `(source_id, original_url)` 幂等。
 - `POST /api/trigger` 返回 410；GitHub Actions 内容更新与 Cloudflare Workflow 均已退役（备份：gitignored `workflow-backup/`），不作为运维依据。
 
@@ -64,13 +64,13 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 - `blog-source-registry.md`：来源适配状态唯一权威；改来源前必读。
 - `ci-cd.md`：CI/CD 触发边界、发布流程、密钥分层、泄密应急。
-- `go-live.md`：完整上线 runbook（当前自动触发暂缓，放行步骤在此）。
+- `go-live.md`：完整上线 runbook（cron 已恢复；回滚 crons=[] 的步骤在此）。
 - `update-pipeline-v2.md`：V2 翻译管线说明。
 - `migration-to-cloudflare.md`：迁移路线图（Phase 1-8 完成）。
 
 ## 当前状态
 
-写路径代码全部就绪；**自动触发暂缓（crons=[]），上线两前置：翻译服务稳定、ML 质量门禁**（见 go-live.md）。其余待办：CF API token（CI 部署 Worker 用）、Phase 9 搜索 FTS5、Phase 10 删文件 backend、`worker-runtime.test.ts` 适配。
+写路径代码全部就绪；**Worker cron 已恢复**（`7,22,37,52 * * * *`，已验证 ping Render 202）。质量门禁生产为 `QUALITY_GATE_MODE=stage`（入库但 wouldReject 不上架）。其余待办：Phase 9 搜索 FTS5、Phase 10 删文件 backend、`worker-runtime.test.ts` 适配、历史英文补翻（translate:batch 只扫本地 corpus）。
 
 ## 搜索、输出与探索委托纪律
 

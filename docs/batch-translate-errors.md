@@ -31,3 +31,33 @@
 - 本次翻译：成功 0 / 失败 1
 
 - `hamel-husain/drift | https://hamel.dev/blog/posts/drift: translate failed for https://hamel.dev/blog/posts/drift (model: deepseek-v4-flash): translate response has no message content (https://opencode.ai/zen/go/v1/chat/completions, HTTP 200): {"id":"8ed582c1-0c60-43a0-b7bf-b650e1ba6db2","object":"chat.completion","created":1786541461,"model":"deepseek-v4-flash","choices":[{"index":0,"finish_reason":"length","logprobs":null,"message":{"role":"assistant","content":"","reasoning_content":"We need to translate the article into Simplified Chinese, preserving Markdown structure exactly, with links, images, code blocks, etc. The content has placeholders like {{BW:url:1}}, {{BW:inline-code:8}}X etc. These are presumably special tokens that s…`
+
+---
+
+## 2026-09-02T07:49:37.946Z（mistral-ai · concurrency=2）
+
+- 本次翻译：成功 4 / 失败 1
+
+- `mistral-ai/agentic-search | https://mistral.ai/news/agentic-search: translate failed for https://mistral.ai/news/agentic-search (model: gemini-3.5-flash-lite): translate request failed (https://generativelanguage.googleapis.com/v1beta/openai/chat/completions): HTTP 400  — [{
+  "error": {
+    "code": 400,
+    "message": "User location is not supported for the API use.",
+    "status": "FAILED_PRECONDITION"
+  }
+}
+]`
+
+---
+
+## 2026-09-02T07:53:12.888Z（sebastian-raschka · concurrency=2）
+
+- 本次翻译：成功 4 / 失败 1
+
+- `sebastian-raschka/controlling-reasoning-effort-in-llms | https://magazine.sebastianraschka.com/p/controlling-reasoning-effort-in-llms: translate failed for https://magazine.sebastianraschka.com/p/controlling-reasoning-effort-in-llms (model: gemini-3.5-flash-lite): translate request failed (https://generativelanguage.googleapis.com/v1beta/openai/chat/completions): HTTP 400  — [{
+  "error": {
+    "code": 400,
+    "message": "User location is not supported for the API use.",
+    "status": "FAILED_PRECONDITION"
+  }
+}
+]`

@@ -18,8 +18,10 @@ if (!blogId || !slug) return new Response('Not Found', { status: 404 });
 const targetLang = lang === 'en' ? 'en' : 'zh-cn';
 
 const db = env.DB;
-// 指定语言版本（默认兜底 en）
-const articleData = await getArticle(db, blogId, slug, targetLang);
+let articleData = await getArticle(db, blogId, slug, targetLang);
+if (!articleData && targetLang !== 'en') {
+  articleData = await getArticle(db, blogId, slug, 'zh');
+}
 if (!articleData) return new Response('Not Found', { status: 404 });
 
 // blogs 元数据仍从静态 collection 读取（构建期解析，SSR 可用）

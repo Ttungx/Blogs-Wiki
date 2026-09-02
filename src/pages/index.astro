@@ -10,14 +10,15 @@ export const prerender = false;
 const blogs = staticBlogs;
 
 const db = env.DB;
-// 每来源文章计数来自 D1（只计有 zh-cn 版本的文章）
-const articleCount = await getArticleCountBySource(db, 'zh-cn');
+// 每来源已发布文章计数来自 D1（含原文/译文任一语言版本）
+const articleCount = await getArticleCountBySource(db);
 
+const hasArticles = (id: string) => (articleCount.get(id) ?? 0) > 0;
 const companyBlogs = blogs
-  .filter((blog) => blog.data.type === 'company')
+  .filter((blog) => blog.data.type === 'company' && hasArticles(blog.id))
   .sort((a, b) => a.data.name.localeCompare(b.data.name));
 const personalBlogs = blogs
-  .filter((blog) => blog.data.type === 'personal')
+  .filter((blog) => blog.data.type === 'personal' && hasArticles(blog.id))
   .sort((a, b) => a.data.name.localeCompare(b.data.name));
 ---
 

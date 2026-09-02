@@ -268,3 +268,19 @@ test('extractArticle: Next.js _createdAt 日期回退（anthropic research）', 
   const result = await extractArticle({ html, url: 'https://www.anthropic.com/research/riemann-zeta' });
   assert.match(result.publishedAt, /^2026-08-06T20:38:02Z$/, '应回退到 _createdAt');
 });
+
+test('extractArticle: 跳过 Anthropic 模板幽灵 _createdAt，取文章自己的日期', async () => {
+  const body = `
+    <p>This is an Anthropic Research article with enough body text to pass the
+    minimum content length check of the extractor module. Lorem ipsum dolor
+    sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut
+    labore et dolore magna aliqua.</p>
+  `;
+  const html = `<!DOCTYPE html><html lang="en"><head><title>Riemann</title></head>
+  <body><article><h1>Riemann</h1>${body}</article>
+  <script>self.__next_f.push([1,"layout:{\\"_createdAt\\":\\"2023-11-03T16:49:36Z\\"}"])</script>
+  <script>self.__next_f.push([1,"6:[\\"$\\",{\\"post\\":{\\"_createdAt\\":\\"2026-08-06T20:38:02Z\\"}]])</script>
+  </body></html>`;
+  const result = await extractArticle({ html, url: 'https://www.anthropic.com/research/riemann-zeta' });
+  assert.match(result.publishedAt, /^2026-08-06T20:38:02Z$/, '不应采用模板幽灵日期');
+});
