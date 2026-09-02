@@ -1,6 +1,6 @@
 # CI/CD 与密钥分层
 
-> 一句话：**push main = 只跑门禁；发版本（push `v*` tag）= 门禁 → 自动部署 Worker + Render**；PR = 只跑门禁。
+> 一句话：**push main = 门禁通过后部署 Worker + Render**；PR = 只跑门禁；push `v*` tag = 门禁 + 版本校验后再部署。
 > 本仓库为 **PUBLIC**，Actions 日志公开可见——密钥只进加密 secrets，严禁出现在代码、文档、日志、commit 信息中。
 
 ## 触发边界（.github/workflows/ci.yml）
@@ -8,19 +8,18 @@
 | Job | 触发 | 内容 |
 |---|---|---|
 | `gate` | PR → main、push → main、push tag `v*`（`docs/**`、`**.md` 改动跳过） | astro check + tsc + test:update/worker/d1/markdown 全量门禁 |
-| `release-guard` | 仅 tag `v*` push 或 workflow_dispatch | 校验 tag 与 `package.json` version 一致（防版本漂移） |
-| `deploy-worker` | 仅版本发布（tag 或手动），gate + guard 通过后 | `d1 migrations apply --remote`（幂等）→ `astro build` → `wrangler deploy` |
-| `deploy-render` | 仅版本发布（tag 或手动），gate + guard 通过后 | Render API 触发部署（锚定 tag 所指 commit） |
+| `release-guard` | push main、tag `v*`、workflow_dispatch | tag 时校验与 `package.json` version 一致；main push 直接通过 |
+| `deploy-worker` | push main、tag `v*`、workflow_dispatch（gate + guard 通过后） | `d1 migrations apply --remote`（幂等）→ `astro build` → `wrangler deploy` |
+| `deploy-render` | 同上 | Render API 触发部署（锚定本次 commit） |
 
-**平时提交不部署**——main 上的任何 push 只触发门禁测试。部署是一个显式的"发版"动作：
+**push 到 main 即部署**（2026-09-02 起）。`v*` tag 仍走版本校验。`npm version` 不是部署前提。
 
 ```bash
-npm version patch   # 或 minor / major：bump package.json + 自动 commit + 打 v* tag
-git push origin main --follow-tags
-# → gate → release-guard（tag vs package.json）→ deploy-worker + deploy-render
+git push origin main
+# → gate → release-guard → deploy-worker + deploy-render
 ```
 
-手动逃生门：Actions 页面 `CI/CD → Run workflow`（workflow_dispatch）可部署当前 main，不校验版本——仅用于紧急热修，常规发版走 tag。
+手动逃生门：Actions 页面 `CI/CD → Run workflow`（workflow_dispatch）可部署当前 ref，不校验版本。
 
 - 并发控制：PR push 取消旧 run；main/tag push 的部署排队不取消。
 - **内容更新 cron 不在 Actions**：内容抓取/翻译算力在 Render runner（GitHub Actions 版已于 2026-08 退役，备份在本地 gitignored `workflow-backup/`）。Actions 只管 CI/CD，这条边界不许打破——Workers 免费 10ms CPU 跑不动 Defuddle，别把重活搬回来。
@@ -41,14 +40,9 @@ git push origin main --follow-tags
 Render API key 创建/轮换：Render Dashboard → Account Settings → API Keys。
 GitHub secrets 设置：`gh secret set <NAME> --repo Ttungx/Blogs-Wiki`（stdin 传值，勿写入任何文件）。
 
-## 待办：配置 CLOUDFLARE_API_TOKEN（当前缺失，Worker 部署在 CI 中处于跳过状态）
+## Cloudflare API token
 
-1. Cloudflare Dashboard → 右上角头像 → **My Profile → API Tokens → Create Token**。
-2. Custom token 权限最小集：
-   - `Account | Workers Scripts | Edit`
-   - `Account | D1 | Edit`
-3. `gh secret set CLOUDFLARE_API_TOKEN --repo Ttungx/Blogs-Wiki`（粘贴 token 后回车）。
-4. 下次 push（或在 Actions 页面 Re-run）即恢复自动部署。
+`CLOUDFLARE_API_TOKEN` 已配置。缺失时 deploy job 仍会优雅跳过。轮换：CF Dashboard → My Profile → API Tokens（`Workers Scripts: Edit` + `D1: Edit`）→ `gh secret set CLOUDFLARE_API_TOKEN --repo Ttungx/Blogs-Wiki`。
 
 ## 非密但公开的字段（确认过，无需处理）
 

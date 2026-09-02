@@ -7,10 +7,11 @@
   "observability": {
     "enabled": true
   },
-  // 2026-09-02 紧急暂停：每 15 分钟链尾全量 import+sync 打爆 D1 日写入配额。
-  // 恢复前必须先落地增量 sync（见 docs/d1-write-budget.md），禁止只把 cron 打开。
+  // 内容更新定时触发：每 15 分钟 ping Render runner 一次（单源轮转）。
+  // 2026-09-02 曾因全量 sync 打爆 D1 日写入而暂停；增量 sync（A/B/C）落地后恢复。
+  // 见 docs/d1-write-budget.md。
   "triggers": {
-    "crons": []
+    "crons": ["7,22,37,52 * * * *"]
   },
   "vars": {
     "RUNNER_URL": "https://blogs-wiki-updater.onrender.com"

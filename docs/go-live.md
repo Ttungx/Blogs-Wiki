@@ -1,8 +1,7 @@
 # 完整上线 Runbook（go-live）
 
-> 当前状态：**Worker cron 已紧急暂停**（`wrangler.deploy.jsonc` `crons=[]`，2026-09-02）。
-> 原因：链尾每 15 分钟全量 import+sync，D1 免费档日写入 10 万行被打到 90%。调查与恢复闸门见 [`d1-write-budget.md`](d1-write-budget.md)。
-> 增量 sync 方案 A/B/C 已合并 `main`（`edd58b5`），**尚未部署**；部署并跑完 `d1-write-budget.md` §9 前禁止只把 cron 打开。
+> 当前状态：**增量 sync 已合并，本次上线恢复 cron**（`crons=["7,22,37,52 * * * *"]`）。
+> 调查与写入预算见 [`d1-write-budget.md`](d1-write-budget.md)。push main 即部署 Worker + Render（见 [`ci-cd.md`](ci-cd.md)）。
 
 ## 上线两前置（业务决策，非技术）
 

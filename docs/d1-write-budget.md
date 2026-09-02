@@ -1,6 +1,6 @@
 # D1 日写入配额：调查与实施方案
 
-> 状态：**方案 A/B/C 已合并 `main`（`edd58b5`），尚未部署到生产 Worker/Render。** 本地四道门禁全绿。部署并跑完 §9 检查单前 **cron 保持空**——2026-09-02 已紧急置空并 deploy，禁止只把 `crons` 改回来。
+> 状态：**方案 A/B/C 已合并 `main`（`edd58b5`）；cron 随本次上线恢复。** 部署须含 migration 0011。日写入目标 &lt; 5,000。
 > 免费档硬顶：日写入 **100,000 行**、日读取 5,000,000 行、存储 5 GB。今日邮件「用量 90%」是 **rows written**，不是 56MB 库体积。
 
 ## 1. 紧急处置（已落地）
@@ -158,7 +158,7 @@ SSR 读（首页 `GROUP BY`、列表子查询）走 **rows read**，不是这次
 2. ✅ **B1+B4**：content-sync skip 未变篇 + 稳定路径不预清理。补 `worker/__tests__/d1/content-sync*.test.ts`：重复提交同 payload 不增加 `updated_at`。
 3. ✅ **B2+B3**：条件 upsert 与分类 diff。
 4. ✅ **C**：CLI 闸门 + 文档。
-5. ⏳ **恢复 cron**：`wrangler.deploy.jsonc` 写回 `["7,22,37,52 * * * *"]` → deploy → `wrangler tail` 等一个槽位，确认 `scheduled ping -> HTTP 202` 且该轮 D1 写入 &lt; 500（合并 + 部署迁移 0011 之后，未部署前保持 `[]`）。
+5. ✅ **恢复 cron**：`wrangler.deploy.jsonc` 写回 `["7,22,37,52 * * * *"]`（随 2026-09-02 上线 commit）。
 6. ⏳ 观察 24h D1 面板 rows written，目标 &lt; 5,000。
 
 不要并行先开 cron 再做 B。A 单独也可以先恢复 cron（风险：手动全量仍贵，但 15 分钟不再爆）。**部署顺序硬约束**：先 `wrangler d1 migrations apply blogs-wiki --remote`（0011 加列）再 deploy Worker——新代码读 `content_hash`，缺列会 500。
@@ -189,12 +189,10 @@ SSR 读（首页 `GROUP BY`、列表子查询）走 **rows read**，不是这次
 
 ## 9. 恢复 cron 检查单
 
-- [x] 阶段 A 代码已落地（每轮 sync 篇数 ≈ 本源本轮 processed）——本地测试绿，未部署
-- [x] 阶段 B 代码已落地（同一 payload 重放 skipped=全量、写入≈0）——本地测试绿，未部署
-- [x] 本地 `npm run test:update && npm run test:d1`（update 71+smoke、d1 60、worker 93、check:worker 均绿）
-- [ ] 合并 `feat-d1-write-budget` 并部署（先 `wrangler d1 migrations apply blogs-wiki --remote` 再 deploy Worker）
-- [ ] 无正在跑的手动全量 sync
-- [ ] 用户明确说恢复
+- [x] 阶段 A 代码已落地（每轮 sync 篇数 ≈ 本源本轮 processed）
+- [x] 阶段 B 代码已落地（同一 payload 重放 skipped=全量、写入≈0）
+- [x] 本地 `npm run test:update && npm run test:d1`
+- [x] 已合并 `main`（`edd58b5` + 消融 `4e6bc74`）
+- [x] 用户明确说恢复并上线
+- [ ] CI deploy（含 `wrangler d1 migrations apply blogs-wiki --remote` + Worker + Render）
 - [ ] deploy 后 tail 一个 cron 槽位 + D1 面板该小时写入 &lt; 500
-
-未勾完之前，`crons` 必须保持 `[]`。
