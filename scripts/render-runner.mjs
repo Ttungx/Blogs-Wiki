@@ -96,6 +96,9 @@ function buildChainScript(sourceId, limitArg, startedAt) {
   // 本轮产物（本源 + mtime >= startedAt）→ 分片推送 D1。
   // translate:batch 只补本地 corpus 缺 zh 版本的原文（断点续传），单篇失败
   // 只记错误台账不退出，不会拖垮链条；随后 import+sync 把新译文一并推上 D1。
+  // 原文先行（AGENTS.md 翻译通道原则）：翻译步骤整体失败（配置/配额/限流/网络）
+  // 只记 WARN 不中断链条——原文照常 quality-scan → import → sync 上线展示；
+  // 下轮 translate:batch 重扫缺 zh 原文自动补翻，译文经 import+sync 增量上 D1。
   // ⚠️ D1 写入预算（docs/d1-write-budget.md）：链尾 import/sync 必须锁定本源
   // + startedAt 增量，禁止整库全量（每日写入曾打到 9 万行）。无新文件时
   // import 产出 0 篇 payload，sync 直接跳过，不 POST。
@@ -106,10 +109,15 @@ function buildChainScript(sourceId, limitArg, startedAt) {
     : `npm run update -- --source ${JSON.stringify(sourceId)} --report logs/report${limitArg}`;
   const sourceArg = `--source ${JSON.stringify(sourceId)}`;
   const sinceArg = `--since ${JSON.stringify(startedAt)}`;
+  // 翻译容错：任何失败都降级为原文先行（见上），链条继续。WARN 行为可 grep 审计：
+  // Render 日志流搜 "WARN translate degraded"。
+  const translateStep =
+    `npm run translate:batch -- ${sourceArg} --report logs/report` +
+    ` || echo "[runner] WARN translate degraded, continuing with originals (${sourceId})"`;
   return [
     'set -e',
     fetchStep,
-    `npm run translate:batch -- ${sourceArg} --report logs/report`,
+    translateStep,
     `npm run quality-scan -- ${sourceArg}`,
     `node scripts/import-local-articles.mjs --json ${sinceArg} ${sourceArg} --output logs/.tmp-import-articles.json`,
     `node scripts/sync-local-articles.mjs --input logs/.tmp-import-articles.json`,

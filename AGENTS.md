@@ -1,5 +1,7 @@
 # AGENTS.md
 
+> 系统网址：https://blogswiki.dpdns.org/
+
 Astro SSR + Cloudflare Workers 博客收藏站（用户域名 `https://blogswiki.dpdns.org/`）。单 Worker 全栈：SSR 页面 + API + D1 + ASSETS，SSR 从 D1 实时读。内容更新：Worker Cron → Render 免费实例 runner（`scripts/render-runner.mjs`）单源轮转 → 受保护 API 幂等写 D1。仓库语言中文，文档与提交信息用中文。
 
 ## 提交纪律
@@ -30,6 +32,20 @@ node scripts/verify-go-live.mjs [--d1]  # 上线只读验证（站点/端点/Run
 
 env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚本需自行加载 `.env`。
 
+## 开发工具约束
+cloudflare 相关服务通过 Wrangler :
+```
+npx wrangler deploy --config wrangler.deploy.jsonc              # 生产部署（= npm run deploy；勿对 wrangler.jsonc deploy）
+npx wrangler d1 migrations apply blogs-wiki --remote            # 部署前置必跑（CI 已内置）；本地验证加 --local
+npx wrangler d1 execute blogs-wiki --remote --command "<SQL>"   # 只读排查（--json 给脚本解析；批量写加 --file）
+npx wrangler dev --config wrangler.deploy.jsonc                 # 本地 Worker 烟囱（= npm run preview:worker）
+npx wrangler secret list / npx wrangler secret put <NAME>       # secrets 唯一入口，禁进仓库/日志
+npx wrangler tail --format pretty                               # 看 cron scheduled 首跳（:07/:22/:37/:52）
+npx wrangler types --config wrangler.deploy.jsonc               # 重生成 worker-configuration.d.ts
+```
+
+Render 相关服务通过 Render MCP 工具
+
 ## CI/CD（`.github/workflows/ci.yml`，触发边界与密钥分层详见 docs/ci-cd.md）
 
 - push main / push `v*` tag / workflow_dispatch = **门禁通过后部署** Worker（D1 migration + wrangler deploy）+ Render。PR = 只跑门禁。`v*` tag 额外校验与 package.json version 一致。**禁止擅自 `npm version` / 推 `v*` tag**（版本号冻结仍有效，发版与部署已解耦）。
@@ -58,7 +74,8 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 ## 翻译通道（TRANSLATION_PROVIDER，默认 free）
 
 - free：OpenAI 兼容网关；`MODEL_REASONING_EFFORT=low`（high 会因 reasoning 吃满 max_tokens 致输出空；Gemini 端点不接受 default）。429 退避内置（2 次）；prompt 可能被留存训练，只传公开内容。
-- paid 回退三件套；本地多服务商槽位 `AI_PROVIDER=1|2|3`（见 `scripts/update/ai-provider.ts`，Render 生产 env 无选择器、行为不变）。本地网络受限 `USE_PROXY=true` + `PROXY_URL`；个别站点 TLS 指纹拦截时抓取自动回退系统 curl。
+- paid 回退三件套；多服务商槽位 `AI_PROVIDER=1|2|3` 主 + `AI_PROVIDER_FALLBACK` 回退（见 `scripts/update/ai-provider.ts`，本地与 Render 生产 env 同逻辑，槽位 `BASE_URL/API_KEY/MODEL` 三件套必须配齐，缺配则翻译步骤直接失败）。本地网络受限 `USE_PROXY=true` + `PROXY_URL`；个别站点 TLS 指纹拦截时抓取自动回退系统 curl。
+- **原文先行**：翻译环节任何失败（配置/配额/限流/网络）只 WARN 不阻断更新链，原文照常 quality-scan → import → sync 上线（SSR 按 zh-cn>zh>en 回退展示）；`translate:batch` 只补缺 zh 的原文（断点续传），服务恢复后下轮自动补翻。降级审计：搜 Render 日志 `WARN translate degraded`。
 - 默认 V1 整篇翻译（单次输出预算 128K token，`TRANSLATION_MAX_TOKENS` 可调）；官方中文 / 原生中文正文直通 V2 passthrough（仅 1 次分类请求，不再白耗整篇调用）；`TRANSLATION_PIPELINE=v2` 强制分块（块输出上限 8000 token，`TRANSLATION_MAX_CHUNK_TOKENS` 可调）；单篇 >200K 字符自动兜底 V2。
 
 ## 路书（docs/，先读再动手）
@@ -77,7 +94,6 @@ env 由 npm scripts 经 `--env-file-if-exists=.env` 加载；直接 `tsx` 跑脚
 
 主 agent context 稀缺，只装结论与关键证据：预期"翻出的原始内容"远大于"最终结论"（开放式调研/跨模块/入口不明）就尽早委托；入口明确、直接读更快就自己做。
 - 用户长期授权 subagent/delegation（本节即满足工具要求，无需每任务确认）；授权 ≠ 必须用。
-- 模型梯次：默认 `opencode-go/deepseek-v4-flash`（max）→ `gpt-5.6-luna`（max）→ `gpt-5.6-terra`（high）→ `gpt-5.6-sol`（中高，仅高复杂任务）。
 - explorer prompt 像交接新同事：目标/动机/边界/已知线索/期望输出；按自然边界分工互不重叠；只读不改、fresh context、低 reasoning effort；自己是 explorer 就直接完成，不二次委托。
 - 派出后用长超时等结果；**等待期间不碰 repo 搜索与文件阅读**（用户明确新任务除外）。结果只收结论 + 证据表（claim | file:line | confidence），不收原始输出/长 diff。
 - 自己动手搜索先剪枝：先摸候选范围与内容规模再展开；大文件、长 diff、minified 内容不整段拉进 context。
