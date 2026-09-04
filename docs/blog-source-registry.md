@@ -121,7 +121,7 @@
 | `meta-engineering` | engineering.fb.com | 2026-08-28 | 343 | Large-scale Engineering，~1084 |
 | `hugging-face` | huggingface.co | 2026-08-28 | 250 | 官方全量池 ~700+ 且增量快，量过大 |
 | `simon-willison` | simonwillison.net | 2026-08-28 | 700 | 文章量过大（清点 ~4000+），不匹配定位 |
-| `paul-graham` | paulgraham.com | 2026-08-28 | 1 | 无机器可读发布日期，结构性不适配（`blogs-static` 的 `demo:true` 展示条目保留） |
+| `paul-graham` | paulgraham.com | 2026-08-28 | 1 | 无机器可读发布日期，结构性不适配（2026-09-04 连 `demo:true` 展示条目一并下掉，书架不再占位） |
 | `tencent-cloud` | cloud.tencent.com | 2026-09-02 | 0 | 巨大 UGC 社区（官方团队 + 第三方 + 媒体转载混排），边界太差，无法建立干净技术索引；sources.json / blogs-static 展示条目已清理 |
 
 合计 **1469** 条 URL，账本见 `src/data/blocked-urls.json`（append-only 决策留痕，解除拉黑也不删）。

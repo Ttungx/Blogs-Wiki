@@ -401,24 +401,6 @@ export const staticBlogs: StaticBlogEntry[] = [
     }
   },
   {
-    "id": "paul-graham",
-    "data": {
-      "name": "Paul Graham Essays",
-      "type": "personal",
-      "author": "Paul Graham",
-      "description": "关于创造、创业、写作与长期工作的随笔。",
-      "homepageUrl": "https://paulgraham.com/",
-      "blogUrl": "https://paulgraham.com/articles.html",
-      "domain": "paulgraham.com",
-      "avatar": "https://s.turbifycdn.com/aah/paulgraham/headshot-11.gif",
-      "categories": [
-        "Personal Growth",
-        "Internet / Technology"
-      ],
-      "demo": true
-    }
-  },
-  {
     "id": "qwen",
     "data": {
       "name": "Qwen",
