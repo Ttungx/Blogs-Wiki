@@ -14,11 +14,13 @@ const db = env.DB;
 const articleCount = await getArticleCountBySource(db);
 
 const hasArticles = (id: string) => (articleCount.get(id) ?? 0) > 0;
+// demo 展示条目（如 Paul Graham）保留展示位，不受 D1 文章数过滤
+const visible = (id: string, demo?: boolean) => demo === true || hasArticles(id);
 const companyBlogs = blogs
-  .filter((blog) => blog.data.type === 'company' && hasArticles(blog.id))
+  .filter((blog) => blog.data.type === 'company' && visible(blog.id, blog.data.demo))
   .sort((a, b) => a.data.name.localeCompare(b.data.name));
 const personalBlogs = blogs
-  .filter((blog) => blog.data.type === 'personal' && hasArticles(blog.id))
+  .filter((blog) => blog.data.type === 'personal' && visible(blog.id, blog.data.demo))
   .sort((a, b) => a.data.name.localeCompare(b.data.name));
 ---
 

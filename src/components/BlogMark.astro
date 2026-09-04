@@ -1,5 +1,5 @@
 ---
-import { assetPath, imagePath } from '../lib/urls';
+import { imagePath } from '../lib/urls';
 
 interface Props {
   name: string;
@@ -13,7 +13,7 @@ interface Props {
 const { name, logo, avatar, logoScale, type = 'company', size = 'medium' } = Astro.props;
 const scaled = logoScale && logoScale > 0 && logoScale !== 1;
 const source = imagePath(
-  assetPath(type === 'personal' ? avatar ?? logo : logo ?? avatar),
+  type === 'personal' ? avatar ?? logo : logo ?? avatar,
   size === 'large' ? 152 : size === 'medium' ? 116 : 72,
 );
 const initials = name
