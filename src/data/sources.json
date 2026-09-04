@@ -520,7 +520,7 @@
     "blog_url": "https://evomap.ai/blog",
     "domain": "evomap.ai",
     "sitemap_url": "https://evomap.ai/sitemap.xml",
-    "update_mode": "dry-run-only",
+    "update_mode": "active",
     "prefer_official_zh": true,
     "zh_path_map": {
       "/blog": "/zh/blog"
