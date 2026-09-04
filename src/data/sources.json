@@ -511,5 +511,26 @@
         "accept-language": "{lang}"
       }
     }
+  },
+  {
+    "id": "evomap",
+    "name": "EvoMap",
+    "type": "company",
+    "homepage_url": "https://evomap.ai/",
+    "blog_url": "https://evomap.ai/blog",
+    "domain": "evomap.ai",
+    "sitemap_url": "https://evomap.ai/sitemap.xml",
+    "update_mode": "dry-run-only",
+    "prefer_official_zh": true,
+    "zh_path_map": {
+      "/blog": "/zh/blog"
+    },
+    "article_paths": [
+      "^/(zh/)?blog/[a-z0-9-]+$"
+    ],
+    "exclude_paths": [
+      "^/(zh/)?blog/changelog",
+      "^/(zh/)?blog/security-statement"
+    ]
   }
 ]

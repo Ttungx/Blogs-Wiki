@@ -1,6 +1,6 @@
 # 博客适配开发登记表
 
-所有博客的审核、适配阶段、阻碍与后续顺序以本表为准。最后更新：2026-09-02。
+所有博客的审核、适配阶段、阻碍与后续顺序以本表为准。最后更新：2026-09-04。
 
 ## 来源质量原则
 
@@ -39,6 +39,7 @@
 | `github-engineering` | 已适配 | [GitHub Engineering](https://github.blog/engineering/) | https://github.blog/engineering/ | Developer Platform / Engineering | RSS + Sitemap | 无官方中文，模型翻译 | https://github.blog/engineering/ | /engineering/feed/ + post-sitemap；排除 changelog/news-insights/author/category；2026-08-28 定位审查：文章量小，保留 |
 | `google-security` | 已适配 | [Google Security](https://blog.google/security/) | https://blog.google/security/ | Security | RSS + Sitemap | 无官方中文，模型翻译 | https://blog.google/security/ | Google Online Security Blog 长期技术安全博客（漏洞、Chrome 安全、威胁研究密度高）；2026-08 核对 security.googleblog.com（2026-04 后停更、滞后约 3.5 月），保持 blog.google/security；hub 页（vrp/android-security/chrome-security/open-source-security）已 exclude；2026-08-28 定位审查：文章量小，保留 |
 | `tencent-hunyuan` | 正在适配 | [腾讯混元研究博客](https://hy.tencent.com/research) | https://hy.tencent.com/research | LLM / Agent / Research（中文） | POST JSON API（publicList/publicDetail） | 官方简体中文直通（lang=zh） | https://hy.tencent.com/research（无 RSS/sitemap，React SPA；发现与正文走 api.hunyuan.tencent.com） | 2026-02 上线，公开混元研究员前沿研究与技术实践；7 篇（elr/hyra/hy3 等）；发现+抓取+官方中文直通已验证；dry-run-only；正文 Markdown 直通、图片 COS 原链 |
+| `evomap` | 正在适配 | [EvoMap](https://evomap.ai/zh/blog) | https://evomap.ai/blog | Agent Swarm / GEP / 自我进化 | Sitemap | 官方简体中文 `/zh/blog/` 直通（hreflang + zh_path_map） | https://evomap.ai/blog（中文 https://evomap.ai/zh/blog） | 2026-09-04 接入：无 RSS；列表页为客户端渲染，listing 解析不到文章 URL；sitemap.xml 含 21 篇 `/blog/<slug>` 且有 lastmod；英文索引 + `prefer_official_zh` + `zh_path_map: { "/blog": "/zh/blog" }`；排除 changelog / security-statement；dry-run-only |
 | `dan-koe` | 已适配 | [Dan Koe](https://letters.thedankoe.com/) | https://letters.thedankoe.com/ | 个人成长 / AI 时代技能 / 创作 | RSS + Sitemap | 无已知官方中文 | https://letters.thedankoe.com/ (/p/<slug>) | Substack（future/proof）；RSS 20 条 + sitemap 90 条，3 篇样本审计通过；已转 active，6 篇（3 en + 3 zh）全量链路验证通过 |
 | `mozilla-hacks` | 计划中 | [Mozilla Hacks](https://hacks.mozilla.org/) | https://hacks.mozilla.org/ | Web Platform | RSS | 待核验 | https://hacks.mozilla.org/ | 可能存在 WAF 抓取障碍 |
 | `datadog-engineering` | 计划中 | [Datadog Engineering](https://www.datadoghq.com/blog/engineering/) | https://www.datadoghq.com/blog/engineering/ | Observability / Infrastructure | RSS | 待核验 | https://www.datadoghq.com/blog/engineering/ | 通用工程来源，后续收录 |

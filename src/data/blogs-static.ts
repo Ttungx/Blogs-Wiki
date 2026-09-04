@@ -125,6 +125,25 @@ export const staticBlogs: StaticBlogEntry[] = [
     }
   },
   {
+    "id": "evomap",
+    "data": {
+      "name": "EvoMap",
+      "type": "company",
+      "author": "EvoMap",
+      "description": "EvoMap 的 AI 自我进化、Agent Swarm 与 GEP 协议官方博客。",
+      "homepageUrl": "https://evomap.ai/",
+      "blogUrl": "https://evomap.ai/blog",
+      "domain": "evomap.ai",
+      "sitemapUrl": "https://evomap.ai/sitemap.xml",
+      "categories": [
+        "AI",
+        "Agent",
+        "AI Coding / Developer Tools"
+      ],
+      "demo": true
+    }
+  },
+  {
     "id": "github-engineering",
     "data": {
       "name": "GitHub Engineering",
