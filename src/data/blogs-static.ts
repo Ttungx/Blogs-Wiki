@@ -134,6 +134,7 @@ export const staticBlogs: StaticBlogEntry[] = [
       "homepageUrl": "https://evomap.ai/",
       "blogUrl": "https://evomap.ai/blog",
       "domain": "evomap.ai",
+      "logo": "/vendors/evomap.svg",
       "sitemapUrl": "https://evomap.ai/sitemap.xml",
       "categories": [
         "AI",
