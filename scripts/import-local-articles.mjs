@@ -242,6 +242,7 @@ function toSyncPayload() {
       published: verdict ? !verdict.wouldReject : true,
       ...(verdict ? { qualityScore: verdict.score, qualityModel: verdict.modelVersion } : {}),
       publishedAt,
+      ...(fm.published_at_source === 'ingested' ? { publishedAtSource: 'ingested' } : {}),
       ...(fm.image_url ? { imageUrl: fm.image_url } : {}),
       ...(fm.author ? { author: fm.author.slice(0, 256) } : {}),
       sourceDomain: fm.source_domain,
@@ -288,10 +289,11 @@ for (const [articleId, versions_] of groups) {
 
   // articles 身份行（用第一个版本的 frontmatter）
   sql.push(
-    `INSERT INTO articles (id, source_id, original_url, original_language, published_at, image_url, author, source_domain, created_at, updated_at) ` +
+    `INSERT INTO articles (id, source_id, original_url, original_language, published_at, published_at_source, image_url, author, source_domain, created_at, updated_at) ` +
     `VALUES (${esc(articleId)}, ${esc(blogId)}, ${esc(fm.original_url)}, ${esc(fm.original_language ?? 'en')}, ` +
-    `${esc(publishedAt)}, ${esc(fm.image_url)}, ${esc(fm.author)}, ${esc(fm.source_domain)}, datetime('now'), datetime('now')) ` +
-    `ON CONFLICT(id) DO UPDATE SET original_url=excluded.original_url, published_at=excluded.published_at, ` +
+    `${esc(publishedAt)}, ${fm.published_at_source === 'ingested' ? "'ingested'" : 'NULL'}, ` +
+    `${esc(fm.image_url)}, ${esc(fm.author)}, ${esc(fm.source_domain)}, datetime('now'), datetime('now')) ` +
+    `ON CONFLICT(id) DO UPDATE SET original_url=excluded.original_url, published_at=excluded.published_at, published_at_source=excluded.published_at_source, ` +
     `image_url=excluded.image_url, author=excluded.author, source_domain=excluded.source_domain, updated_at=datetime('now');`
   );
   articles++;
