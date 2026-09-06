@@ -49,6 +49,7 @@ function toExtractedArticle(article: Awaited<ReturnType<typeof fetchWorkerArticl
     ...(article.author ? { author: article.author } : {}),
     ...(article.imageUrl ? { imageUrl: article.imageUrl } : {}),
     publishedAt: article.publishedAt,
+    ...(article.publishedAtSource ? { publishedAtSource: article.publishedAtSource } : {}),
     originalLanguage: article.originalLanguage,
     contentMarkdown: article.contentMarkdown,
     ...(article.officialZhUrl ? { officialZhUrl: article.officialZhUrl } : {}),

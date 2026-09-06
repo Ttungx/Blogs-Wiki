@@ -40,6 +40,8 @@ export interface WorkerArticleResult {
   author: string;
   imageUrl: string;
   publishedAt: string;
+  /** 日期口径：'ingested' = 无发表日期，publishedAt 实为收录日。 */
+  publishedAtSource?: 'published' | 'ingested';
   originalLanguage: string;
   contentMarkdown: string;
   officialZhUrl?: string;
@@ -320,6 +322,9 @@ async function fetchWorkerApiArticle(
     (typeof publishedAtRaw === 'number' ? new Date(publishedAtRaw * 1000).toISOString() : undefined) ??
     (typeof publishedAtRaw === 'string' && publishedAtRaw.trim() ? publishedAtRaw : '') ??
     '';
+  // 与 scripts/update/fetch.ts 的 fetchApiArticle 同口径：无日期用系统收录日兜底。
+  const apiPublishedAt = publishedAt || new Date().toISOString().slice(0, 10);
+  const apiPublishedAtSource = (publishedAt ? 'published' : 'ingested') as 'published' | 'ingested';
   const originalLanguage =
     typeof responseLang === 'string' && /^[a-z]{2}$/i.test(responseLang.trim())
       ? responseLang.trim().toLowerCase()
@@ -330,7 +335,8 @@ async function fetchWorkerApiArticle(
     title: resolvedTitle,
     author: typeof author === 'string' ? author.trim() : '',
     imageUrl: typeof imageUrl === 'string' ? imageUrl.trim() : '',
-    publishedAt,
+    publishedAt: apiPublishedAt,
+    publishedAtSource: apiPublishedAtSource,
     originalLanguage,
     contentMarkdown,
   };
@@ -384,13 +390,21 @@ export async function fetchWorkerArticle(
         )
       : '') ||
     '';
+  // 与 scripts/update/fetch.ts 同口径（2026-09 日期兜底政策）：全空时用系统
+  // 收录日期兜底,否则完整性门禁会把无日期文章全部拦下(PG 等 dateless 源)。
+  const resolvedPublishedAt = publishedAt || new Date().toISOString().slice(0, 10);
+  const publishedAtSource = (publishedAt ? 'published' : 'ingested') as 'published' | 'ingested';
+  if (!publishedAt) {
+    console.warn(`[${source.id}] ${articleUrl}: no publish date found, falling back to ingestion date`);
+  }
 
   return {
     url: articleUrl,
     title,
     author: extracted.author,
     imageUrl: extracted.imageUrl,
-    publishedAt,
+    publishedAt: resolvedPublishedAt,
+    publishedAtSource,
     originalLanguage: extracted.originalLanguage,
     contentMarkdown: extracted.contentMarkdown,
   };
