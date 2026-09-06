@@ -6,6 +6,7 @@ description: Maxime Labonne 的大模型微调、量化与对齐实操教程，�
 homepage_url: https://mlabonne.github.io/blog/
 blog_url: https://mlabonne.github.io/blog/
 domain: mlabonne.github.io
+avatar: https://github.com/mlabonne.png
 sitemap_url: https://mlabonne.github.io/blog/sitemap.xml
 categories:
   - AI

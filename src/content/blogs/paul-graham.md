@@ -6,6 +6,7 @@ description: Paul Graham 的经典文集：创业、思考、写作与如何做�
 homepage_url: http://www.paulgraham.com/
 blog_url: http://www.paulgraham.com/articles.html
 domain: paulgraham.com
+avatar: https://www.paulgraham.com/favicon.ico
 categories:
   - Personal Growth
   - Internet / Technology

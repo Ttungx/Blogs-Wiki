@@ -6,6 +6,7 @@ description: Cameron R. Wolfe 的 LLM 与强化学习深度综述通讯，系统
 homepage_url: https://cameronrwolfe.substack.com/
 blog_url: https://cameronrwolfe.substack.com/
 domain: cameronrwolfe.substack.com
+avatar: https://cameronrwolfe.substack.com/favicon.ico
 rss_url: https://cameronrwolfe.substack.com/feed
 sitemap_url: https://cameronrwolfe.substack.com/sitemap.xml
 categories:

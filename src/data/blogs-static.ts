@@ -74,6 +74,7 @@ export const staticBlogs: StaticBlogEntry[] = [
       "homepageUrl": "https://cameronrwolfe.substack.com/",
       "blogUrl": "https://cameronrwolfe.substack.com/",
       "domain": "cameronrwolfe.substack.com",
+      "avatar": "https://cameronrwolfe.substack.com/favicon.ico",
       "rssUrl": "https://cameronrwolfe.substack.com/feed",
       "sitemapUrl": "https://cameronrwolfe.substack.com/sitemap.xml",
       "categories": [
@@ -132,6 +133,7 @@ export const staticBlogs: StaticBlogEntry[] = [
       "homepageUrl": "https://www.dwarkesh.com/",
       "blogUrl": "https://www.dwarkesh.com/",
       "domain": "www.dwarkesh.com",
+      "avatar": "https://www.dwarkesh.com/favicon.ico",
       "rssUrl": "https://www.dwarkesh.com/feed",
       "sitemapUrl": "https://www.dwarkesh.com/sitemap.xml",
       "categories": [
@@ -350,6 +352,7 @@ export const staticBlogs: StaticBlogEntry[] = [
       "homepageUrl": "https://mlabonne.github.io/blog/",
       "blogUrl": "https://mlabonne.github.io/blog/",
       "domain": "mlabonne.github.io",
+      "avatar": "https://github.com/mlabonne.png",
       "sitemapUrl": "https://mlabonne.github.io/blog/sitemap.xml",
       "categories": [
         "AI",
@@ -463,6 +466,7 @@ export const staticBlogs: StaticBlogEntry[] = [
       "homepageUrl": "http://www.paulgraham.com/",
       "blogUrl": "http://www.paulgraham.com/articles.html",
       "domain": "paulgraham.com",
+      "avatar": "https://www.paulgraham.com/favicon.ico",
       "categories": [
         "Personal Growth",
         "Internet / Technology"
@@ -519,6 +523,7 @@ export const staticBlogs: StaticBlogEntry[] = [
       "homepageUrl": "https://www.thonking.ai/",
       "blogUrl": "https://www.thonking.ai/",
       "domain": "www.thonking.ai",
+      "avatar": "https://www.thonking.ai/favicon.ico",
       "rssUrl": "https://www.thonking.ai/feed",
       "sitemapUrl": "https://www.thonking.ai/sitemap.xml",
       "categories": [
@@ -537,6 +542,7 @@ export const staticBlogs: StaticBlogEntry[] = [
       "homepageUrl": "https://contraptions.venkateshrao.com/",
       "blogUrl": "https://contraptions.venkateshrao.com/",
       "domain": "contraptions.venkateshrao.com",
+      "avatar": "https://contraptions.venkateshrao.com/favicon.ico",
       "rssUrl": "https://contraptions.venkateshrao.com/feed",
       "sitemapUrl": "https://contraptions.venkateshrao.com/sitemap.xml",
       "categories": [

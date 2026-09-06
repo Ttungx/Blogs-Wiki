@@ -6,6 +6,7 @@ description: Dwarkesh Patel 的深度访谈与长文：AI 进展、算力竞争�
 homepage_url: https://www.dwarkesh.com/
 blog_url: https://www.dwarkesh.com/
 domain: www.dwarkesh.com
+avatar: https://www.dwarkesh.com/favicon.ico
 rss_url: https://www.dwarkesh.com/feed
 sitemap_url: https://www.dwarkesh.com/sitemap.xml
 categories:
