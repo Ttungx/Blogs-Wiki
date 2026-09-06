@@ -1,0 +1,48 @@
+name: "Ops: remove RUNNER_BACKFILL (temp)"
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  remove-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Locate updater service
+        env:
+          KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          SID=$(curl -sS -H "Authorization: Bearer $KEY" "https://api.render.com/v1/services?limit=100" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          ids = [s['id'] for s in data if 'updater' in (s.get('name') or '').lower()]
+          print('\n'.join(ids))
+          ")
+          count=$(printf '%s' "$SID" | grep -c . || true)
+          if [ "$count" != "1" ]; then
+            echo "expected exactly 1 updater service, got $count: $SID"
+            exit 1
+          fi
+          echo "sid=$SID" >> "$GITHUB_ENV"
+          echo "updater service: $SID"
+      - name: Delete RUNNER_BACKFILL env var
+        env:
+          KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          code=$(curl -sS -o /tmp/del.json -w "%{http_code}" -X DELETE \
+            -H "Authorization: Bearer $KEY" \
+            "https://api.render.com/v1/services/$sid/env-vars/RUNNER_BACKFILL")
+          echo "DELETE RUNNER_BACKFILL -> HTTP $code"
+          cat /tmp/del.json | head -c 200 || true
+          echo
+          if [ "$code" != "204" ] && [ "$code" != "200" ]; then echo "delete failed"; exit 1; fi
+      - name: Trigger deploy to apply
+        env:
+          KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          code=$(curl -sS -o /tmp/dep.json -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $KEY" \
+            "https://api.render.com/v1/services/$sid/deploys")
+          echo "trigger deploy -> HTTP $code"
+          head -c 300 /tmp/dep.json
+          echo
+          if [ "$code" != "201" ] && [ "$code" != "200" ]; then echo "deploy trigger failed"; exit 1; fi
