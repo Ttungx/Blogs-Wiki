@@ -43,7 +43,12 @@ import type { TranslateArticle } from './types';
 /** 官方中文直通的分类器（复用 runner 的翻译路由：中文内容走 passthrough）。 */
 let cachedTranslator: TranslateArticle | undefined;
 function translatorFor(fetchImpl: FetchLike): TranslateArticle {
-  cachedTranslator ??= buildTranslator(false, undefined, fetchImpl);
+  if (!cachedTranslator) {
+    const translator = buildTranslator(false, undefined, fetchImpl);
+    // dryRun=false 时 buildTranslator 恒返回客户端（凭据缺失直接抛错）。
+    if (!translator) throw new Error('translator unavailable');
+    cachedTranslator = translator;
+  }
   return cachedTranslator;
 }
 import { urlDateFromPattern } from './url-date';
@@ -398,7 +403,7 @@ async function backfillSource(
         // 分类失败不阻断（原文先行；zh 版本可由 translate:batch 补）。
         if (article.officialZh) {
           try {
-            const zhTranslation = translatorFor(fetchImpl)(
+            const zhTranslation = await translatorFor(fetchImpl)(
               {
                 ...article,
                 title: article.officialZh.title,
