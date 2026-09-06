@@ -1338,3 +1338,468 @@ placeholder 泄漏、图片 URL 非绝对、缺日期、缺标题、超出回填
 - 错误总数：0
 
 无错误。
+
+---
+
+## 2026-09-06T07:29:43.826Z（thonking）
+
+- 错误总数：0
+
+无错误。
+
+---
+
+## 2026-09-06T07:44:30.222Z（venkatesh-rao）
+
+- 错误总数：122
+
+### venkatesh-rao（122 条）
+
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/august-break`
+  - non-zh original 236 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/mindmap-june-6-2026`
+  - non-zh original 192 words (min 300)
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/getting-gooier`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/ai-in-world-machine-theory`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/the-world-machines-project`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/the-physics-of-intelligence`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/contraption-mansion`
+  - non-zh original 95 words (min 300)
+- **fetch** `https://contraptions.venkateshrao.com/p/gaslit-courage`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/gaslit-courage: terminated
+- **fetch** `https://contraptions.venkateshrao.com/p/memento-salis`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/memento-salis: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/what-if-bigger-models-like-bigger`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/what-if-bigger-models-like-bigger: fetch failed
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/fall-break-8d9`
+  - non-zh original 219 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/protocol-narratives`
+  - non-zh original 178 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/logics-of-caring`
+  - non-zh original 209 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/video-recording-protocols-preview`
+  - non-zh original 110 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/manichean-realpolitik`
+  - non-zh original 237 words (min 300)
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/mappy-new-year`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/an-important-question`
+  - non-zh original 58 words (min 300)
+- **fetch** `https://contraptions.venkateshrao.com/p/miniaturized-economies`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/miniaturized-economies: terminated
+- **fetch** `https://contraptions.venkateshrao.com/p/two-little-contraptions`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/two-little-contraptions: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/every-story-is-a-degrowth-story`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/every-story-is-a-degrowth-story: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/between-mandala-and-machine`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/between-mandala-and-machine: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/placemaking-vs-mission-shaping`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/placemaking-vs-mission-shaping: fetch failed
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/mediocre-computing`
+  - non-zh original 215 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/projects`
+  - non-zh original 42 words (min 300)
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/the-dawn-of-mediocre-computing`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/fall-break`
+  - non-zh original 128 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/summer-reverie`
+  - non-zh original 96 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-art-of-pretending-to-govern`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-ooze-grows`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/bangalore-diary`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/benefit-of-doubt-calculus`
+  - non-zh original 97 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/spring-break`
+  - non-zh original 129 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/does-reality-have-a-surprising-_lack_`
+  - non-zh original 220 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/boundary-intelligence`
+  - non-zh original 101 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/youve-been-matrix-multiplied`
+  - non-zh original 87 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/a-tale-of-two-cycle-memes`
+  - non-zh original 88 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/thick-time`
+  - non-zh original 85 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/sweating-solarpunk`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/my-climate-posture`
+  - non-zh original 93 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/grimdark-hopepunk-with-a-chance-of`
+  - non-zh original 258 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/summer-break-6a0`
+  - non-zh original 181 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/history-after-history`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-firmament`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/two-black-holes`
+  - non-zh original 88 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/a-territory-and-a-map`
+  - non-zh original 88 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-anthropic-cheat-code`
+  - non-zh original 83 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/hello-again-world`
+  - non-zh original 88 words (min 300)
+- **fetch** `https://contraptions.venkateshrao.com/p/the-long-2022`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/the-long-2022: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/the-one-trading-system`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/the-one-trading-system: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/vivid-abstractions`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/vivid-abstractions: fetch failed
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/eventfulness`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-end-of-alpha`
+  - non-zh original 84 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/august-2022-core-dump`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/memiads`
+  - non-zh original 90 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/graph-vitalism`
+  - non-zh original 93 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/inner-graph-monologues`
+  - non-zh original 217 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/big-graph-of-mud`
+  - non-zh original 90 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/surrender-and-assimilation`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/transaction-cost-utopias-reconsidered`
+  - non-zh original 87 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/theory-shaped-debris`
+  - non-zh original 83 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-backstopper-economy`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/winter-break`
+  - non-zh original 189 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/through-a-scanner-darkly`
+  - non-zh original 88 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-best-of-times-the-worst-of-timesagain`
+  - non-zh original 94 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/goalposts-complete-problems`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/pitchdark-futures`
+  - non-zh original 83 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/summer-break`
+  - non-zh original 206 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/superhistory-redux`
+  - non-zh original 90 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/accidental-designs-2`
+  - non-zh original 87 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/accidental-designs-1`
+  - non-zh original 93 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/perpetuated-beta`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/maker-studio-manager-studio`
+  - non-zh original 86 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/living-with-problems`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/illusions-and-collisions-3`
+  - non-zh original 90 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/late-style-thinking`
+  - non-zh original 94 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/illusions-and-collisions-1`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/moving-to-tuesdays`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/late-sceneification`
+  - non-zh original 85 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/illusions-and-collisions-2`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/shadowland-1`
+  - non-zh original 86 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/tick-tock-talk-2`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/weird-moneys`
+  - non-zh original 81 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/selfies-in-vaporworlds`
+  - non-zh original 90 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/involvement-music`
+  - non-zh original 85 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/tick-tock-talk-1`
+  - non-zh original 87 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/economic-reveries`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/darker-things`
+  - non-zh original 101 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/shadowland-2`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/in-the-wake-of-the-eighties`
+  - non-zh original 98 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/notes-on-textual-capital`
+  - non-zh original 86 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/tunnelhead`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/hitting-pause`
+  - non-zh original 141 words (min 300)
+- **fetch** `https://contraptions.venkateshrao.com/p/fifth-generation-management`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/fifth-generation-management: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/a-bad-prequel`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/a-bad-prequel: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/control-failure-2`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/control-failure-2: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/the-state-of-business-play`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/the-state-of-business-play: fetch failed
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/control-failure-1`
+  - non-zh original 79 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/post-covid-circularity`
+  - non-zh original 86 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/operating-in-time-2`
+  - non-zh original 78 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/no-newsletter-this-week`
+  - non-zh original 99 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/operating-in-time`
+  - non-zh original 89 words (min 300)
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/the-next-experiments-in-elitism`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/a-little-gift`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/indoors-in-time`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/life-go-brrr`
+  - non-zh original 95 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/econtalk-and-zion-20-podcasts`
+  - non-zh original 170 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/a-wabi-sabi-technology-age`
+  - non-zh original 227 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-waiting-place`
+  - non-zh original 277 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/good-afternoon-internet-im-listening`
+  - non-zh original 239 words (min 300)
+- **fetch** `https://contraptions.venkateshrao.com/p/destruction-is-a-choice`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/destruction-is-a-choice: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/self-interest-and-seized-initiatives`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/self-interest-and-seized-initiatives: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/against-waldenponding`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/against-waldenponding: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/so-you-think-youre-customer-driven`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/so-you-think-youre-customer-driven: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/the-zeroth-mile`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/the-zeroth-mile: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/how-to-not-lose-at-4d-chess`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/how-to-not-lose-at-4d-chess: fetch failed
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/stream-time`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **fetch** `https://contraptions.venkateshrao.com/p/the-inner-game-of-exploding-minds`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/the-inner-game-of-exploding-minds: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/lean-thinking-vs-fat-thinking`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/lean-thinking-vs-fat-thinking: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/can-the-germanic-world-break-smart`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/can-the-germanic-world-break-smart: fetch failed
+- **fetch** `https://contraptions.venkateshrao.com/p/flame-wars-are-a-good-thing`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/flame-wars-are-a-good-thing: fetch failed
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/graph-minds-notebook`
+  - non-zh original 98 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/after-westphalia`
+  - non-zh original 81 words (min 300)
+
+---
+
+## 2026-09-06T07:47:34.348Z（dwarkesh）
+
+- 错误总数：61
+
+### dwarkesh（61 条）
+
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/openai-huggingface-narration`
+  - non-zh original 46 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/why-compute-might-get-10x-more-expensive-video`
+  - non-zh original 97 words (min 300)
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/what-i-learned-april-15`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **fetch** `https://www.dwarkesh.com/p/david-reich-2`
+  - dwarkesh https://www.dwarkesh.com/p/david-reich-2: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/what-ive-been-thinking-april-27`
+  - dwarkesh https://www.dwarkesh.com/p/what-ive-been-thinking-april-27: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/eric-jang`
+  - dwarkesh https://www.dwarkesh.com/p/eric-jang: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/reiner-pope`
+  - dwarkesh https://www.dwarkesh.com/p/reiner-pope: fetch failed
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/adam-marblestone`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/the-vital-question`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/sholto-douglas-trenton-bricken`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **fetch** `https://www.dwarkesh.com/p/patrick-collison`
+  - dwarkesh https://www.dwarkesh.com/p/patrick-collison: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/mark-zuckerberg`
+  - dwarkesh https://www.dwarkesh.com/p/mark-zuckerberg: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/demis-hassabis`
+  - dwarkesh https://www.dwarkesh.com/p/demis-hassabis: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/andrew-roberts`
+  - dwarkesh https://www.dwarkesh.com/p/andrew-roberts: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/tyler-cowen-3`
+  - dwarkesh https://www.dwarkesh.com/p/tyler-cowen-3: fetch failed
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/holden-karnofsky`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/nadia-asparouhova`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/ai-firms-narration`
+  - non-zh original 99 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/why-i-dont-think-agi-is-right-around`
+  - non-zh original 54 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/sarah-paine-6-part-july-lecture-series`
+  - non-zh original 230 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/notes-on-china-narration`
+  - non-zh original 67 words (min 300)
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/progress-update`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/dwarkesh-patel-wants-people-to-learn`
+  - non-zh original 259 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/japan-at-war-announcement`
+  - non-zh original 86 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/sarah-paine-lecture-series-public`
+  - non-zh original 192 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/sarah-paine-lecture-series`
+  - non-zh original 253 words (min 300)
+- **fetch** `https://www.dwarkesh.com/p/the-language-instinct`
+  - dwarkesh https://www.dwarkesh.com/p/the-language-instinct: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/edward-glaeser`
+  - dwarkesh https://www.dwarkesh.com/p/edward-glaeser: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/byrne-hobart-2`
+  - dwarkesh https://www.dwarkesh.com/p/byrne-hobart-2: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/bryan-caplan-3`
+  - dwarkesh https://www.dwarkesh.com/p/bryan-caplan-3: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/kenneth-jackson`
+  - dwarkesh https://www.dwarkesh.com/p/kenneth-jackson: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/brian-potter`
+  - dwarkesh https://www.dwarkesh.com/p/brian-potter: fetch failed
+- **fetch** `https://www.dwarkesh.com/p/tyler-cowen-2`
+  - dwarkesh https://www.dwarkesh.com/p/tyler-cowen-2: fetch failed
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/alexander-mikaberidze`
+  - non-zh original 194 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/fin-moorhouse`
+  - non-zh original 239 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/joseph-carlsmith`
+  - non-zh original 159 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/agustin-lebron`
+  - non-zh original 220 words (min 300)
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/sbf`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/ananyo-bhattacharya`
+  - non-zh original 177 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/pradyu-prasad`
+  - non-zh original 197 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/stephen-grugett`
+  - non-zh original 187 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/razib-khan`
+  - non-zh original 143 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/richard-hanania`
+  - non-zh original 248 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/jimmy-soni`
+  - non-zh original 173 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/bryan-caplan-2`
+  - non-zh original 225 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/david-friedman`
+  - non-zh original 128 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/byrne-hobart`
+  - non-zh original 164 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/sarah-fitz`
+  - non-zh original 154 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/michael-huemer`
+  - non-zh original 203 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/uncle-bob`
+  - non-zh original 162 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/scott-aaronson`
+  - non-zh original 154 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/scott-young`
+  - non-zh original 173 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/charles-murray`
+  - non-zh original 239 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/robin-hanson`
+  - non-zh original 128 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/caleb-watney`
+  - non-zh original 135 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/alex-tabarrok`
+  - non-zh original 169 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/matjaz-leonardis`
+  - non-zh original 103 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/bryan-caplan`
+  - non-zh original 138 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/lyndon-johnson-narration`
+  - non-zh original 111 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/will-scaling-work-narration`
+  - non-zh original 96 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/jason-crawford`
+  - non-zh original 135 words (min 300)
+
+---
+
+## 2026-09-06T07:49:50.312Z（cameron-wolfe）
+
+- 错误总数：1
+
+### cameron-wolfe（1 条）
+
+- **fetch** `https://cameronrwolfe.substack.com/p/dolma-olmo-and-the-future-of-open`
+  - cameron-wolfe https://cameronrwolfe.substack.com/p/dolma-olmo-and-the-future-of-open: terminated
+
+---
+
+## 2026-09-06T07:53:41.921Z（maxime-labonne）
+
+- 错误总数：17
+
+### maxime-labonne（17 条）
+
+- **integrity** [original-too-short] `https://mlabonne.github.io/blog/about.html`
+  - non-zh original 109 words (min 300)
+- **fetch** `https://mlabonne.github.io/blog/posts/Introduction_to_Weight_Quantization.html`
+  - maxime-labonne https://mlabonne.github.io/blog/posts/Introduction_to_Weight_Quantization.html: terminated
+- **fetch** `https://mlabonne.github.io/blog/posts/2023-06-07-Decoding_strategies.html`
+  - maxime-labonne https://mlabonne.github.io/blog/posts/2023-06-07-Decoding_strategies.html: terminated
+- **fetch** `https://mlabonne.github.io/blog/book.html`
+  - maxime-labonne https://mlabonne.github.io/blog/book.html: terminated
+- **fetch** `https://mlabonne.github.io/blog/posts/Fine_Tune_Your_Own_Llama_2_Model_in_a_Colab_Notebook.html`
+  - maxime-labonne https://mlabonne.github.io/blog/posts/Fine_Tune_Your_Own_Llama_2_Model_in_a_Colab_Notebook.html: The operation was aborted due to timeout
+- **fetch** `https://mlabonne.github.io/blog/posts/2022-04-06-GraphSAGE.html`
+  - maxime-labonne https://mlabonne.github.io/blog/posts/2022-04-06-GraphSAGE.html: terminated
+- **fetch** `https://mlabonne.github.io/blog/posts/2022-05-02-Constraint_Programming.html`
+  - maxime-labonne https://mlabonne.github.io/blog/posts/2022-05-02-Constraint_Programming.html: terminated
+- **fetch** `https://mlabonne.github.io/blog/posts/2022-05-25-Minecraft.html`
+  - maxime-labonne https://mlabonne.github.io/blog/posts/2022-05-25-Minecraft.html: terminated
+- **fetch** `https://mlabonne.github.io/blog/posts/2023-05-21-Nonlinear_optimization.html`
+  - maxime-labonne https://mlabonne.github.io/blog/posts/2023-05-21-Nonlinear_optimization.html: fetch failed
+- **fetch** `https://mlabonne.github.io/blog/publications.html`
+  - maxime-labonne https://mlabonne.github.io/blog/publications.html: fetch failed
+- **fetch** `https://mlabonne.github.io/blog/notes/Large%20Language%20Models/self_rewarding_lm.html`
+  - maxime-labonne https://mlabonne.github.io/blog/notes/Large%20Language%20Models/self_rewarding_lm.html: fetch failed
+- **fetch** `https://mlabonne.github.io/blog/posts/2022-02-13-Q_learning.html`
+  - maxime-labonne https://mlabonne.github.io/blog/posts/2022-02-13-Q_learning.html: fetch failed
+- **fetch** `https://mlabonne.github.io/blog/notes/Large%20Language%20Models/multipack_sampler.html`
+  - maxime-labonne https://mlabonne.github.io/blog/notes/Large%20Language%20Models/multipack_sampler.html: fetch failed
+- **fetch** `https://mlabonne.github.io/blog/notes/Large%20Language%20Models/lorahub.html`
+  - maxime-labonne https://mlabonne.github.io/blog/notes/Large%20Language%20Models/lorahub.html: fetch failed
+- **fetch** `https://mlabonne.github.io/blog/notes/Large%20Language%20Models/orca.html`
+  - maxime-labonne https://mlabonne.github.io/blog/notes/Large%20Language%20Models/orca.html: fetch failed
+- **fetch** `https://mlabonne.github.io/blog/notes/Large%20Language%20Models/incoder.html`
+  - maxime-labonne https://mlabonne.github.io/blog/notes/Large%20Language%20Models/incoder.html: fetch failed
+- **fetch** `https://mlabonne.github.io/blog/notes/Large%20Language%20Models/longnet.html`
+  - maxime-labonne https://mlabonne.github.io/blog/notes/Large%20Language%20Models/longnet.html: fetch failed
+
+---
+
+## 2026-09-06T07:54:14.809Z（wolfram）
+
+- 错误总数：5
+
+### wolfram（5 条）
+
+- **fetch** `https://writings.stephenwolfram.com/2026/06/games-between-programs-the-ruliology-of-competition`
+  - wolfram https://writings.stephenwolfram.com/2026/06/games-between-programs-the-ruliology-of-competition: terminated
+- **fetch** `https://writings.stephenwolfram.com/2026/02/what-ultimately-is-there-metaphysics-and-the-ruliad`
+  - wolfram https://writings.stephenwolfram.com/2026/02/what-ultimately-is-there-metaphysics-and-the-ruliad: fetch failed
+- **fetch** `https://writings.stephenwolfram.com/2026/02/making-wolfram-tech-available-as-a-foundation-tool-for-llm-systems`
+  - wolfram https://writings.stephenwolfram.com/2026/02/making-wolfram-tech-available-as-a-foundation-tool-for-llm-systems: fetch failed
+- **fetch** `https://writings.stephenwolfram.com/2025/12/instant-supercompute-launching-wolfram-compute-services`
+  - wolfram https://writings.stephenwolfram.com/2025/12/instant-supercompute-launching-wolfram-compute-services: fetch failed
+- **fetch** `https://writings.stephenwolfram.com/2026/01/what-is-ruliology`
+  - wolfram https://writings.stephenwolfram.com/2026/01/what-is-ruliology: fetch failed

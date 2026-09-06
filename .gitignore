@@ -10,6 +10,10 @@ model_provider
 .zcode/
 workflow-backup/
 .omo/
+
+# misc / temp assets
+/*.bmp
+
 # 并行 worktree（多 agent 独立工作树）
 worktree/
 
@@ -52,3 +56,12 @@ ml/shadow-scores*.jsonl
 ml/backfill-full.log
 ml/__pycache__/
 ml/local-quality-verdicts.jsonl
+
+# wrangler dev 本地 secrets
+.dev.vars
+
+# 翻译模型提供商注册表(敏感文件,禁止入库)
+model_provider
+model_provider.yaml
+model_provider.yml
+model_provider.json

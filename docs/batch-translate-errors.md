@@ -61,3 +61,69 @@
   }
 }
 ]`
+
+---
+
+## 2026-09-04T09:57:04.430Z（all sources · concurrency=2）
+
+- 本次翻译：成功 23 / 失败 10
+
+- `langchain/deep-agents-0-6 | https://www.langchain.com/blog/deep-agents-0-6: translate failed for https://www.langchain.com/blog/deep-agents-0-6 (model: gemini-3.5-flash-lite): link integrity failed: source has 19 inline-code span(s), translated has 20`
+- `anthropic/introducing-anthropic-science | https://www.anthropic.com/research/introducing-anthropic-science: translate failed for https://www.anthropic.com/research/introducing-anthropic-science (model: gemini-3.5-flash-lite): translate request failed (https://generativelanguage.googleapis.com/v1beta/openai/chat/completions): HTTP 503  — [{
+  "error": {
+    "code": 503,
+    "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+    "status": "UNAVAILABLE"
+  }
+}
+]`
+- `anthropic/anthropic-economic-index-january-2026-report | https://www.anthropic.com/research/anthropic-economic-index-january-2026-report: translate failed for https://www.anthropic.com/research/anthropic-economic-index-january-2026-report (model: gemini-3.5-flash-lite): restore failed: token {{BW:url:87}} (url) appears 0 times, expected exactly 1`
+- `anthropic/claude-code-best-practices | https://www.anthropic.com/engineering/claude-code-best-practices: translate failed for https://www.anthropic.com/engineering/claude-code-best-practices (model: gemini-3.5-flash-lite): link integrity failed: inline-code span 27 was altered in translation`
+- `langchain/langchain-x-context-building-better-chat-products-with-u | https://www.langchain.com/blog/langchain-x-context-building-better-chat-products-with-user-analytics: translate failed for https://www.langchain.com/blog/langchain-x-context-building-better-chat-products-with-user-analytics (model: gemini-3.5-flash-lite): link integrity failed at index 0: expected https://python.langchain.com/docs/modules/callbacks/integrations/context?ref=blog.langchain.com, got https://getcontext.ai/?ref=blog.langchain.com`
+- `langchain/qdrant-x-langchain-endgame-performance | https://www.langchain.com/blog/qdrant-x-langchain-endgame-performance: translate failed for https://www.langchain.com/blog/qdrant-x-langchain-endgame-performance (model: gemini-3.5-flash-lite): link integrity failed: source has 0 inline-code span(s), translated has 2`
+- `langchain/incorporating-domain-specific-knowledge-in-sql-llm-solut | https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions: translate failed for https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions (model: gemini-3.5-flash-lite): link integrity failed: source has 8 link(s), translated has 11`
+- `google-deepmind/deepminds-latest-research-at-iclr-2022 | https://deepmind.google/blog/deepminds-latest-research-at-iclr-2022: translate failed for https://deepmind.google/blog/deepminds-latest-research-at-iclr-2022 (model: gemini-3.5-flash-lite): link integrity failed at index 1: expected https://openreview.net/forum?id=b-ny3x071E5, got https://blog.iclr.cc/2022/04/20/announcing-the-iclr-2022-outstanding-paper-award-recipients/`
+- `microsoft-research/microsoft-at-nsdi-2023-a-commitment-to-advancing-network | https://www.microsoft.com/en-us/research/blog/microsoft-at-nsdi-2023-a-commitment-to-advancing-networking-and-distributed-systems: translate failed for https://www.microsoft.com/en-us/research/blog/microsoft-at-nsdi-2023-a-commitment-to-advancing-networking-and-distributed-systems (model: gemini-3.5-flash-lite): link integrity failed at translated index 3 (link): polluted destination https://www.usenix.org/conference/nsdi23#sponsorship)，微软一直是开发创新网络技术的领导者，我们很自豪今年有`
+- `microsoft-research/microsoft-research-2019-reflection-a-year-of-progress-on | https://www.microsoft.com/en-us/research/blog/microsoft-research-2019-reflection-a-year-of-progress-on-technologys-toughest-challenges: translate failed for https://www.microsoft.com/en-us/research/blog/microsoft-research-2019-reflection-a-year-of-progress-on-technologys-toughest-challenges (model: gemini-3.5-flash-lite): restore failed: token {{BW:url:12}} (url) appears 2 times, expected exactly 1`
+
+---
+
+## 2026-09-04T10:04:56.364Z（all sources · concurrency=2）
+
+- 本次翻译：成功 7 / 失败 3
+
+- `langchain/incorporating-domain-specific-knowledge-in-sql-llm-solut | https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions: translate failed for https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions (model: gemini-3.5-flash-lite): link integrity failed: source has 8 link(s), translated has 11`
+- `langchain/qdrant-x-langchain-endgame-performance | https://www.langchain.com/blog/qdrant-x-langchain-endgame-performance: translate failed for https://www.langchain.com/blog/qdrant-x-langchain-endgame-performance (model: gemini-3.5-flash-lite): link integrity failed: source has 0 inline-code span(s), translated has 4`
+- `microsoft-research/microsoft-at-nsdi-2023-a-commitment-to-advancing-network | https://www.microsoft.com/en-us/research/blog/microsoft-at-nsdi-2023-a-commitment-to-advancing-networking-and-distributed-systems: translate failed for https://www.microsoft.com/en-us/research/blog/microsoft-at-nsdi-2023-a-commitment-to-advancing-networking-and-distributed-systems (model: gemini-3.5-flash-lite): link integrity failed at translated index 3 (link): polluted destination https://www.usenix.org/conference/nsdi23#sponsorship)，微软一直是开发创新网络技术的领导者，我们很自豪今年有`
+
+---
+
+## 2026-09-04T10:29:59.406Z（all sources · concurrency=2）
+
+- 本次翻译：成功 2 / 失败 1
+
+- `langchain/incorporating-domain-specific-knowledge-in-sql-llm-solut | https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions: translate failed for https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions (model: gemini-3.5-flash-lite): link integrity failed: source has 8 link(s), translated has 11`
+
+---
+
+## 2026-09-04T10:35:23.455Z（all sources · concurrency=2）
+
+- 本次翻译：成功 0 / 失败 1
+
+- `langchain/incorporating-domain-specific-knowledge-in-sql-llm-solut | https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions: link integrity failed: source has 8 link(s), translated has 11`
+
+---
+
+## 2026-09-04T10:44:43.537Z（all sources · concurrency=2）
+
+- 本次翻译：成功 0 / 失败 1
+
+- `langchain/incorporating-domain-specific-knowledge-in-sql-llm-solut | https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions: translate failed for https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions (model: gemini-3.5-flash-lite): link integrity failed: source has 8 link(s), translated has 11`
+
+---
+
+## 2026-09-04T10:46:04.975Z（all sources · concurrency=2）
+
+- 本次翻译：成功 0 / 失败 1
+
+- `langchain/incorporating-domain-specific-knowledge-in-sql-llm-solut | https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions: translate failed for https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions (model: gemini-3.5-flash-lite): link integrity failed: source has 8 link(s), translated has 11`
