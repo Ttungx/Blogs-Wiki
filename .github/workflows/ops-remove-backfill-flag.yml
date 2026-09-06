@@ -20,12 +20,14 @@ jobs:
               print('API 响应(非列表):', {k: data[k] for k in list(data)[:3]})
               raise SystemExit(1)
           for s in data:
-              print('service:', s.get('name'), '| id:', s.get('id'))
+              svc = s.get('service') or s
+              print('service:', svc.get('name'), '| id:', svc.get('id'))
           PYEOF
           SID=$(python3 -c "
           import json
           data = json.load(open('/tmp/svc.json'))
-          ids = [s['id'] for s in data if 'updater' in (s.get('name') or '').lower()]
+          ids = [(s.get('service') or s) for s in data]
+          ids = [svc['id'] for svc in ids if 'updater' in (svc.get('name') or '').lower()]
           print('\n'.join(ids))
           ")
           count=$(printf '%s' "$SID" | grep -c . || true)
