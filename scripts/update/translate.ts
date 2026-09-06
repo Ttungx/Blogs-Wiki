@@ -2,6 +2,9 @@ import { categoryPrompt, normalizeCategories } from './classify';
 import { cleanTitle } from '../../src/lib/text';
 import { assertLinkIntegrity, assertMathIntegrity } from './content-integrity';
 import { isNativeChinese, protectMarkdown, restoreMarkdown } from './translation-plan';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { proxyUrlFor } from './network';
 import type { ExtractedArticle, FetchLike, TranslateArticle } from './types';
 import type { ProviderRateLimit } from './model-providers';
 
@@ -314,6 +317,34 @@ async function acquireProviderSlot(key: string, rateLimit: ProviderRateLimit | u
   return release;
 }
 
+const execFileAsync = promisify(execFile);
+
+/** 翻译请求的 curl 兜底(网络层 fetch failed 时);direct=true 跳过代理直连。 */
+async function postViaCurl(
+  endpoint: string,
+  apiKey: string,
+  body: unknown,
+  timeoutMs: number,
+  direct = false,
+): Promise<string> {
+  const args = [
+    '-sS', '-L', '-X', 'POST',
+    '--max-time', String(Math.ceil(timeoutMs / 1000)),
+    '-A', 'BlogsWikiBot/0.1 (+https://github.com; translate)',
+    '-H', `authorization: Bearer ${apiKey}`,
+    '-H', 'content-type: application/json',
+    '--data-binary', JSON.stringify(body),
+  ];
+  const proxyUrl = direct ? undefined : proxyUrlFor(endpoint);
+  if (proxyUrl) args.push('-x', proxyUrl);
+  args.push(endpoint);
+  const { stdout } = await execFileAsync('curl', args, {
+    maxBuffer: 20 * 1024 * 1024,
+    timeout: timeoutMs,
+  });
+  return stdout;
+}
+
 export async function requestChatCompletion(
   fetchImpl: FetchLike,
   endpoint: string,
@@ -323,14 +354,16 @@ export async function requestChatCompletion(
   retryOptions: RetryOptions = {},
   rateLimit?: ProviderRateLimit,
 ): Promise<string> {
-  const release = await acquireProviderSlot(endpoint, rateLimit);
+  // 限流键 = 端点 + 模型:同服务商不同模型各有限额(gemini 舰队),各回各的桶。
+  const rateKey = `${endpoint}|${typeof (body as { model?: unknown }).model === 'string' ? (body as { model?: string }).model : ''}`;
+  const release = await acquireProviderSlot(rateKey, rateLimit);
   try {
     const { maxRetries, retryDelayMs } = { ...DEFAULT_RETRY_OPTIONS, ...retryOptions };
 
   const attempt = async (): Promise<string> => {
-    let response: Response;
+    let rawText: string;
     try {
-      response = await fetchImpl(endpoint, {
+      const response = await fetchImpl(endpoint, {
         method: 'POST',
         headers: {
           authorization: `Bearer ${apiKey}`,
@@ -339,26 +372,29 @@ export async function requestChatCompletion(
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(timeoutMs),
       });
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      const timeoutHint = error instanceof Error && error.name === 'TimeoutError'
-        ? ` (timed out after ${timeoutMs}ms)`
-        : '';
-      throw new Error(`translate request failed (${endpoint}): ${reason}${timeoutHint}`);
-    }
-
-    const rawText = await response.text().catch((error: unknown) => {
-      const reason = error instanceof Error ? error.message : String(error);
-      throw new Error(`translate response read failed (HTTP ${response.status}): ${reason}`);
-    });
-
-    if (!response.ok) {
-      const message =
-        `translate request failed (${endpoint}): HTTP ${response.status} ${response.statusText} — ${truncate(rawText, 500)}`;
-      if (response.status === 429) {
-        throw new RateLimitError(message, parseRetryAfter(response.headers.get('retry-after')));
+      rawText = await response.text().catch((error: unknown) => {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(`translate response read failed (HTTP ${response.status}): ${reason}`);
+      });
+      if (!response.ok) {
+        const message =
+          `translate request failed (${endpoint}): HTTP ${response.status} ${response.statusText} — ${truncate(rawText, 500)}`;
+        if (response.status === 429) {
+          throw new RateLimitError(message, parseRetryAfter(response.headers.get('retry-after')));
+        }
+        throw new Error(message);
       }
-      throw new Error(message);
+    } catch (error) {
+      // 仅网络层失败(TypeError "fetch failed":代理拒连/DNS/TLS)回退 curl 链
+      // (带代理 → 直连),与抓取层行为对齐;HTTP 语义错误(429 退避/限流)原样
+      // 上抛,交给重试与回退链处理。
+      if (!(error instanceof TypeError)) throw error;
+      try {
+        rawText = await postViaCurl(endpoint, apiKey, body, timeoutMs);
+      } catch (curlError) {
+        if (!proxyUrlFor(endpoint)) throw curlError;
+        rawText = await postViaCurl(endpoint, apiKey, body, timeoutMs, true);
+      }
     }
 
     let envelope: unknown;

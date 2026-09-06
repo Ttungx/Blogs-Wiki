@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { createTranslateClient, routeTranslator } from './translate';
 import { createTranslateV2Client } from './translate-v2';
 import { normalizeArticleMarkdown } from './fetch';
-import { resolveAiProviderPair, type AiProviderConfig } from './ai-provider';
+import { resolveAiProviderChain, type AiProviderConfig } from './ai-provider';
 import { appendErrorLedger, runWithConcurrency } from './concurrency';
 import { createFetchImpl } from './network';
 import { createUpdateRepositories } from './repository-factory';
@@ -186,7 +186,7 @@ async function run() {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const logger = consoleLogger;
 
-  const provider = resolveAiProviderPair(process.env)[0]; // 兼容旧引用（报错口径由 resolveAiProviderPair 保持）
+  const provider = resolveAiProviderChain(process.env)[0]; // 兼容旧引用（报错口径由 resolveAiProviderChain 保持）
   if (!options.dryRun) {
     if (!provider.apiKey || !provider.baseUrl || !provider.model) {
       throw new Error('OPENAI_API_KEY, OPENAI_BASE_URL and TRANSLATION_MODEL are required (loaded from .env)');
@@ -220,7 +220,7 @@ async function run() {
   const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
   // 双服务商（用户决策 2026-08-31）：AI_PROVIDER 为主、AI_PROVIDER_FALLBACK 为回退，
   // 池并发 = --concurrency × 服务商数（默认每服务商 2）。
-  const providers = resolveAiProviderPair(process.env);
+  const providers = resolveAiProviderChain(process.env);
   const makeTranslate = (p: AiProviderConfig) => {
     const common = {
       apiKey: p.apiKey,

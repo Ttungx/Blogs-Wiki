@@ -75,7 +75,7 @@ function readSlot(env: AiProviderEnv, slot: AiProviderSlotId): AiProviderConfig 
  */
 export function resolveAiProvider(env: AiProviderEnv = process.env): AiProviderConfig {
   if ((env.MODEL_PROVIDER_FILE ?? '').trim()) {
-    return resolveAiProviderPair(env)[0];
+    return resolveAiProviderChain(env)[0];
   }
   const selector = trimmed(env.AI_PROVIDER);
 
@@ -96,12 +96,23 @@ export function resolveAiProvider(env: AiProviderEnv = process.env): AiProviderC
 }
 
 /**
- * 主+回退服务商对(用户决策 2026-08-31,2026-09-06 扩展文件模式):
- * - MODEL_PROVIDER_FILE 文件模式 → model_provider.yaml 按 priority 排序,
- *   第一个为主、第二个为回退(存在时),其余暂不启用;
- * - 否则 env 模式:AI_PROVIDER 为主、AI_PROVIDER_FALLBACK 为回退,
- *   两个槽位同时启用——翻译批量由主服务商承载，失败自动回退到备用；每个服务商
- *   的并发上限为 batch-translate 的 --concurrency（默认 2）。
+ * 翻译链(2026-09-06 多模型扩展):文件模式 → model_provider.yaml 全部
+ * (服务商, 模型)对按 priority 扁平排序,依次向后回退;env 模式 →
+ * AI_PROVIDER 为主、AI_PROVIDER_FALLBACK 为回退(1-2 个)。
+ * 每个 concurr配额/限速由翻译请求层按模型独立执行。
+ */
+export function resolveAiProviderChain(env: AiProviderEnv = process.env): AiProviderConfig[] {
+  if ((env.MODEL_PROVIDER_FILE ?? '').trim()) {
+    return loadModelProviders(env).providers;
+  }
+  return resolveAiProviderPair(env);
+}
+
+/**
+ * 主+回退服务商对(env 模式：AI_PROVIDER 为主、AI_PROVIDER_FALLBACK 为回退，
+ * 两个槽位同时启用——翻译批量由主服务商承载，失败自动回退到备用；每个服务商
+ * 的并发上限为 batch-translate 的 --concurrency（默认 2）。
+ * 文件模式请改用 resolveAiProviderChain。
  */
 export function resolveAiProviderPair(env: AiProviderEnv = process.env): AiProviderConfig[] {
   if ((env.MODEL_PROVIDER_FILE ?? '').trim()) {
