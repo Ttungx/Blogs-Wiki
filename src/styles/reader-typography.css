@@ -203,7 +203,9 @@
   }
 
   /* ── 行内 code：与代码块卡片风格呼应，区别于 Typography 通用灰色 pill ──
-     :not(pre) > code 排除 Shiki pre 内的 code（pre code 已单独归零）。 */
+     :not(pre) > code 排除 Shiki pre 内的 code（pre code 已单独归零）。
+     同时关掉 Typography 默认给行内 code 加的装饰性反引号（::before/::after content "`"），
+     否则每个代码 chip 左右都会多出一对反引号。 */
   .prose.blogs-wiki-prose :not(pre) > code {
     padding: 0.12em 0.38em;
     border: 1px solid var(--line);
@@ -213,6 +215,10 @@
     font-family: Consolas, "SFMono-Regular", "Liberation Mono", monospace;
     font-size: 0.82em;
     overflow-wrap: anywhere;
+  }
+  .prose.blogs-wiki-prose :not(pre) > code::before,
+  .prose.blogs-wiki-prose :not(pre) > code::after {
+    content: none;
   }
 
   /* ── 图片：圆角与表格/证言/代码块一致；窄图在列内居中（复刻 legacy）。

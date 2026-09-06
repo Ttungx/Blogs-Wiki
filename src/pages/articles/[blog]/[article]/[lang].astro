@@ -6,6 +6,7 @@ import { env } from 'cloudflare:workers';
 import BlogMark from '../../../../components/BlogMark.astro';
 import CategoryPill from '../../../../components/CategoryPill.astro';
 import LanguageSwitcher from '../../../../components/LanguageSwitcher.astro';
+import RemoteImage from '../../../../components/RemoteImage.astro';
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import { sitePath } from '../../../../lib/urls';
 import { getArticle, getAvailableLanguages, listArticlesByBlog, parseDateSafe } from '../../../../lib/server/content';
@@ -122,9 +123,11 @@ const dateFormatter = new Intl.DateTimeFormat(locale, {
             <div>
               <span>{t.published}</span>
               <strong>
-                {publishedDate && (
-                  <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
-                )}
+                {articleData.publishedAtSource === 'ingested'
+                  ? (targetLang === 'en' ? 'N/A' : '无')
+                  : publishedDate && (
+                    <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
+                  )}
               </strong>
             </div>
             {secondaryDate && (
@@ -156,6 +159,20 @@ const dateFormatter = new Intl.DateTimeFormat(locale, {
         </div>
       </header>
 
+      {articleData.imageUrl && (
+        <figure class="reader-hero shell" aria-hidden="true">
+          <RemoteImage
+            src={articleData.imageUrl}
+            alt=""
+            loading="eager"
+            decoding="async"
+            fetchpriority="high"
+            referrerpolicy="no-referrer"
+            onerror="this.closest('.reader-hero')?.remove()"
+          />
+        </figure>
+      )}
+
       <div class="reader-content prose max-w-none blogs-wiki-prose" set:html={html} />
 
       {relatedArticles.length > 0 && (
@@ -183,9 +200,11 @@ const dateFormatter = new Intl.DateTimeFormat(locale, {
                   <span class="reader-related-copy">
                     <strong>{relatedArticle.title}</strong>
                   </span>
-                  {relatedDate && (
-                    <time datetime={relatedDate.toISOString()}>{dateFormatter.format(relatedDate)}</time>
-                  )}
+                  {relatedArticle.publishedAtSource === 'ingested'
+                    ? (targetLang === 'en' ? 'N/A' : '无')
+                    : relatedDate && (
+                      <time datetime={relatedDate.toISOString()}>{dateFormatter.format(relatedDate)}</time>
+                    )}
                   <i aria-hidden="true">↗</i>
                 </a>
               );

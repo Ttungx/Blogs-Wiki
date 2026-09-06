@@ -47,8 +47,12 @@ const deferredArticles = remainingArticles.slice(INITIAL_VISIBLE).map((article) 
     slug: slugFromArticleId(article.id),
     title: fixTitleSpacing(article.title),
     ...(article.originalTitle ? { originalTitle: fixTitleSpacing(article.originalTitle) } : {}),
-    year: date ? String(date.getFullYear()) : '',
-    day: date ? `/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}` : '',
+    year: article.publishedAtSource === 'ingested' ? '无' : date ? String(date.getFullYear()) : '',
+    day: article.publishedAtSource === 'ingested'
+      ? ''
+      : date
+        ? `/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+        : '',
     datetime: date?.toISOString() ?? '',
     ...(image ? { image: imagePath(image) ?? '' } : {}),
   };
@@ -57,9 +61,13 @@ const deferredSerialized = JSON.stringify(deferredArticles).replace(/</g, '\\u00
 
 const featuredImage = featuredArticle ? imageFor(featuredArticle) : undefined;
 const featuredDate = featuredArticle ? parseDateSafe(featuredArticle.publishedAt) : null;
-const featuredDateText = featuredDate
-  ? `${featuredDate.getFullYear()}/${String(featuredDate.getMonth() + 1).padStart(2, '0')}/${String(featuredDate.getDate()).padStart(2, '0')}`
-  : '';
+// 日期兜底政策：无发表日期的文章显示"无"（publishedAt 实为收录日）。
+const featuredNoDate = featuredArticle?.publishedAtSource === 'ingested';
+const featuredDateText = featuredNoDate
+  ? '无'
+  : featuredDate
+    ? `${featuredDate.getFullYear()}/${String(featuredDate.getMonth() + 1).padStart(2, '0')}/${String(featuredDate.getDate()).padStart(2, '0')}`
+    : '';
 ---
 
 <BaseLayout title={name} description={description} pageClass="collection-page">
@@ -150,6 +158,7 @@ const featuredDateText = featuredDate
             title={article.title}
             originalTitle={article.originalTitle}
             publishedAt={article.publishedAt}
+            publishedAtSource={article.publishedAtSource}
             categories={[]}
             imageUrl={imageFor(article)}
           />

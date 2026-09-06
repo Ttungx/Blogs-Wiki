@@ -1006,6 +1006,18 @@
     padding-block: 38px 40px;
   }
 
+  /* 文章页头图：与官方一致展示在正文开头；加载失败时整块移除（见 onerror）。 */
+  .reader-hero {
+    width: var(--reader);
+    margin: 6px auto 0;
+  }
+  .reader-hero img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+  }
+
   .reader-related {
     width: min(980px, var(--shell));
     margin-top: 64px;

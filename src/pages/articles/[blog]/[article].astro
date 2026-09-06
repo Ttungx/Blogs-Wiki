@@ -6,6 +6,7 @@ import { env } from 'cloudflare:workers';
 import BlogMark from '../../../components/BlogMark.astro';
 import CategoryPill from '../../../components/CategoryPill.astro';
 import LanguageSwitcher from '../../../components/LanguageSwitcher.astro';
+import RemoteImage from '../../../components/RemoteImage.astro';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { sitePath } from '../../../lib/urls';
 import { getArticle, getPreferredArticle, getAvailableLanguages, listArticlesByBlog, parseDateSafe } from '../../../lib/server/content';
@@ -43,6 +44,8 @@ const relatedArticles = (await listArticlesByBlog(db, blogId, 'zh-cn'))
 const availableLanguages = await getAvailableLanguages(db, blogId, slug);
 
 const publishedDate = parseDateSafe(articleData.publishedAt);
+// 日期兜底政策：无发表日期的文章 publishedAt 实为收录日，展示层显示"无"。
+const noPublishDate = articleData.publishedAtSource === 'ingested';
 const translatedDate = parseDateSafe(articleData.translatedAt);
 const versionDate = parseDateSafe(articleData.versionUpdatedAt);
 const secondaryDate = translatedDate ?? versionDate;
@@ -94,9 +97,11 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
             <div>
               <span>原文发表于</span>
               <strong>
-                {publishedDate && (
-                  <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
-                )}
+                {noPublishDate
+                  ? '无'
+                  : publishedDate && (
+                    <time datetime={publishedDate.toISOString()}>{dateFormatter.format(publishedDate)}</time>
+                  )}
               </strong>
             </div>
             {secondaryDate && (
@@ -128,6 +133,20 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
         </div>
       </header>
 
+      {articleData.imageUrl && (
+        <figure class="reader-hero shell" aria-hidden="true">
+          <RemoteImage
+            src={articleData.imageUrl}
+            alt=""
+            loading="eager"
+            decoding="async"
+            fetchpriority="high"
+            referrerpolicy="no-referrer"
+            onerror="this.closest('.reader-hero')?.remove()"
+          />
+        </figure>
+      )}
+
       <div class="reader-content prose max-w-none blogs-wiki-prose" set:html={html} />
 
       {relatedArticles.length > 0 && (
@@ -149,9 +168,11 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
                   <span class="reader-related-copy">
                     <strong>{relatedArticle.title}</strong>
                   </span>
-                  {relatedDate && (
-                    <time datetime={relatedDate.toISOString()}>{dateFormatter.format(relatedDate)}</time>
-                  )}
+                  {relatedArticle.publishedAtSource === 'ingested'
+                    ? '无'
+                    : relatedDate && (
+                      <time datetime={relatedDate.toISOString()}>{dateFormatter.format(relatedDate)}</time>
+                    )}
                   <i aria-hidden="true">↗</i>
                 </a>
               );

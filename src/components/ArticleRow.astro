@@ -11,6 +11,8 @@ interface Props {
   title: string;
   originalTitle?: string;
   publishedAt: Date | string;
+  /** 'ingested' = 无发表日期（publishedAt 实为收录日），日期位显示"无"。 */
+  publishedAtSource?: string;
   categories: string[];
   imageUrl?: string;
 }
@@ -21,6 +23,7 @@ const {
   title,
   originalTitle,
   publishedAt,
+  publishedAtSource,
   categories,
   imageUrl,
 } = Astro.props;
@@ -34,11 +37,15 @@ const href = sitePath(`articles/${blogId}/${slug}/`);
 
 <article class:list={['article-row', { 'article-row--no-image': !imageUrl }]}>
   <a href={href} aria-label={`阅读：${displayTitle}`}>
-    {date && (
-      <time datetime={date.toISOString()}>
-        <span>{date.getFullYear()}</span>
-        <span>/{String(date.getMonth() + 1).padStart(2, '0')}/{String(date.getDate()).padStart(2, '0')}</span>
-      </time>
+    {publishedAtSource === 'ingested' && date ? (
+      <time datetime={date.toISOString()}><span>无</span></time>
+    ) : (
+      date && (
+        <time datetime={date.toISOString()}>
+          <span>{date.getFullYear()}</span>
+          <span>/{String(date.getMonth() + 1).padStart(2, '0')}/{String(date.getDate()).padStart(2, '0')}</span>
+        </time>
+      )
     )}
     <span class="article-row-main">
       <span class="article-row-title">{displayTitle}</span>

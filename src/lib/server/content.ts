@@ -14,6 +14,8 @@ export interface ArticleDetail {
   originalUrl: string;
   originalLanguage: string;
   publishedAt: string;
+  /** 日期口径：'ingested' = 无发表日期，publishedAt 实为收录日（展示层显示"无"）。 */
+  publishedAtSource?: 'published' | 'ingested';
   imageUrl: string | null;
   author: string | null;
   sourceDomain: string;
@@ -33,6 +35,8 @@ export interface ArticleListItem {
   id: string;
   sourceId: string;
   publishedAt: string;
+  /** 日期口径：'ingested' = 无发表日期，publishedAt 实为收录日（展示层显示"无"）。 */
+  publishedAtSource?: 'published' | 'ingested';
   imageUrl: string | null;
   author: string | null;
   title: string;
@@ -52,6 +56,7 @@ interface ArticleJoinRow {
   original_url: string;
   original_language: string;
   published_at: string;
+  published_at_source: string | null;
   image_url: string | null;
   author: string | null;
   source_domain: string;
@@ -101,7 +106,7 @@ export async function getArticle(
 
   const row = await db
     .prepare(
-      `SELECT a.id, a.source_id, a.original_url, a.original_language, a.published_at,
+      `SELECT a.id, a.source_id, a.original_url, a.original_language, a.published_at, a.published_at_source,
               a.image_url, a.author, a.source_domain,
               v.title, v.content_markdown, v.excerpt, v.provenance,
               v.translation_model, v.original_alt_url, v.translated_at, v.updated_at
@@ -122,6 +127,7 @@ export async function getArticle(
     originalUrl: row.original_url,
     originalLanguage: row.original_language,
     publishedAt: row.published_at,
+    ...(row.published_at_source ? { publishedAtSource: row.published_at_source as 'published' | 'ingested' } : {}),
     imageUrl: row.image_url,
     author: row.author,
     sourceDomain: row.source_domain,
@@ -157,6 +163,7 @@ interface ArticleListRow {
   id: string;
   source_id: string;
   published_at: string;
+  published_at_source: string | null;
   image_url: string | null;
   author: string | null;
   title: string;
@@ -212,7 +219,7 @@ export async function listArticlesByBlog(
 ): Promise<ArticleListItem[]> {
   const result = await db
     .prepare(
-      `SELECT a.id, a.source_id, a.published_at, a.image_url, a.author, a.original_language,
+      `SELECT a.id, a.source_id, a.published_at, a.published_at_source, a.image_url, a.author, a.original_language,
               v.title, v.excerpt, v.provenance, v.language AS lang,
               o.title AS original_title
        FROM articles a
@@ -233,6 +240,7 @@ export async function listArticlesByBlog(
     id: row.id,
     sourceId: row.source_id,
     publishedAt: row.published_at,
+    ...(row.published_at_source ? { publishedAtSource: row.published_at_source as 'published' | 'ingested' } : {}),
     imageUrl: row.image_url,
     author: row.author,
     title: row.title,
@@ -254,6 +262,8 @@ export interface ArticleSearchItem {
   sourceId: string;
   sourceDomain: string;
   publishedAt: string;
+  /** 日期口径：'ingested' = 无发表日期，publishedAt 实为收录日（展示层显示"无"）。 */
+  publishedAtSource?: 'published' | 'ingested';
   title: string;
   /** 英文原题（同 ArticleListItem 规则），搜索页英文第一行用。 */
   originalTitle?: string;
@@ -271,7 +281,7 @@ export async function listAllArticlesForSearch(
 ): Promise<ArticleSearchItem[]> {
   const result = await db
     .prepare(
-      `SELECT a.id, a.source_id, a.source_domain, a.published_at, a.original_language,
+      `SELECT a.id, a.source_id, a.source_domain, a.published_at, a.published_at_source, a.original_language,
               v.title, o.title AS original_title
        FROM articles a
        JOIN article_versions v ON v.article_id = a.id
@@ -289,6 +299,7 @@ export async function listAllArticlesForSearch(
       source_id: string;
       source_domain: string;
       published_at: string;
+      published_at_source: string | null;
       original_language: string;
       title: string;
       original_title: string | null;
@@ -318,6 +329,9 @@ export async function listAllArticlesForSearch(
     sourceId: row.source_id,
     sourceDomain: row.source_domain,
     publishedAt: row.published_at,
+    ...(row.published_at_source
+      ? { publishedAtSource: row.published_at_source as 'published' | 'ingested' }
+      : {}),
     title: row.title,
     ...(row.original_title &&
     !row.original_language.startsWith('zh') &&

@@ -46,7 +46,11 @@ const items = [
       ...(enTitle !== zhTitle ? { originalTitle: zhTitle } : {}),
       subtitle: blogNames.get(article.sourceId) ?? article.sourceDomain,
       url: sitePath(`articles/${article.sourceId}/${slug}/`),
-      ...(publishedAt ? { date: dateFormatter.format(publishedAt) } : {}),
+      ...(article.publishedAtSource === 'ingested'
+        ? { date: '无' }
+        : publishedAt
+          ? { date: dateFormatter.format(publishedAt) }
+          : {}),
       categories: article.categories,
     };
   }),
