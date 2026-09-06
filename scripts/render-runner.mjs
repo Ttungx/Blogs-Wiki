@@ -153,10 +153,12 @@ function startUpdateChain(sourceId, limitArg) {
       lastRun.status = code === 0 ? 'ok' : `exit-${code}`;
       lastRun.finishedAt = new Date().toISOString();
       console.log(`[runner] ${sourceId} chain ${lastRun.status} (${lastRun.logFile})`);
-      // 链路失败时把日志尾部打到 stdout（Render 日志流可见），否则错误只在容器文件里。
+      // 链路失败时把日志尾部打到 stdout（Render 日志流可见），并存入
+      // lastRun.errorTail（/status 暴露），否则错误只在容器文件里。
       if (code !== 0) {
         try {
           const tail = readFileSync(lastRun.logFile, 'utf8').split('\n').slice(-40).join('\n');
+          lastRun.errorTail = tail.slice(-4000);
           console.error(`[runner] === chain failure log tail (${sourceId}) ===\n${tail}`);
         } catch (e) {
           console.error(`[runner] failed to read chain log: ${e.message}`);
