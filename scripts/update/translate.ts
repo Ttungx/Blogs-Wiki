@@ -3,6 +3,9 @@ import { cleanTitle } from '../../src/lib/text';
 import { assertLinkIntegrity, assertMathIntegrity } from './content-integrity';
 import { isNativeChinese, protectMarkdown, restoreMarkdown } from './translation-plan';
 import { execFile } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { proxyUrlFor } from './network';
 import type { ExtractedArticle, FetchLike, TranslateArticle } from './types';
@@ -319,7 +322,14 @@ async function acquireProviderSlot(key: string, rateLimit: ProviderRateLimit | u
 
 const execFileAsync = promisify(execFile);
 
-/** 翻译请求的 curl 兜底(网络层 fetch failed 时);direct=true 跳过代理直连。 */
+/**
+ * 翻译请求的 curl 兜底(网络层 fetch failed 时);direct=true 跳过代理直连。
+ *
+ * 安全:api_key 与请求体一律不进命令行——execFile 失败时错误消息会内嵌整条
+ * argv(2026-09-06 实测泄过一次),且单 argv 有 128KB 上限,长文请求体会直接
+ * E2BIG。故 authorization 头写临时文件(-H @file)、body 写临时文件
+ * (--data-binary @file),finally 清理;抛错前再对消息做一次密钥清洗兜底。
+ */
 async function postViaCurl(
   endpoint: string,
   apiKey: string,
@@ -327,22 +337,35 @@ async function postViaCurl(
   timeoutMs: number,
   direct = false,
 ): Promise<string> {
-  const args = [
-    '-sS', '-L', '-X', 'POST',
-    '--max-time', String(Math.ceil(timeoutMs / 1000)),
-    '-A', 'BlogsWikiBot/0.1 (+https://github.com; translate)',
-    '-H', `authorization: Bearer ${apiKey}`,
-    '-H', 'content-type: application/json',
-    '--data-binary', JSON.stringify(body),
-  ];
-  const proxyUrl = direct ? undefined : proxyUrlFor(endpoint);
-  if (proxyUrl) args.push('-x', proxyUrl);
-  args.push(endpoint);
-  const { stdout } = await execFileAsync('curl', args, {
-    maxBuffer: 20 * 1024 * 1024,
-    timeout: timeoutMs,
-  });
-  return stdout;
+  const dir = mkdtempSync(join(tmpdir(), 'bw-translate-'));
+  const authFile = join(dir, 'auth.txt');
+  const bodyFile = join(dir, 'body.json');
+  try {
+    writeFileSync(authFile, `authorization: Bearer ${apiKey}\ncontent-type: application/json\n`);
+    writeFileSync(bodyFile, JSON.stringify(body));
+    const args = [
+      '-sS', '-L', '-X', 'POST',
+      '--max-time', String(Math.ceil(timeoutMs / 1000)),
+      '-A', 'BlogsWikiBot/0.1 (+https://github.com; translate)',
+      '-H', `@${authFile}`,
+      '--data-binary', `@${bodyFile}`,
+    ];
+    const proxyUrl = direct ? undefined : proxyUrlFor(endpoint);
+    if (proxyUrl) args.push('-x', proxyUrl);
+    args.push(endpoint);
+    const { stdout } = await execFileAsync('curl', args, {
+      maxBuffer: 20 * 1024 * 1024,
+      timeout: timeoutMs,
+    });
+    return stdout;
+  } catch (error) {
+    if (error instanceof Error && apiKey && error.message.includes(apiKey)) {
+      error.message = error.message.split(apiKey).join('***REDACTED***');
+    }
+    throw error;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 export async function requestChatCompletion(
