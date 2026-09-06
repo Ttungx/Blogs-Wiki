@@ -77,6 +77,7 @@ Render 相关服务通过 Render MCP 工具
 - paid 回退三件套；多服务商槽位 `AI_PROVIDER=1|2|3` 主 + `AI_PROVIDER_FALLBACK` 回退（见 `scripts/update/ai-provider.ts`，本地与 Render 生产 env 同逻辑，槽位 `BASE_URL/API_KEY/MODEL` 三件套必须配齐，缺配则翻译步骤直接失败）。本地网络受限 `USE_PROXY=true` + `PROXY_URL`；个别站点 TLS 指纹拦截时抓取自动回退系统 curl。
 - **原文先行**：翻译环节任何失败（配置/配额/限流/网络）只 WARN 不阻断更新链，原文照常 quality-scan → import → sync 上线（SSR 按 zh-cn>zh>en 回退展示）；`translate:batch` 只补缺 zh 的原文（断点续传），服务恢复后下轮自动补翻。降级审计：搜 Render 日志 `WARN translate degraded`。
 - 默认 V1 整篇翻译（单次输出预算 128K token，`TRANSLATION_MAX_TOKENS` 可调）；官方中文 / 原生中文正文直通 V2 passthrough（仅 1 次分类请求，不再白耗整篇调用）；`TRANSLATION_PIPELINE=v2` 强制分块（块输出上限 8000 token，`TRANSLATION_MAX_CHUNK_TOKENS` 可调）；单篇 >200K 字符自动兜底 V2。
+- 翻译提供商注册表(2026-09-06):本地 `model_provider.yaml`(敏感,gitignored,经 `MODEL_PROVIDER_FILE` 启用)按 priority 决定主/回退,含 rate_limit(RPM 限速)与 expire(失效自动跳过);未启用该变量的环境(Render 生产)仍走 `AI_PROVIDER*` 槽位,行为不变。
 
 ## 路书（docs/，先读再动手）
 

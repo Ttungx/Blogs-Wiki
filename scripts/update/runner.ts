@@ -133,8 +133,8 @@ export function buildTranslator(
   const reasoningEffort = provider.reasoningEffort;
   // 默认 V1 整篇一次（吞吐高）；TRANSLATION_PIPELINE=v2 强制 V2；超长（>100K 字符）兜底 V2。
   const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
-  const v1 = createTranslateClient({ apiKey, baseUrl, model, fetchImpl, reasoningEffort });
-  const v2 = createTranslateV2Client({ apiKey, baseUrl, model, fetchImpl, reasoningEffort });
+  const v1 = createTranslateClient({ apiKey, baseUrl, model, fetchImpl, reasoningEffort, rateLimitRpm: provider.rateLimitRpm });
+  const v2 = createTranslateV2Client({ apiKey, baseUrl, model, fetchImpl, reasoningEffort, rateLimitRpm: provider.rateLimitRpm });
   return routeTranslator(v1, v2, forceV2);
 }
 

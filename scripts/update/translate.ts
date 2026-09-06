@@ -72,6 +72,8 @@ export interface TranslateOptions {
    * 经 ocx 网关透传；DeepSeek V4 Flash 支持 low/high/max。
    */
   reasoningEffort?: string;
+  /** 每分钟请求数上限(model_provider.yaml 的 rate_limit);省略 = 不限。 */
+  rateLimitRpm?: number;
 }
 
 export interface RetryOptions {
@@ -240,6 +242,20 @@ function extractMessageContent(envelope: unknown): unknown {
   return (message as Record<string, unknown>).content;
 }
 
+/** 每端点的上次请求预约时刻(ms)——rate_limit 限速用(进程内;翻译批为单进程)。 */
+const lastRequestSlotAt = new Map<string, number>();
+
+/** 简单节流:同端点请求按 60s/rpm 均匀铺开;与 429 退避互补,不替代。 */
+async function throttleByRateLimit(key: string, rateLimitRpm: number | undefined): Promise<void> {
+  if (!rateLimitRpm || rateLimitRpm <= 0) return;
+  const minIntervalMs = 60_000 / rateLimitRpm;
+  const now = Date.now();
+  const prev = lastRequestSlotAt.get(key);
+  const slot = prev === undefined ? now : Math.max(now, prev + minIntervalMs);
+  lastRequestSlotAt.set(key, slot);
+  if (slot > now) await new Promise((resolve) => setTimeout(resolve, slot - now));
+}
+
 export async function requestChatCompletion(
   fetchImpl: FetchLike,
   endpoint: string,
@@ -247,7 +263,9 @@ export async function requestChatCompletion(
   body: unknown,
   timeoutMs: number,
   retryOptions: RetryOptions = {},
+  rateLimitRpm?: number,
 ): Promise<string> {
+  await throttleByRateLimit(endpoint, rateLimitRpm);
   const { maxRetries, retryDelayMs } = { ...DEFAULT_RETRY_OPTIONS, ...retryOptions };
 
   const attempt = async (): Promise<string> => {
@@ -349,7 +367,7 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
           max_tokens: maxTokens,
         };
         if (reasoningEffort) body.reasoning_effort = reasoningEffort;
-        const content = await requestChatCompletion(fetchImpl, endpoint, apiKey, body, timeoutMs, retryOptions);
+        const content = await requestChatCompletion(fetchImpl, endpoint, apiKey, body, timeoutMs, retryOptions, options.rateLimitRpm);
         return parseModelJson(content);
       };
 

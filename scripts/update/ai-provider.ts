@@ -19,10 +19,14 @@ export interface AiProviderConfig {
   model: string;
   /** 发送到 chat/completions 顶层 reasoning_effort；空则不发。 */
   reasoningEffort?: string;
+  /** 每分钟请求数上限(model_provider.yaml 的 rate_limit);省略 = 不限。 */
+  rateLimitRpm?: number;
 }
 
 /** 仅读字符串环境变量的窄类型，便于测试传字面量对象。 */
 export type AiProviderEnv = Readonly<Record<string, string | undefined>>;
+
+import { loadModelProviders } from './model-providers';
 
 const SLOT_IDS = ['1', '2', '3'] as const;
 export type AiProviderSlotId = (typeof SLOT_IDS)[number];
@@ -62,12 +66,17 @@ function readSlot(env: AiProviderEnv, slot: AiProviderSlotId): AiProviderConfig 
 /**
  * 解析生效的服务商配置。
  *
+ * - 设置了 MODEL_PROVIDER_FILE(文件模式)→ 读 model_provider.yaml,返回
+ *   priority 最高的提供商(配置错误向上抛,绝不静默回落坏配置)。
  * - 设置了合法的 AI_PROVIDER → 返回该槽位（必填项缺失抛错）。
  * - AI_PROVIDER 为非法值 → 抛错。
  * - 未设置 → 回落平铺变量；字符串可能为空，由调用方按原有口径校验
  *   （保持 runner/batch-translate 现有报错文案与 dry-run 行为不变）。
  */
 export function resolveAiProvider(env: AiProviderEnv = process.env): AiProviderConfig {
+  if ((env.MODEL_PROVIDER_FILE ?? '').trim()) {
+    return resolveAiProviderPair(env)[0];
+  }
   const selector = trimmed(env.AI_PROVIDER);
 
   if (selector === '') {
@@ -87,11 +96,18 @@ export function resolveAiProvider(env: AiProviderEnv = process.env): AiProviderC
 }
 
 /**
- * 双服务商对（用户决策 2026-08-31）：AI_PROVIDER 为主、AI_PROVIDER_FALLBACK 为回退，
- * 两个槽位同时启用——翻译批量由主服务商承载，失败自动回退到备用；每个服务商
- * 的并发上限为 batch-translate 的 --concurrency（默认 2）。
+ * 主+回退服务商对(用户决策 2026-08-31,2026-09-06 扩展文件模式):
+ * - MODEL_PROVIDER_FILE 文件模式 → model_provider.yaml 按 priority 排序,
+ *   第一个为主、第二个为回退(存在时),其余暂不启用;
+ * - 否则 env 模式:AI_PROVIDER 为主、AI_PROVIDER_FALLBACK 为回退,
+ *   两个槽位同时启用——翻译批量由主服务商承载，失败自动回退到备用；每个服务商
+ *   的并发上限为 batch-translate 的 --concurrency（默认 2）。
  */
 export function resolveAiProviderPair(env: AiProviderEnv = process.env): AiProviderConfig[] {
+  if ((env.MODEL_PROVIDER_FILE ?? '').trim()) {
+    const { providers } = loadModelProviders(env);
+    return providers.slice(0, 2);
+  }
   const primary = resolveAiProvider(env);
   const fallbackSlot = trimmed(env.AI_PROVIDER_FALLBACK);
   if (!fallbackSlot) return [primary];
