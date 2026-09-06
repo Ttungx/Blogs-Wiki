@@ -39,15 +39,6 @@
       "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
     },
     {
-      "id": "paul-graham",
-      "name": "Paul Graham Essays",
-      "domain": "paulgraham.com",
-      "blocked_at": "2026-08-28",
-      "reason": "无机器可读发布日期，管线结构性不适配，不参与自动更新",
-      "url_count": 1,
-      "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
-    },
-    {
       "id": "simon-willison",
       "name": "Simon Willison's Weblog",
       "domain": "simonwillison.net",

@@ -532,5 +532,320 @@
       "^/(zh/)?blog/changelog",
       "^/(zh/)?blog/security-statement"
     ]
+  },
+  {
+    "id": "philipp-schmid",
+    "name": "Philipp Schmid",
+    "type": "personal",
+    "homepage_url": "https://www.philschmid.de/",
+    "blog_url": "https://www.philschmid.de/",
+    "domain": "www.philschmid.de",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "vicki-boykis",
+    "name": "Vicki Boykis",
+    "type": "personal",
+    "homepage_url": "https://vickiboykis.com/",
+    "blog_url": "https://vickiboykis.com/",
+    "domain": "vickiboykis.com",
+    "update_mode": "dry-run-only",
+    "rss_url": "https://vickiboykis.com/index.xml"
+  },
+  {
+    "id": "maxime-labonne",
+    "name": "Maxime Labonne",
+    "type": "personal",
+    "homepage_url": "https://mlabonne.github.io/blog/",
+    "blog_url": "https://mlabonne.github.io/blog/",
+    "domain": "mlabonne.github.io",
+    "update_mode": "active",
+    "sitemap_url": "https://mlabonne.github.io/blog/sitemap.xml"
+  },
+  {
+    "id": "cameron-wolfe",
+    "name": "Cameron R. Wolfe",
+    "type": "personal",
+    "homepage_url": "https://cameronrwolfe.substack.com/",
+    "blog_url": "https://cameronrwolfe.substack.com/",
+    "domain": "cameronrwolfe.substack.com",
+    "rss_url": "https://cameronrwolfe.substack.com/feed",
+    "sitemap_url": "https://cameronrwolfe.substack.com/sitemap.xml",
+    "exclude_paths": [
+      "/archive",
+      "/podcast"
+    ],
+    "update_mode": "active"
+  },
+  {
+    "id": "neel-nanda",
+    "name": "Neel Nanda",
+    "type": "personal",
+    "homepage_url": "https://www.neelnanda.io/",
+    "blog_url": "https://www.neelnanda.io/",
+    "domain": "neelnanda.io",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "dwarkesh",
+    "name": "Dwarkesh Patel",
+    "type": "personal",
+    "homepage_url": "https://www.dwarkesh.com/",
+    "blog_url": "https://www.dwarkesh.com/",
+    "domain": "www.dwarkesh.com",
+    "rss_url": "https://www.dwarkesh.com/feed",
+    "sitemap_url": "https://www.dwarkesh.com/sitemap.xml",
+    "exclude_paths": [
+      "/archive",
+      "/podcast"
+    ],
+    "update_mode": "active"
+  },
+  {
+    "id": "mactalk",
+    "name": "池建强 MacTalk",
+    "type": "personal",
+    "homepage_url": "https://macshuo.com/",
+    "blog_url": "https://macshuo.com/",
+    "domain": "macshuo.com",
+    "rss_url": "https://macshuo.com/?feed=rss2",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "lixiaolai",
+    "name": "李笑来",
+    "type": "personal",
+    "homepage_url": "https://lixiaolai.com/",
+    "blog_url": "https://lixiaolai.com/articles",
+    "domain": "lixiaolai.com",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "doctorow",
+    "name": "Cory Doctorow",
+    "type": "personal",
+    "homepage_url": "https://pluralistic.net/",
+    "blog_url": "https://pluralistic.net/",
+    "domain": "pluralistic.net",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "wolfram",
+    "name": "Stephen Wolfram",
+    "type": "personal",
+    "homepage_url": "https://writings.stephenwolfram.com/",
+    "blog_url": "https://writings.stephenwolfram.com/",
+    "domain": "writings.stephenwolfram.com",
+    "rss_url": "https://writings.stephenwolfram.com/feed/",
+    "date_fallback": "conservative",
+    "update_mode": "active"
+  },
+  {
+    "id": "venkatesh-rao",
+    "name": "Venkatesh Rao",
+    "type": "personal",
+    "homepage_url": "https://contraptions.venkateshrao.com/",
+    "blog_url": "https://contraptions.venkateshrao.com/",
+    "domain": "contraptions.venkateshrao.com",
+    "rss_url": "https://contraptions.venkateshrao.com/feed",
+    "sitemap_url": "https://contraptions.venkateshrao.com/sitemap.xml",
+    "exclude_paths": [
+      "/archive",
+      "/podcast"
+    ],
+    "update_mode": "active"
+  },
+  {
+    "id": "dair",
+    "name": "Elvis Saravia / DAIR.AI",
+    "type": "personal",
+    "homepage_url": "https://academy.dair.ai/blog",
+    "blog_url": "https://academy.dair.ai/blog",
+    "domain": "academy.dair.ai",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "mindhacks",
+    "name": "刘未鹏 MindHacks（静态归档）",
+    "type": "personal",
+    "homepage_url": "https://mindhacks-mirror.yaozeyuan.online/",
+    "blog_url": "https://mindhacks-mirror.yaozeyuan.online/",
+    "domain": "mindhacks-mirror.yaozeyuan.online",
+    "url_date_pattern": "_(\\d{4})_(\\d{2})_(\\d{2})_",
+    "exclude_paths": [
+      "/web"
+    ],
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "transformer-circuits",
+    "name": "Transformer Circuits",
+    "type": "company",
+    "homepage_url": "https://transformer-circuits.pub/",
+    "blog_url": "https://transformer-circuits.pub/",
+    "domain": "transformer-circuits.pub",
+    "rss_url": "https://transformer-circuits.pub/feed.xml",
+    "allow_non_article_paths": true,
+    "article_paths": [
+      "^/\\d{4}/"
+    ],
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "thonking",
+    "name": "Horace He / Thonking",
+    "type": "personal",
+    "homepage_url": "https://www.thonking.ai/",
+    "blog_url": "https://www.thonking.ai/",
+    "domain": "www.thonking.ai",
+    "rss_url": "https://www.thonking.ai/feed",
+    "sitemap_url": "https://www.thonking.ai/sitemap.xml",
+    "exclude_paths": [
+      "/archive",
+      "/podcast"
+    ],
+    "update_mode": "active"
+  },
+  {
+    "id": "james-clear-321",
+    "name": "James Clear 3-2-1",
+    "type": "personal",
+    "homepage_url": "https://jamesclear.com/3-2-1",
+    "blog_url": "https://jamesclear.com/3-2-1",
+    "domain": "jamesclear.com",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "paul-graham",
+    "name": "Paul Graham",
+    "type": "personal",
+    "homepage_url": "http://www.paulgraham.com/",
+    "blog_url": "http://www.paulgraham.com/articles.html",
+    "domain": "paulgraham.com",
+    "update_mode": "active"
+  },
+  {
+    "id": "zvi",
+    "name": "Zvi Mowshowitz / Don't Worry About the Vase",
+    "type": "personal",
+    "homepage_url": "https://thezvi.substack.com/",
+    "blog_url": "https://thezvi.substack.com/",
+    "domain": "thezvi.substack.com",
+    "rss_url": "https://thezvi.substack.com/feed",
+    "sitemap_url": "https://thezvi.substack.com/sitemap.xml",
+    "exclude_paths": [
+      "/archive",
+      "/about"
+    ],
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "gary-marcus",
+    "name": "Gary Marcus / Marcus on AI",
+    "type": "personal",
+    "homepage_url": "https://garymarcus.substack.com/",
+    "blog_url": "https://garymarcus.substack.com/",
+    "domain": "garymarcus.substack.com",
+    "rss_url": "https://garymarcus.substack.com/feed",
+    "sitemap_url": "https://garymarcus.substack.com/sitemap.xml",
+    "exclude_paths": [
+      "/archive",
+      "/about"
+    ],
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "convivial-society",
+    "name": "Adam Sacasas / The Convivial Society",
+    "type": "personal",
+    "homepage_url": "https://theconvivialsociety.substack.com/",
+    "blog_url": "https://theconvivialsociety.substack.com/",
+    "domain": "theconvivialsociety.substack.com",
+    "rss_url": "https://theconvivialsociety.substack.com/feed",
+    "sitemap_url": "https://theconvivialsociety.substack.com/sitemap.xml",
+    "exclude_paths": [
+      "/archive",
+      "/about",
+      "/podcast"
+    ],
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "acx",
+    "name": "Scott Alexander / Astral Codex Ten",
+    "type": "personal",
+    "homepage_url": "https://www.astralcodexten.com/",
+    "blog_url": "https://www.astralcodexten.com/",
+    "domain": "www.astralcodexten.com",
+    "rss_url": "https://www.astralcodexten.com/feed",
+    "sitemap_url": "https://www.astralcodexten.com/sitemap.xml",
+    "exclude_paths": [
+      "/archive",
+      "/about"
+    ],
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "jack-clark",
+    "name": "Jack Clark / Import AI",
+    "type": "personal",
+    "homepage_url": "https://jack-clark.net/",
+    "blog_url": "https://jack-clark.net/",
+    "domain": "jack-clark.net",
+    "rss_url": "https://jack-clark.net/feed",
+    "sitemap_url": "https://jack-clark.net/sitemap.xml",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "derek-sivers",
+    "name": "Derek Sivers",
+    "type": "personal",
+    "homepage_url": "https://sive.rs/",
+    "blog_url": "https://sive.rs/blog",
+    "domain": "sive.rs",
+    "rss_url": "https://sive.rs/articles.xml",
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "henrik-karlsson",
+    "name": "Henrik Karlsson / Escaping Flatland",
+    "type": "personal",
+    "homepage_url": "https://www.henrikkarlsson.xyz/",
+    "blog_url": "https://www.henrikkarlsson.xyz/",
+    "domain": "www.henrikkarlsson.xyz",
+    "rss_url": "https://www.henrikkarlsson.xyz/feed",
+    "sitemap_url": "https://www.henrikkarlsson.xyz/sitemap.xml",
+    "exclude_paths": [
+      "/archive",
+      "/about"
+    ],
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "cal-newport",
+    "name": "Cal Newport",
+    "type": "personal",
+    "homepage_url": "https://calnewport.com/",
+    "blog_url": "https://calnewport.com/blog/",
+    "domain": "calnewport.com",
+    "rss_url": "https://calnewport.com/feed",
+    "sitemap_url": "https://calnewport.com/sitemap_index.xml",
+    "exclude_paths": [
+      "/blog"
+    ],
+    "update_mode": "dry-run-only"
+  },
+  {
+    "id": "yangzhiping",
+    "name": "阳志平",
+    "type": "personal",
+    "homepage_url": "https://yangzhiping.com/",
+    "blog_url": "https://yangzhiping.com/essays",
+    "domain": "yangzhiping.com",
+    "sitemap_url": "https://yangzhiping.com/sitemap.xml",
+    "article_paths": [
+      "^/essays/\\d{8}/?$"
+    ],
+    "update_mode": "dry-run-only"
   }
 ]

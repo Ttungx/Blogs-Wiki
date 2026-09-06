@@ -1,8 +1,11 @@
 # 博客适配开发登记表
 
-所有博客的审核、适配阶段、阻碍与后续顺序以本表为准。最后更新：2026-09-04。
+所有博客的审核、适配阶段、阻碍与后续顺序以本表为准。最后更新：2026-09-05。
 
 ## 来源质量原则
+
+- **日期政策（2026-09-05 起）**：发表日期不再是硬约束。四层日期解析（meta/可见文本/URL/Git 历史）全空时用**系统收录日期兜底**（`publishedAtSource: 'ingested'`，见 `scripts/update/fetch.ts`），无日期的高质量文章照样收录。展示层未来可据标记区分"发表于/收录于"（待办）。
+- **收录口径（2026-09-05 起放宽）**：高质量即收——技术（AI/Agent/系统）、个人成长与学习、思想哲学、**政治哲学与技术政治**（纯党派口水、竞选动员除外）。
 
 收录优先级：**Research / Engineering / Technical / Science / Essays / Writing > 普通 Blog > News / Company News**。
 
@@ -64,6 +67,32 @@
 | `pragmatic-engineer` | 候选 | [The Pragmatic Engineer](https://newsletter.pragmaticengineer.com/) | https://newsletter.pragmaticengineer.com/ | AI 工程 / 职业发展 | RSS | 无已知官方中文 | https://newsletter.pragmaticengineer.com/t/real-world-engineering-challenges https://newsletter.pragmaticengineer.com/t/ai-engineering | 重点收 real-world-engineering-challenges + ai-engineering topic；排除 Pulse 新闻汇总、Podcast、AMA |
 | `scott-young` | 候选 | [Scott H. Young](https://www.scotthyoung.com/blog/articles/) | https://www.scotthyoung.com/blog/articles/ | 学习科学 / 个人成长 | RSS | 无已知官方中文 | https://www.scotthyoung.com/blog/articles/ | Articles 为学习、思考、哲学、认知文章集合 |
 | `ness-labs` | 候选 | [Ness Labs](https://nesslabs.com/articles) | https://nesslabs.com/articles | 学习 / 心智 / 个人成长 | RSS | 无已知官方中文 | https://nesslabs.com/articles（优先 Thinking / Learning / Neuroscience topics） | Articles + topics 比首页干净，与扩大认知方向匹配 |
+| `philipp-schmid` | 正在适配 | [Philipp Schmid](https://www.philschmid.de/) | https://www.philschmid.de/ | Agent 架构 / 评测实操 | listing（19） | 无已知官方中文 | https://www.philschmid.de/ | 2026-09-05 audit PASS（listing）；混入项目页/简介页，需配文章 RSS 或收窄列表 |
+| `vicki-boykis` | 正在适配 | [Vicki Boykis](https://vickiboykis.com/) | https://vickiboykis.com/ | ML 系统 / 生产实践 | RSS（`https://vickiboykis.com/index.xml` 已验证 200，20 候选） | 无已知官方中文 | https://vickiboykis.com/ | 2026-09-05 复测 audit PASS（当日早些时候的 FAIL 为本机网络瞬时故障，非代码问题）；listing 0 候选无碍，RSS 为主入口。具备转 active 条件，待用户点头 |
+| `maxime-labonne` | 已适配 | [Maxime Labonne](https://mlabonne.github.io/blog/) | https://mlabonne.github.io/blog/ | 微调 / 量化实操 | Sitemap（`https://mlabonne.github.io/blog/sitemap.xml`，51 候选） | 无已知官方中文 | https://mlabonne.github.io/blog/ | 2026-09-05 纯度抽查定性：提取干净，MB 级 markdown 系 Quarto 把配图 base64 内联（占 99%+）→ 已落地 `stripInlineDataUriImages`（Node+Worker 双路径，data-URI 图不落库），复审计 markdown 降为 7-8K 字符级、date 与 URL 逐一吻合（dcterms.date 候选生效）；listing 入口 25s 超时靠 sitemap 兜底。已转 active |
+| `cameron-wolfe` | 已适配 | [Cameron R. Wolfe](https://cameronrwolfe.substack.com/) | https://cameronrwolfe.substack.com/ | Agent Evals / LLM RL | RSS（20）+ Sitemap（114 候选含 lastmod） | 无已知官方中文 | https://cameronrwolfe.substack.com/archive | 2026-09-05 /archive 分页待办由 sitemap 化解（配 sitemap_url + exclude_paths /archive /podcast）；复审计 PASS，已转 active |
+| `neel-nanda` | 正在适配 | [Neel Nanda](https://www.neelnanda.io/) | https://www.neelnanda.io/ | 可解释性 | listing（25） | 无已知官方中文 | https://www.neelnanda.io/ | 2026-09-05 audit 部分通过：全站无发布日期（收录日兜底可收），`/cart` 等非文章页混入需 exclude |
+| `dwarkesh` | 已适配 | [Dwarkesh Patel](https://www.dwarkesh.com/) | https://www.dwarkesh.com/ | AI 思想访谈 / 长文 | RSS（20）+ Sitemap（183 候选含 lastmod） | 无已知官方中文 | https://www.dwarkesh.com/archive | 2026-09-05 补 sitemap_url + exclude_paths（/archive /podcast）；复审计 PASS；narration 音频转写页字符数偏低（669），属站点形态；播客页靠 exclude 过滤，文本版完整性增量观察。已转 active |
+| `mactalk` | 正在适配 | [池建强 MacTalk](https://macshuo.com/) | https://macshuo.com/ | 中文创作方法 / AI 信源 | RSS（`/?feed=rss2`，10 条真日期） | 无（中文） | https://macshuo.com/ | 2026-09-05 定性为**结构性不适配**：`/feed/` 返回首页 HTML，真实 feed 为 `/?feed=rss2`（已配）；但全站 permalink 为 `/?p=N` 查询串形态，`isLikelyArticleUrl` 的 pathname 假设不收录（candidates=0）。支持 query-permalink 需改 slug 派生（共性待办），暂保持 dry-run-only；wp-login/wp-admin 已入全局 NON_ARTICLE_PATHS |
+| `lixiaolai` | 正在适配 | [李笑来](https://lixiaolai.com/) | https://lixiaolai.com/ | 中文学习 / 注意力体系 | listing（30） | 无（中文） | https://lixiaolai.com/articles | 2026-09-05 audit 部分通过：articles/books 聚合页混入，需文章 URL 过滤 + 日期解析 |
+| `doctorow` | 正在适配 | [Cory Doctorow](https://pluralistic.net/) | https://pluralistic.net/ | 技术政治批判 | listing（13） | 无已知官方中文 | https://pluralistic.net/ | 2026-09-05 audit PASS（收录日兜底）；plura-list 跨域邮件列表页需 exclude；量大（2000+）增量观察 |
+| `wolfram` | 已适配 | [Stephen Wolfram](https://writings.stephenwolfram.com/) | https://writings.stephenwolfram.com/ | 计算科学 / AI 路线 | RSS（`/feed/`，12 条真日期）+ listing（13） | 无已知官方中文 | https://writings.stephenwolfram.com/ | 2026-09-05 修复日期误解析（根因：文章页确认无机器可读日期，正文历史年份 1988/1990 被 heading/visible 启发式误取）：补 RSS + 新增源级 `date_fallback: conservative`（只信机器可读日期，全空落收录日）；复审计日期全部 2026 真日期。已转 active |
+| `venkatesh-rao` | 已适配 | [Venkatesh Rao / Contraptions](https://contraptions.venkateshrao.com/) | https://contraptions.venkateshrao.com/ | 技术哲学 / 组织思想 | RSS（20）+ Sitemap（473 候选含 lastmod） | 无已知官方中文 | https://contraptions.venkateshrao.com/archive | 2026-09-05 补 sitemap_url + exclude_paths；复审计 PASS。已转 active |
+| `dair` | 正在适配 | [Elvis Saravia / DAIR.AI](https://academy.dair.ai/blog) | https://academy.dair.ai/blog | Agent 教程 / 评测 | listing（23） | 无已知官方中文 | https://academy.dair.ai/blog | 2026-09-05 audit PASS（收录日兜底）；课程聚合页混入需收窄 |
+| `mindhacks` | 正在适配 | [刘未鹏 MindHacks（静态归档）](https://mindhacks-mirror.yaozeyuan.online/) | https://mindhacks-mirror.yaozeyuan.online/ | 中文认知 / 学习方法 | listing（44 候选） | 无（中文） | https://mindhacks-mirror.yaozeyuan.online/ | 2026-09-05 改挂 YaoZeyuan/mindhacks.cn-mirror 镜像站（调研定性：evmn/Mind-Hacks 实为 Kindle 电子书项目非逐篇备份，mindhacks.cn 本站已死；镜像 44 篇 = 2006-2017 全站全部产出）：`url_date_pattern` 从文件名 `_YYYY_MM_DD_` 取真实发表日（url-date 新增数字月份支持），复审计 PASS（3 样本真日期）。保持 dry-run-only：第三方镜像长期可用性待观察，本机 clash 拒连需 `USE_PROXY=false` 直连；转 active 或一次性回填待用户定夺 |
+| `transformer-circuits` | 正在适配 | [Transformer Circuits](https://transformer-circuits.pub/) | https://transformer-circuits.pub/ | 可解释性（Olah 新阵地） | Atom（`/feed.xml`，56 条）+ listing | 无已知官方中文 | 无 | 2026-09-05 补 Atom feed；首次审计发现 50 条 feed 链接以 `/index.html` 结尾被全局黑名单吞掉（candidates 2/56）→ 该源配 `allow_non_article_paths` + `article_paths ^/\d{4}/` 豁免后恢复 52 候选，复审计 PASS。保持 dry-run-only：单篇 17-36 万字符（workspace 一篇 358K），翻译/D1 成本高，全量入库策略待用户定夺 |
+| `thonking` | 已适配 | [Horace He / Thonking](https://www.thonking.ai/) | https://www.thonking.ai/ | ML Systems 第一性原理 | RSS（6）+ Sitemap（6，站点本身仅 6 篇） | 无已知官方中文 | https://www.thonking.ai/archive | 2026-09-05 补 sitemap_url + exclude_paths；复审计 PASS 无阻碍（站点文章总量少是站点形态，非管线问题）。已转 active（首个） |
+| `james-clear-321` | 正在适配 | [James Clear 3-2-1](https://jamesclear.com/3-2-1) | https://jamesclear.com/3-2-1 | 习惯 / 决策科学（短形态） | listing（377） | 无已知官方中文 | https://jamesclear.com/3-2-1 | 2026-09-05 audit PASS（收录日兜底）；books/articles 聚合导航混入，需收窄到单期 |
+| `paul-graham` | 已适配 | [Paul Graham](http://www.paulgraham.com/) | http://www.paulgraham.com/ | 创业 / 技术思想 | listing（233） | 无（收录日兜底） | http://www.paulgraham.com/articles.html | 2026-09-05 解除拉黑回归（新日期政策首个受益者）；audit PASS（兜底日期符合预期）；已转 active |
+| `zvi` | 正在适配 | [Zvi Mowshowitz](https://thezvi.substack.com/) | https://thezvi.substack.com/ | AI 进展周报 / 对齐分析 | RSS（20）+ Sitemap（~1228 含 lastmod） | 无已知官方中文 | https://thezvi.substack.com/archive | 2026-09-05 二期配置；首页 JS 壳 listing 不可用，feed 全文；首审计 PASS（merged=1227，样本 /p/ 干净，一条 125K 长文正常）；转 active 待用户排期 |
+| `gary-marcus` | 正在适配 | [Gary Marcus / Marcus on AI](https://garymarcus.substack.com/) | https://garymarcus.substack.com/ | AI 批评 / 认知科学 | RSS（20）+ Sitemap（~587 含 lastmod） | 无已知官方中文 | https://garymarcus.substack.com/archive | 2026-09-05 二期配置；站名已改 "Marcus on AI"；偶有付费墙；首审计 PASS（merged=587，样本干净） |
+| `convivial-society` | 正在适配 | [Adam Sacasas / The Convivial Society](https://theconvivialsociety.substack.com/) | https://theconvivialsociety.substack.com/ | 技术文化 / 技术哲学 | RSS（20）+ Sitemap（~201 含 lastmod） | 无已知官方中文 | https://theconvivialsociety.substack.com/archive | 2026-09-05 二期配置；exclude 加 /podcast（部分为音频期）；首审计 PASS（merged=201；一条样本 805 字符贴近 800 下限，关注） |
+| `acx` | 正在适配 | [Scott Alexander / Astral Codex Ten](https://www.astralcodexten.com/) | https://www.astralcodexten.com/ | 综合随笔 / 科学文化 | RSS（20）+ Sitemap（~1469 含 lastmod） | 无已知官方中文 | https://www.astralcodexten.com/archive | 2026-09-05 二期配置；量极大（Open Thread 日常）；非 www 与 substack 域均 301 到 www；首审计 PASS（merged=1471；一条样本 384K 字符聚会点清单页，>200K 自动兜底 V2 分块，注意翻译成本） |
+| `jack-clark` | 正在适配 | [Jack Clark / Import AI](https://jack-clark.net/) | https://jack-clark.net/ | AI 政策 / 业界周报 | RSS（10 全文）+ Sitemap（486 含 lastmod） | 无已知官方中文 | https://jack-clark.net/ | 2026-09-05 二期配置；WP+Jetpack，sitemap 混少量静态页；首审计 PASS（merged=485，image-sitemap 滤除，/about /thinking 静态页 0 污染） |
+| `derek-sivers` | 正在适配 | [Derek Sivers](https://sive.rs/) | https://sive.rs/blog | 个人成长 / 创业随笔 | RSS（`https://sive.rs/articles.xml`，Atom 50 条全文） | 无已知官方中文 | https://sive.rs/blog | 2026-09-05 二期配置；**勿用 sitemap**（全站 feed.xml 混推文/书摘，sitemap 文章 slug 无法按模式过滤）；首审计 PASS（merged=514，articles.xml + listing 双通道，无书籍页混入） |
+| `henrik-karlsson` | 正在适配 | [Henrik Karlsson / Escaping Flatland](https://www.henrikkarlsson.xyz/) | https://www.henrikkarlsson.xyz/ | 写作 / 思考方法 | RSS（20）+ Sitemap（~116 含 lastmod） | 无已知官方中文 | https://www.henrikkarlsson.xyz/archive | 2026-09-05 二期配置；escapingflatland.substack.com 301 到自定义域，必须记新域；约月更；首审计 PASS（merged=116，部分日期为 lastmod 天精度） |
+| `cal-newport` | 正在适配 | [Cal Newport](https://calnewport.com/) | https://calnewport.com/blog/ | 深度工作 / 数字极简 | RSS（8）+ Sitemap（post-sitemap 系 ~1126 含 lastmod） | 无已知官方中文 | https://calnewport.com/blog/ | 2026-09-05 二期配置；WP+Yoast，子图里的 tag/author/press URL 靠全局黑名单滤除；首审计 PASS（merged=1149；page-sitemap 14 静态页漏入 → 已补 exclude_paths /blog 滤索引页） |
+| `yangzhiping` | 正在适配 | [阳志平](https://yangzhiping.com/) | https://yangzhiping.com/essays | 中文认知 / 学习方法 | Sitemap（382，文章 ~360）+ listing | 无（原生中文） | https://yangzhiping.com/essays | 2026-09-05 二期配置；无任何 RSS，`article_paths ^/essays/\d{8}/?$` 过滤；日期仅 sitemap lastmod（天精度）；首审计 PASS（merged=343，候选全为 /essays/<8位日期>，lang=zh 正确） |
 
 适配状态说明：
 
@@ -121,7 +150,7 @@
 | `meta-engineering` | engineering.fb.com | 2026-08-28 | 343 | Large-scale Engineering，~1084 |
 | `hugging-face` | huggingface.co | 2026-08-28 | 250 | 官方全量池 ~700+ 且增量快，量过大 |
 | `simon-willison` | simonwillison.net | 2026-08-28 | 700 | 文章量过大（清点 ~4000+），不匹配定位 |
-| `paul-graham` | paulgraham.com | 2026-08-28 | 1 | 无机器可读发布日期，结构性不适配（2026-09-04 连 `demo:true` 展示条目一并下掉，书架不再占位） |
+| `paul-graham` | paulgraham.com | 2026-08-28 | 1 | 无机器可读发布日期，结构性不适配（2026-09-04 连 `demo:true` 展示条目一并下掉，书架不再占位）→ **2026-09-05 解除拉黑回归**（新日期政策：收录日兜底；blocked-sources 条目已删，账本留痕；上方适配表已恢复） |
 | `tencent-cloud` | cloud.tencent.com | 2026-09-02 | 0 | 巨大 UGC 社区（官方团队 + 第三方 + 媒体转载混排），边界太差，无法建立干净技术索引；sources.json / blogs-static 展示条目已清理 |
 
 合计 **1469** 条 URL，账本见 `src/data/blocked-urls.json`（append-only 决策留痕，解除拉黑也不删）。
@@ -173,3 +202,15 @@
 - [脚手架完成] 翻译前保护链接和图片 URL，翻译后严格校验并原样恢复。
 - [已完成] 增加来源自动审计命令，输出各发现入口与三篇样本报告。
 - 增加有界并发、按域名限速和失败重试。
+- [已完成 2026-09-05] data-URI 图片剥离（`scripts/update/markdown-sanitize.ts`，Node normalizeArticleMarkdown + Worker extractor 双路径接入）：Quarto 系站点 base64 内联图不再进内容库/D1/构建产物（labonne 根治）。
+- [已完成 2026-09-05] 源级 `date_fallback: conservative` 日期口径（types/config/fetch/fetch-backend/worker 链路）：只信机器可读日期、跳过 heading/可见正文启发式（wolfram 正文年份误取根治）。
+- [已完成 2026-09-05] `resolvePublishedAt` 增加 `meta[name="dcterms.date"]` 候选（Quarto 站点真实发表日，避免被 sitemap lastmod 遮蔽）。
+- [已完成 2026-09-05] `url_date_pattern` 月份捕获组支持 1-12 数字（mindhacks 镜像文件名 `_YYYY_MM_DD_`）。
+- [已完成 2026-09-05] parseListing 闭合标签容忍 `</a` 与 `>` 之间的空白（mindhacks 镜像 105/124 锚点跨行书写）；wp-login/wp-admin/xmlrpc 入全局 NON_ARTICLE_PATHS；discovery fetchText 网络级失败（"fetch failed"）也回退 curl。
+- [待办] 质量模型 v4 优化（2026-09-05 评估结论：保留模型，与长度门互补而非替代）。2×2 实测（本地全量 2474 篇原文）：长度门独有拦截 121 篇（短垃圾），模型独有拦截 687 篇（长垃圾：microsoft-research 235 / langchain 147 / google-deepmind 89 / openai 81，及 Cursor 中长公告——1600-2400 CJK 过了 1500 线、靠模型 0.85-0.99 拦截）；两道门都放行的 1534 篇抽样多为真文章（karpathy 等）。只留字数门 → 长公告/软文大批漏进。优化方向：补中文标签重训（金标集中文仅 130/904 是中文失明主因）、长度归一特征（长文盲区）、阈值维持 0.67（0.35 会误杀 karpathy 好文）。
+- [已完成 2026-09-05] 双语源门禁顺序反转（用户决策）：prefer_official_zh 源（cursor/qwen/openai 等 5 源）改为**英文母语原文作为主实体**——抓英文原文 → 质量门禁对英文跑（模型以英文语料为主训练，顺带绕开中文训练偏斜）→ 通过后官方中文版直接落 zh 语言版本（provenance=official-zh，跳过模型翻译，分类走中文 passthrough）。**英文原文照常入库**（此前中文版会整个替换原文、英文被丢弃，门禁只能评中文）。runner / backfill / worker 抓取路径三处同口径；JSON-API 源（zh_lang 直通）保留旧语义。
+- [待办] query-permalink 源支持：全站文章 URL 为 `/?p=N` 查询串形态（macshuo/mactalk）被 `isLikelyArticleUrl` pathname 假设结构性拒绝，需 slug 派生与去重适配才能收录。
+- [已完成 2026-09-05] 原文长度前置硬门禁（用户决策：**长度不过关不进质量评分模型**；阈值由生产语料调研反推，非拍脑袋）：EN **300 词**（≈全库 p5=296，拦占位/Circuits 周更清单/微型公告/论文摘要桩，将拒 5%）；ZH **1500 CJK 字符**（拦 Cursor 公告主体 44/79 与 9 篇 CJK≈0 抓取噪声，将拒 42.6%；2000 起误杀 Qwen2-VL/QwQ 等有货发布稿）。`scripts/update/length-gate.ts` 纯函数，接线 runner（IntegrityGateError 永久拒绝 + 负缓存）、backfill、quality-scan-local（仅原文版本前置，verdict modelVersion=length-gate@1）；源级豁免 `length_gate: "off"`。调研佐证：质量模型系统性偏爱短文（短公告 qMed 0.13-0.35 vs 全库中位 0.033，en<500 词集合 91% 会被模型放过），前置长度门必要。
+- [待办] 清理 5 篇 17 词 "Demo placeholder" 占位存量（anthropic/claude-for-nonprofits、anthropic/improving-fable-5-s-biology-safeguards、anthropic/tino-cuellar、openai/hsp-gruppe、openai/openai-and-apa-partner-to-advance-responsible-ai）——长度门上线后增量不再产生，存量另行删除；hamel FAQ（27 篇 99-519 词短答）会被长度门拒，若要保留配 `length_gate: "off"`（其质量分 qMed=0.010 在现有模型下也难过关，属可接受误伤）。
+- [已完成 2026-09-05] 展示层日期诚实性（用户拍板：**无发表日期显示"无"，翻译日期照常**，不用"收录于"方案）：`articles.published_at_source` 列（migration 0012）+ 全链路 plumbing（RawArticle/ArticleRecord → 文件 frontmatter → import-local-articles 载荷 → content-sync upsert → SSR 三查询），文章页 meta、相关阅读、列表行、搜索的日期位对 'ingested' 文章显示"无"（en 页 N/A）；存量行 NULL 语义 = 真实发表日，不受影响。
+- [待办] Substack 二期源（zvi/gary-marcus/convivial-society/acx）首审计通过后转 active；Sivers/阳志平形态特殊需人工复核样本。

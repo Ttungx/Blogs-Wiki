@@ -65,6 +65,24 @@ export const staticBlogs: StaticBlogEntry[] = [
     }
   },
   {
+    "id": "cameron-wolfe",
+    "data": {
+      "name": "Cameron R. Wolfe",
+      "type": "personal",
+      "author": "Cameron R. Wolfe",
+      "description": "Cameron R. Wolfe 的 LLM 与强化学习深度综述通讯，系统梳理前沿研究脉络。",
+      "homepageUrl": "https://cameronrwolfe.substack.com/",
+      "blogUrl": "https://cameronrwolfe.substack.com/",
+      "domain": "cameronrwolfe.substack.com",
+      "rssUrl": "https://cameronrwolfe.substack.com/feed",
+      "sitemapUrl": "https://cameronrwolfe.substack.com/sitemap.xml",
+      "categories": [
+        "AI",
+        "Research"
+      ]
+    }
+  },
+  {
     "id": "cursor",
     "data": {
       "name": "Cursor",
@@ -102,6 +120,24 @@ export const staticBlogs: StaticBlogEntry[] = [
         "AI"
       ],
       "demo": true
+    }
+  },
+  {
+    "id": "dwarkesh",
+    "data": {
+      "name": "Dwarkesh Patel",
+      "type": "personal",
+      "author": "Dwarkesh Patel",
+      "description": "Dwarkesh Patel 的深度访谈与长文：AI 进展、算力竞争与科技史。",
+      "homepageUrl": "https://www.dwarkesh.com/",
+      "blogUrl": "https://www.dwarkesh.com/",
+      "domain": "www.dwarkesh.com",
+      "rssUrl": "https://www.dwarkesh.com/feed",
+      "sitemapUrl": "https://www.dwarkesh.com/sitemap.xml",
+      "categories": [
+        "AI",
+        "Internet / Technology"
+      ]
     }
   },
   {
@@ -305,6 +341,23 @@ export const staticBlogs: StaticBlogEntry[] = [
     }
   },
   {
+    "id": "maxime-labonne",
+    "data": {
+      "name": "Maxime Labonne",
+      "type": "personal",
+      "author": "Maxime Labonne",
+      "description": "Maxime Labonne 的大模型微调、量化与对齐实操教程，代码优先的工程视角。",
+      "homepageUrl": "https://mlabonne.github.io/blog/",
+      "blogUrl": "https://mlabonne.github.io/blog/",
+      "domain": "mlabonne.github.io",
+      "sitemapUrl": "https://mlabonne.github.io/blog/sitemap.xml",
+      "categories": [
+        "AI",
+        "AI Coding / Developer Tools"
+      ]
+    }
+  },
+  {
     "id": "meta-ai",
     "data": {
       "name": "Meta AI",
@@ -401,6 +454,22 @@ export const staticBlogs: StaticBlogEntry[] = [
     }
   },
   {
+    "id": "paul-graham",
+    "data": {
+      "name": "Paul Graham",
+      "type": "personal",
+      "author": "Paul Graham",
+      "description": "Paul Graham 的经典文集：创业、思考、写作与如何做大事。",
+      "homepageUrl": "http://www.paulgraham.com/",
+      "blogUrl": "http://www.paulgraham.com/articles.html",
+      "domain": "paulgraham.com",
+      "categories": [
+        "Personal Growth",
+        "Internet / Technology"
+      ]
+    }
+  },
+  {
     "id": "qwen",
     "data": {
       "name": "Qwen",
@@ -438,6 +507,42 @@ export const staticBlogs: StaticBlogEntry[] = [
         "Research"
       ],
       "demo": true
+    }
+  },
+  {
+    "id": "thonking",
+    "data": {
+      "name": "Horace He / Thonking",
+      "type": "personal",
+      "author": "Horace He",
+      "description": "Horace He 的 ML 系统博客，用第一性原理拆解 PyTorch、编译器与 GPU 性能。",
+      "homepageUrl": "https://www.thonking.ai/",
+      "blogUrl": "https://www.thonking.ai/",
+      "domain": "www.thonking.ai",
+      "rssUrl": "https://www.thonking.ai/feed",
+      "sitemapUrl": "https://www.thonking.ai/sitemap.xml",
+      "categories": [
+        "AI",
+        "Engineering / Infrastructure"
+      ]
+    }
+  },
+  {
+    "id": "venkatesh-rao",
+    "data": {
+      "name": "Venkatesh Rao / Contraptions",
+      "type": "personal",
+      "author": "Venkatesh Rao",
+      "description": "Venkatesh Rao 的 Contraptions 通讯：技术哲学、组织演化与互联网文化长文。",
+      "homepageUrl": "https://contraptions.venkateshrao.com/",
+      "blogUrl": "https://contraptions.venkateshrao.com/",
+      "domain": "contraptions.venkateshrao.com",
+      "rssUrl": "https://contraptions.venkateshrao.com/feed",
+      "sitemapUrl": "https://contraptions.venkateshrao.com/sitemap.xml",
+      "categories": [
+        "Personal Growth",
+        "Internet / Technology"
+      ]
     }
   },
   {
