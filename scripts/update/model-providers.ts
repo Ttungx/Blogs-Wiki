@@ -22,6 +22,32 @@ export interface ModelProviderEntry extends AiProviderConfig {
   expire: string | null;
 }
 
+/**
+ * 速率限制(model_provider.yaml 的 rate_limit 结构);整项 null = 不限,
+ * 子字段 null/省略 = 该项不限。tokens_* 为预留字段:当前版本解析保留、
+ * 暂不强制(token 计数需响应 usage,后续接入;429 退避仍兜底)。
+ */
+export interface ProviderRateLimit {
+  /** 并发在途请求上限(进程内信号量)。 */
+  concurrency?: number;
+  /** 每分钟请求数上限(槽位均匀铺开)。 */
+  requests_per_minute?: number;
+  /** 每日请求数上限(进程内计数、跨天重置;超限抛错,由调用方回退备用服务商)。 */
+  requests_per_day?: number;
+  /** 每分钟 token 上限(预留)。 */
+  tokens_per_minute?: number;
+  /** 每日 token 上限(预留)。 */
+  tokens_per_day?: number;
+}
+
+const RATE_LIMIT_FIELDS = [
+  'concurrency',
+  'requests_per_minute',
+  'requests_per_day',
+  'tokens_per_minute',
+  'tokens_per_day',
+] as const;
+
 export interface ModelProviderFile {
   path: string;
   /** 按 priority 升序、剔除已过期的有效提供商。 */
@@ -83,10 +109,26 @@ export function loadModelProviders(
       console.warn(`[model-providers] ${name} 已过期(expire=${expireRaw}),跳过`);
       return;
     }
-    const rateRaw = rec.rate_limit === undefined || rec.rate_limit === null ? undefined : Number(rec.rate_limit);
-    if (rateRaw !== undefined && (!Number.isFinite(rateRaw) || rateRaw <= 0)) {
-      errors.push(`${where}: rate_limit must be a positive number or null`);
-      return;
+    const rateRaw = rec.rate_limit === undefined || rec.rate_limit === null ? undefined : rec.rate_limit;
+    let rateLimit: ProviderRateLimit | undefined;
+    if (rateRaw !== undefined) {
+      if (typeof rateRaw !== 'object' || Array.isArray(rateRaw)) {
+        errors.push(`${where}: rate_limit must be a mapping or null`);
+        return;
+      }
+      const rl = rateRaw as Record<string, unknown>;
+      const parsed: ProviderRateLimit = {};
+      for (const field of RATE_LIMIT_FIELDS) {
+        const value = rl[field];
+        if (value === undefined || value === null) continue;
+        const num = Number(value);
+        if (!Number.isFinite(num) || num <= 0) {
+          errors.push(`${where}: rate_limit.${field} must be a positive number or null`);
+          return;
+        }
+        parsed[field] = num;
+      }
+      if (Object.keys(parsed).length > 0) rateLimit = parsed;
     }
     const reasoningEffort = typeof rec.reasoning_effort === 'string' && rec.reasoning_effort.trim()
       ? rec.reasoning_effort.trim()
@@ -99,7 +141,7 @@ export function loadModelProviders(
       apiKey,
       model,
       ...(reasoningEffort ? { reasoningEffort } : {}),
-      ...(rateRaw !== undefined ? { rateLimitRpm: rateRaw } : {}),
+      ...(rateLimit ? { rateLimit } : {}),
       expire: expireRaw,
     });
   });

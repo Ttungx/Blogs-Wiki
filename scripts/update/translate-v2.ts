@@ -2,6 +2,7 @@ import { categoryPrompt, normalizeCategories } from './classify';
 import { cleanTitle } from '../../src/lib/text';
 import { assertLinkIntegrity, assertMathIntegrity } from './content-integrity';
 import { createTranslationPlan, restoreMarkdown } from './translation-plan';
+import type { ProviderRateLimit } from './model-providers';
 import {
   ModelJsonError,
   parseModelJson,
@@ -33,8 +34,8 @@ export interface TranslateV2Options {
   maxChunkTokens?: number;
   /** OpenAI/DeepSeek 兼容 reasoning_effort（如 low/high/max），经 ocx 透传。 */
   reasoningEffort?: string;
-  /** 每分钟请求数上限(model_provider.yaml 的 rate_limit);省略 = 不限。 */
-  rateLimitRpm?: number;
+  /** 速率限制(model_provider.yaml 的 rate_limit);省略 = 不限。 */
+  rateLimit?: ProviderRateLimit;
 }
 
 const DEFAULT_TIMEOUT_MS = 300_000;
@@ -105,7 +106,7 @@ async function classifyArticle(
   };
   const reasoningEffort = options.reasoningEffort?.trim() || undefined;
   if (reasoningEffort) body.reasoning_effort = reasoningEffort;
-  const raw = await requestChatCompletion(options.fetchImpl ?? fetch, endpoint, options.apiKey, body, options.timeoutMs ?? DEFAULT_TIMEOUT_MS, {}, options.rateLimitRpm);
+  const raw = await requestChatCompletion(options.fetchImpl ?? fetch, endpoint, options.apiKey, body, options.timeoutMs ?? DEFAULT_TIMEOUT_MS, {}, options.rateLimit);
   let parsed: Record<string, unknown>;
   try {
     parsed = parseModelJson(raw);
@@ -115,7 +116,7 @@ async function classifyArticle(
       ...messages,
       { role: 'user', content: RETRY_JSON_HINT },
     ];
-    const retryRaw = await requestChatCompletion(options.fetchImpl ?? fetch, endpoint, options.apiKey, { ...body, messages: retryMessages }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS, {}, options.rateLimitRpm);
+    const retryRaw = await requestChatCompletion(options.fetchImpl ?? fetch, endpoint, options.apiKey, { ...body, messages: retryMessages }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS, {}, options.rateLimit);
     parsed = parseModelJson(retryRaw);
   }
   return normalizeCategories(parsed.categories, categories);
@@ -146,7 +147,7 @@ async function translateChunk(
   const reasoningEffort = options.reasoningEffort?.trim() || undefined;
   if (reasoningEffort) body.reasoning_effort = reasoningEffort;
   const run = async (msgs: ChatMessage[]): Promise<Record<string, unknown>> => {
-    const raw = await requestChatCompletion(options.fetchImpl ?? fetch, endpoint, options.apiKey, { ...body, messages: msgs }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS, {}, options.rateLimitRpm);
+    const raw = await requestChatCompletion(options.fetchImpl ?? fetch, endpoint, options.apiKey, { ...body, messages: msgs }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS, {}, options.rateLimit);
     return parseModelJson(raw);
   };
 

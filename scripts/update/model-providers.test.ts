@@ -29,13 +29,22 @@ providers:
     base_url: https://a.example/v1
     api_key: k1
     model: m1
-    rate_limit: 30
+    rate_limit:
+      concurrency: 4
+      requests_per_minute: 30
+      requests_per_day: null
+      tokens_per_minute: 100000
+      tokens_per_day: null
 `);
   const { providers } = loadModelProviders({ MODEL_PROVIDER_FILE: file });
   assert.equal(providers[0].name, 'high-priority');
   assert.equal(providers[1].name, 'low-priority');
-  assert.equal(providers[0].rateLimitRpm, 30);
-  assert.equal(providers[1].rateLimitRpm, undefined);
+  assert.deepEqual(providers[0].rateLimit, {
+    concurrency: 4,
+    requests_per_minute: 30,
+    tokens_per_minute: 100000,
+  });
+  assert.equal(providers[1].rateLimit, undefined);
 
   const pair = resolveAiProviderPair({ MODEL_PROVIDER_FILE: file });
   assert.equal(pair.length, 2);

@@ -3,6 +3,7 @@ import { cleanTitle } from '../../src/lib/text';
 import { assertLinkIntegrity, assertMathIntegrity } from './content-integrity';
 import { isNativeChinese, protectMarkdown, restoreMarkdown } from './translation-plan';
 import type { ExtractedArticle, FetchLike, TranslateArticle } from './types';
+import type { ProviderRateLimit } from './model-providers';
 
 /**
  * 超长兜底阈值：单篇正文 >200K 字符（≈50K token）时改走 V2 分块，防止 V1
@@ -72,8 +73,8 @@ export interface TranslateOptions {
    * 经 ocx 网关透传；DeepSeek V4 Flash 支持 low/high/max。
    */
   reasoningEffort?: string;
-  /** 每分钟请求数上限(model_provider.yaml 的 rate_limit);省略 = 不限。 */
-  rateLimitRpm?: number;
+  /** 速率限制(model_provider.yaml 的 rate_limit);省略 = 不限。 */
+  rateLimit?: ProviderRateLimit;
 }
 
 export interface RetryOptions {
@@ -242,18 +243,75 @@ function extractMessageContent(envelope: unknown): unknown {
   return (message as Record<string, unknown>).content;
 }
 
-/** 每端点的上次请求预约时刻(ms)——rate_limit 限速用(进程内;翻译批为单进程)。 */
-const lastRequestSlotAt = new Map<string, number>();
+/** 每端点的限速器状态——并发信号量 + 分钟槽位 + 日配额(进程内;翻译批为单进程)。 */
+interface LimiterState {
+  active: number;
+  waiters: Array<() => void>;
+  lastSlotAt: number;
+  day: string;
+  dayRequests: number;
+}
+const limiters = new Map<string, LimiterState>();
 
-/** 简单节流:同端点请求按 60s/rpm 均匀铺开;与 429 退避互补,不替代。 */
-async function throttleByRateLimit(key: string, rateLimitRpm: number | undefined): Promise<void> {
-  if (!rateLimitRpm || rateLimitRpm <= 0) return;
-  const minIntervalMs = 60_000 / rateLimitRpm;
-  const now = Date.now();
-  const prev = lastRequestSlotAt.get(key);
-  const slot = prev === undefined ? now : Math.max(now, prev + minIntervalMs);
-  lastRequestSlotAt.set(key, slot);
-  if (slot > now) await new Promise((resolve) => setTimeout(resolve, slot - now));
+function limiterFor(key: string): LimiterState {
+  let state = limiters.get(key);
+  if (!state) {
+    state = { active: 0, waiters: [], lastSlotAt: 0, day: '', dayRequests: 0 };
+    limiters.set(key, state);
+  }
+  return state;
+}
+
+function todayUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * 获取并发槽位 + 分钟节流 + 日配额检查;返回释放函数(调用方必须在 finally 调用)。
+ * tokens_* 预留字段当前不强制(429 退避仍兜底)。
+ */
+async function acquireProviderSlot(key: string, rateLimit: ProviderRateLimit | undefined): Promise<() => void> {
+  if (!rateLimit) return () => {};
+  const state = limiterFor(key);
+  // 并发上限:在途请求满时排队等槽位。
+  if (rateLimit.concurrency) {
+    while (state.active >= rateLimit.concurrency) {
+      await new Promise<void>((resolve) => state.waiters.push(resolve));
+    }
+  }
+  state.active += 1;
+  let released = false;
+  const release = (): void => {
+    if (released) return;
+    released = true;
+    state.active -= 1;
+    state.waiters.shift()?.();
+  };
+  try {
+    if (rateLimit.requests_per_minute) {
+      // 每分钟请求数:槽位按 60s/rpm 均匀铺开。
+      const minIntervalMs = 60_000 / rateLimit.requests_per_minute;
+      const now = Date.now();
+      const slot = Math.max(now, state.lastSlotAt + minIntervalMs);
+      state.lastSlotAt = slot;
+      if (slot > now) await new Promise((resolve) => setTimeout(resolve, slot - now));
+    }
+    if (rateLimit.requests_per_day) {
+      const today = todayUtc();
+      if (state.day !== today) {
+        state.day = today;
+        state.dayRequests = 0;
+      }
+      if (state.dayRequests >= rateLimit.requests_per_day) {
+        throw new Error(`provider daily request limit reached (${rateLimit.requests_per_day}/day)`);
+      }
+      state.dayRequests += 1;
+    }
+  } catch (error) {
+    release();
+    throw error;
+  }
+  return release;
 }
 
 export async function requestChatCompletion(
@@ -263,10 +321,11 @@ export async function requestChatCompletion(
   body: unknown,
   timeoutMs: number,
   retryOptions: RetryOptions = {},
-  rateLimitRpm?: number,
+  rateLimit?: ProviderRateLimit,
 ): Promise<string> {
-  await throttleByRateLimit(endpoint, rateLimitRpm);
-  const { maxRetries, retryDelayMs } = { ...DEFAULT_RETRY_OPTIONS, ...retryOptions };
+  const release = await acquireProviderSlot(endpoint, rateLimit);
+  try {
+    const { maxRetries, retryDelayMs } = { ...DEFAULT_RETRY_OPTIONS, ...retryOptions };
 
   const attempt = async (): Promise<string> => {
     let response: Response;
@@ -318,13 +377,16 @@ export async function requestChatCompletion(
     return content;
   };
 
-  for (let attemptCount = 0; ; attemptCount += 1) {
-    try {
-      return await attempt();
-    } catch (error) {
-      if (!(error instanceof RateLimitError) || attemptCount >= maxRetries) throw error;
-      await sleep(error.retryAfterMs ?? retryDelayMs);
+    for (let attemptCount = 0; ; attemptCount += 1) {
+      try {
+        return await attempt();
+      } catch (error) {
+        if (!(error instanceof RateLimitError) || attemptCount >= maxRetries) throw error;
+        await sleep(error.retryAfterMs ?? retryDelayMs);
+      }
     }
+  } finally {
+    release();
   }
 }
 
@@ -367,7 +429,7 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
           max_tokens: maxTokens,
         };
         if (reasoningEffort) body.reasoning_effort = reasoningEffort;
-        const content = await requestChatCompletion(fetchImpl, endpoint, apiKey, body, timeoutMs, retryOptions, options.rateLimitRpm);
+        const content = await requestChatCompletion(fetchImpl, endpoint, apiKey, body, timeoutMs, retryOptions, options.rateLimit);
         return parseModelJson(content);
       };
 

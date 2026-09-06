@@ -227,7 +227,7 @@ async function run() {
       baseUrl: p.baseUrl,
       model: p.model,
       reasoningEffort: p.reasoningEffort,
-      rateLimitRpm: p.rateLimitRpm,
+      rateLimit: p.rateLimit,
       fetchImpl,
     } as const;
     return routeTranslator(createTranslateClient(common), createTranslateV2Client(common), forceV2);

@@ -19,14 +19,14 @@ export interface AiProviderConfig {
   model: string;
   /** 发送到 chat/completions 顶层 reasoning_effort；空则不发。 */
   reasoningEffort?: string;
-  /** 每分钟请求数上限(model_provider.yaml 的 rate_limit);省略 = 不限。 */
-  rateLimitRpm?: number;
+  /** 速率限制(model_provider.yaml 的 rate_limit);省略 = 不限。 */
+  rateLimit?: ProviderRateLimit;
 }
 
 /** 仅读字符串环境变量的窄类型，便于测试传字面量对象。 */
 export type AiProviderEnv = Readonly<Record<string, string | undefined>>;
 
-import { loadModelProviders } from './model-providers';
+import { loadModelProviders, type ProviderRateLimit } from './model-providers';
 
 const SLOT_IDS = ['1', '2', '3'] as const;
 export type AiProviderSlotId = (typeof SLOT_IDS)[number];
