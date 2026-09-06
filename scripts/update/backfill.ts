@@ -35,6 +35,17 @@ import {
 import { policyFor, policyPasses, type BackfillPolicy } from './backfill-policy';
 import { checkArticleIntegrity, type ContentStats } from './backfill-integrity';
 import { appendShadowRecord, evaluateQualityGate, resolveQualityGateMode } from './quality-model';
+import { checkOriginalLength, LENGTH_GATE_CODE } from './length-gate';
+import { buildTranslator } from './runner';
+import { CATEGORIES } from '../../src/config/categories';
+import type { TranslateArticle } from './types';
+
+/** 官方中文直通的分类器（复用 runner 的翻译路由：中文内容走 passthrough）。 */
+let cachedTranslator: TranslateArticle | undefined;
+function translatorFor(fetchImpl: FetchLike): TranslateArticle {
+  cachedTranslator ??= buildTranslator(false, undefined, fetchImpl);
+  return cachedTranslator;
+}
 import { urlDateFromPattern } from './url-date';
 import {
   loadProcessedState,
@@ -327,6 +338,22 @@ async function backfillSource(
         throw new Error(`integrity blocked: ${blocking.length} issue(s)`);
       }
 
+      // 原文长度前置硬门禁（2026-09-05 用户决策）：先于质量评分模型，确定性
+      // 拒绝（长度不随重试/模型升级变化）。
+      const lengthGate = checkOriginalLength(article.originalLanguage, article.contentMarkdown, {
+        disabled: source.length_gate === 'off',
+      });
+      if (!lengthGate.ok) {
+        result.errors.push({
+          url: key,
+          kind: 'integrity',
+          code: LENGTH_GATE_CODE,
+          severity: 'error',
+          message: lengthGate.message,
+        });
+        throw new Error(`length gate rejected: ${lengthGate.message}`);
+      }
+
       // 质量模型门禁（plan §28）：QUALITY_GATE_MODE 默认 off（零开销、零行为变化）；
       // shadow 记录 wouldReject；enforce 阻塞——手动回填路径的错误仅记录不写终态，
       // 模型升级后重新回填即可重新评估。
@@ -358,7 +385,7 @@ async function backfillSource(
       }
 
       if (repositories) {
-        await repositories.articles.save({
+        const saved = await repositories.articles.save({
           source: toDomainSource(source),
           article: toDomainArticle(source, article),
         });
@@ -366,6 +393,33 @@ async function backfillSource(
         if (stats.mathCount > 0) result.mathArticles += 1;
         if (stats.tableCount > 0) result.tableArticles += 1;
         if (stats.imageCount > 0) result.imageArticles += 1;
+        // 官方中文直通（双语源，2026-09-05 政策）：英文原文已过门禁并入库，
+        // 官方中文降为附加版本直接落库（分类走翻译路由的中文 passthrough）。
+        // 分类失败不阻断（原文先行；zh 版本可由 translate:batch 补）。
+        if (article.officialZh) {
+          try {
+            const zhTranslation = translatorFor(fetchImpl)(
+              {
+                ...article,
+                title: article.officialZh.title,
+                contentMarkdown: article.officialZh.contentMarkdown,
+                originalLanguage: 'zh',
+              },
+              CATEGORIES,
+            );
+            await repositories.articles.saveVersion({
+              articleId: saved.id,
+              language: 'zh',
+              title: zhTranslation.translatedTitle,
+              contentMarkdown: article.officialZh.contentMarkdown,
+              provenance: 'official-zh',
+              originalAltUrl: article.officialZh.url,
+              categories: zhTranslation.categories,
+            });
+          } catch (error) {
+            logger.warn(`  - ${key}: official zh passthrough failed (${error instanceof Error ? error.message : String(error)})`);
+          }
+        }
         if (article.publishedAt) {
           // RFC 822 日期（如 "Tue, 18 Nov 2025 16:06:32 +0000"）直接 slice
           // 会截出乱码；统一解析成 YYYY-MM-DD 再比较。

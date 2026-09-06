@@ -21,6 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTranslateClient, routeTranslator } from './translate';
 import { createTranslateV2Client } from './translate-v2';
+import { normalizeArticleMarkdown } from './fetch';
 import { resolveAiProviderPair, type AiProviderConfig } from './ai-provider';
 import { appendErrorLedger, runWithConcurrency } from './concurrency';
 import { createFetchImpl } from './network';
@@ -34,6 +35,8 @@ const DEFAULT_ERROR_LOG = path.join('docs', 'batch-translate-errors.md');
 
 interface CliOptions {
   sourceId?: string;
+  /** 精确修复 scope：blogId/slug 列表（如 anthropic/crosscoder-model-diffing），可重复指定。 */
+  onlyIds?: string[];
   limit?: number;
   concurrency: number;
   reportDir?: string;
@@ -58,6 +61,10 @@ export function parseTranslateArgs(argv: string[]): CliOptions {
     if (arg === '--source' || arg === '-s' || arg.startsWith('--source=')) {
       options.sourceId = arg.startsWith('--source=') ? arg.slice('--source='.length) : argv[++index];
       if (!options.sourceId || options.sourceId.startsWith('-')) throw new Error('--source requires a source id');
+    } else if (arg === '--only' || arg.startsWith('--only=')) {
+      const value = arg.startsWith('--only=') ? arg.slice('--only='.length) : argv[++index];
+      if (!value || value.startsWith('-')) throw new Error('--only requires a blogId/slug (e.g. anthropic/foo)');
+      (options.onlyIds ??= []).push(value);
     } else if (arg === '--limit' || arg.startsWith('--limit=')) {
       options.limit = parseCount(arg.startsWith('--limit=') ? arg.slice('--limit='.length) : argv[++index], '--limit');
     } else if (arg === '--concurrency' || arg.startsWith('--concurrency=')) {
@@ -79,6 +86,7 @@ export function parseTranslateArgs(argv: string[]): CliOptions {
 
 Options:
   --source <id>       Only translate articles from this source.
+  --only <blog/slug>  Only translate this article (repeatable, for targeted repair).
   --limit <n>         Max articles to translate in this run (default: all missing).
   --concurrency <n>   Parallel translation requests (default: ${DEFAULT_CONCURRENCY}, max 50).
   --report <dir>      Write a run report (JSON + Markdown).
@@ -149,6 +157,10 @@ async function scanMissingZh(rootDir: string, sourceId?: string): Promise<Pendin
         const title = parsed.version.title;
         const url = parsed.article.originalUrl;
         const author = parsed.article.author;
+        // 翻译输入与抓取归一化对齐：历史 en 文件可能残留 Related 章节
+        //（现 fetch.ts 已裁剪），新译文不应将其翻入（与既有 zh 形态一致）。
+        const normalizedMarkdown = normalizeArticleMarkdown(parsed.version.contentMarkdown);
+        if (!normalizedMarkdown.trim()) continue;
         pending.push({
           blogId: blog.name,
           articleId: parsed.article.id,
@@ -160,7 +172,7 @@ async function scanMissingZh(rootDir: string, sourceId?: string): Promise<Pendin
             ...(parsed.article.imageUrl ? { imageUrl: parsed.article.imageUrl } : {}),
             publishedAt: parsed.article.publishedAt,
             originalLanguage: origLang,
-            contentMarkdown: parsed.version.contentMarkdown,
+            contentMarkdown: normalizedMarkdown,
           },
         });
       }
@@ -181,7 +193,11 @@ async function run() {
     }
   }
 
-  const pending = (await scanMissingZh(rootDir, options.sourceId)).sort((a, b) => {
+  const pending = (await scanMissingZh(rootDir, options.sourceId))
+    .filter((item) => !options.onlyIds || options.onlyIds.includes(
+      `${item.blogId}/${path.basename(item.file, '.md')}`,
+    ))
+    .sort((a, b) => {
     const aTime = Date.parse(a.article.publishedAt) || 0;
     const bTime = Date.parse(b.article.publishedAt) || 0;
     return bTime - aTime;

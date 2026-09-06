@@ -643,9 +643,14 @@ async function run() {
       { url: 'https://example.com/blog/hello-world/' },
       localizedFetch,
     );
-    assert.equal(localizedArticle.originalLanguage, 'zh');
-    assert.equal(localizedArticle.contentSource, 'official-zh');
-    assert.equal(localizedArticle.officialZhUrl, 'https://example.com/blog/hello-world/');
+    // 双语政策反转（2026-09-05）：英文母语原文保持主实体，官方中文挂 officialZh
+    // 由调用方直接落库（跳过模型翻译）——不再用中文版替换原文。
+    assert.equal(localizedArticle.originalLanguage, 'en');
+    assert.equal(localizedArticle.contentSource, undefined);
+    assert.ok(localizedArticle.officialZh, 'officialZh 应挂载');
+    assert.equal(localizedArticle.officialZh.url, 'https://example.com/zh/hello-world/');
+    assert.equal(localizedArticle.officialZh.title, '你好世界');
+    assert.match(localizedArticle.officialZh.contentMarkdown, /这是中文正文内容/);
 
     // localization fetch: without a zh alternate the original page is used
     const plainBlog: SourceConfig = { ...blog, prefer_official_zh: true };

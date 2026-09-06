@@ -111,10 +111,10 @@ async function fetchText(fetchImpl: FetchLike, url: string, context: string): Pr
     if (!response.ok) throw new Error(`${context}: HTTP ${response.status} ${response.statusText}`);
     return decodeFetchedBytes(url, new Uint8Array(await response.arrayBuffer()));
   } catch (error) {
-    // 部分 CDN（openai.com 等）按 Node TLS 指纹拦截 403，但接受 curl 的
-    // TLS 栈；回退系统 curl 一次（与 fetch 层行为一致）。
-    // 仅 Node 侧可用（curl-runner 注册）；Worker 运行时跳过回退。
-    if (error instanceof Error && /HTTP 403/.test(error.message)) {
+    // 部分 CDN（openai.com 等）按 Node TLS 指纹拦截：或明示 403，或握手期
+    // 直接 reject（undici 报 "fetch failed"）。两者都回退系统 curl 一次（与
+    // fetch 层行为一致）。仅 Node 侧可用（curl-runner 注册）；Worker 跳过回退。
+    if (error instanceof Error && /HTTP 403|fetch failed/i.test(error.message)) {
       const runner = getCurlRunner();
       if (runner) {
         const proxyUrl = proxyUrlFor(url);
@@ -181,7 +181,9 @@ export function parseSitemap(xml: string, sitemapUrl: string): SitemapEntry[] {
 }
 
 export function parseListing(html: string, listingUrl: string, source: SourceConfig): DiscoveredArticle[] {
-  const anchors = [...html.matchAll(/<a\b([^>]*?)\bhref=["']([^"'#]+)["']([^>]*)>([\s\S]*?)<\/a>/gi)];
+  // 闭合标签容忍 `</a` 与 `>` 之间的空白（mindhacks 镜像站 105/124 个锚点
+  // 写成 `</a` + 换行 + `>`；字面 `</a>` 只能解析出 1/44 的文章链接）。
+  const anchors = [...html.matchAll(/<a\b([^>]*?)\bhref=["']([^"'#]+)["']([^>]*)>([\s\S]*?)<\/a\s*>/gi)];
   return uniqueCanonicalUrls(anchors.flatMap((match) => {
     const url = canonicalizeUrl(match[2], listingUrl);
     if (!url || !isLikelyArticleUrl(url, source.domain, {

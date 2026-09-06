@@ -131,6 +131,7 @@ export class FileArticleRepository implements ArticleRepository {
     };
     if (article.imageUrl) articleRecord.imageUrl = article.imageUrl;
     if (article.author) articleRecord.author = article.author;
+    if (article.publishedAtSource) articleRecord.publishedAtSource = article.publishedAtSource;
 
     // 原文版本：provenance 由 contentSource 推导。
     const provenance: Provenance =

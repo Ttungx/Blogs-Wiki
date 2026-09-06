@@ -38,6 +38,13 @@ test('isLikelyArticleUrl 拒绝非 Article 辅助路径', () => {
   assert.strictEqual(isLikelyArticleUrl('https://example.com/category/news/', 'example.com'), false);
 });
 
+test('isLikelyArticleUrl 拒绝 WordPress 登录/后台/XML-RPC 入口', () => {
+  // macshuo.com（mactalk）listing 泄漏 wp-login.php；WP 站点常见同一族入口。
+  assert.strictEqual(isLikelyArticleUrl('https://macshuo.com/wp-login.php', 'macshuo.com'), false);
+  assert.strictEqual(isLikelyArticleUrl('https://example.com/wp-admin/', 'example.com'), false);
+  assert.strictEqual(isLikelyArticleUrl('https://example.com/xmlrpc.php', 'example.com'), false);
+});
+
 const DEEPMIND: SourceConfig = {
   id: 'google-deepmind',
   name: 'Google DeepMind',

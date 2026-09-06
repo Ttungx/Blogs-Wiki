@@ -14,6 +14,8 @@ export interface WorkerArticleSource {
   preferOfficialZh?: boolean;
   /** 从 URL 路径推断发布日期的正则（simonwillison.net 等）。 */
   urlDatePattern?: string;
+  /** `conservative`：跳过正文可见日期启发式，只信机器可读日期（wolfram）。 */
+  dateFallback?: 'visible' | 'conservative';
   /** en URL 前缀 → 官方简体中文前缀映射（cursor / qwen，无 hreflang 时探测）。 */
   zhPathMap?: Record<string, string>;
   /** GitHub 提交历史日期兜底（无机器可读日期的 GitHub Pages 博客）。 */
@@ -42,6 +44,8 @@ export interface WorkerArticleResult {
   contentMarkdown: string;
   officialZhUrl?: string;
   contentSource?: 'official-zh' | 'native-zh';
+  /** 双语源官方中文版本载荷（英文原文保持主实体，runner 直接落库跳过翻译）。 */
+  officialZh?: { url: string; title: string; contentMarkdown: string };
 }
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -350,11 +354,15 @@ export async function fetchWorkerArticle(
   // keli-wen.github.io）。正文文本比整页文本干净，页脚版权不在范围内。
   // 配置了 url_date_pattern 的源（simonwillison.net）以 URL 路径日期为准：
   // 页面正文常引用更早年份（如 "Turbo Pascal 1986"），Defuddle 会误取。
+  // dateFallback='conservative'（wolfram）再跳过可见日期启发式，只信机器可读
+  // 日期，全空时由上层落收录日兜底。
   const publishedAt =
     (source.urlDatePattern ? urlDateFromPattern(source.urlDatePattern, articleUrl) : '') ||
     extracted.publishedAt ||
     discovered.publishedAt?.trim() ||
-    resolveVisibleDate(extracted.contentMarkdown) ||
+    (source.dateFallback === 'conservative'
+      ? ''
+      : resolveVisibleDate(extracted.contentMarkdown)) ||
     (source.gitDate
       ? await resolveGitDate(
           { id: source.id, homepage_url: source.homepageUrl, git_date: source.gitDate } as SourceConfig,
@@ -426,7 +434,16 @@ export async function fetchWorkerArticleWithLocalization(
       fetchImpl,
     );
     if (zhArticle.originalLanguage !== 'zh') return original;
-    return { ...zhArticle, officialZhUrl: original.url, contentSource: 'official-zh' };
+    // 双语政策反转（与 scripts/update/fetch.ts 同口径）：英文原文保持主实体，
+    // 官方中文挂 officialZh 由调用方直接入库。
+    return {
+      ...original,
+      officialZh: {
+        url: officialZhUrl,
+        title: zhArticle.title,
+        contentMarkdown: zhArticle.contentMarkdown,
+      },
+    };
   } catch {
     return original;
   }

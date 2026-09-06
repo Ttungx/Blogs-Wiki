@@ -27,6 +27,9 @@ const NON_ARTICLE_PATHS = [
   /\/(?:legal|privacy|terms|press|newsroom|media|pricing)(?:\/|$)/i,
   /\/(?:index|default)\.html?$/i,
   /\.(?:xml|json|txt|jpg|jpeg|png|gif|webp|svg|pdf|zip)$/i,
+  // WordPress 站点 listing 常泄漏的登录/后台/XML-RPC 入口（mactalk 2026-09-05
+  // 审计抓到 wp-login.php）。
+  /\/(?:wp-(?:login|admin|signup)(?:\.php)?|xmlrpc\.php)(?:\/|$)/i,
 ];
 
 export function canonicalizeUrl(value: string, base?: string): string | null {

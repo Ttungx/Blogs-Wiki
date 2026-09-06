@@ -24,6 +24,7 @@ import { parseHTML } from 'linkedom';
 import { collapseCarousels, type CarouselNode } from './carousel-collapse';
 import { DEFAULT_MIN_CONTENT_CHARS as MIN_CONTENT_CHARS } from '../../scripts/update/constants';
 import { isGhostPublishedAt } from '../../scripts/update/git-date';
+import { stripInlineDataUriImages } from '../../scripts/update/markdown-sanitize';
 
 /**
  * 归一化 Defuddle 的 published 值：
@@ -214,7 +215,7 @@ export async function extractArticle(input: ExtractionInput): Promise<Extraction
   if (patchedSources) {
     contentMarkdown = contentMarkdown.replace(new RegExp(X_COM_TOKEN, 'g'), 'x.com');
   }
-  contentMarkdown = absolutizeMarkdownUrls(contentMarkdown, url);
+  contentMarkdown = stripInlineDataUriImages(absolutizeMarkdownUrls(contentMarkdown, url));
   const textLength = contentMarkdown.replace(/\s+/g, ' ').length;
   const minChars = minContentChars ?? MIN_CONTENT_CHARS;
   if (textLength < minChars) {

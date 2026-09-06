@@ -98,6 +98,11 @@ export interface SourceConfig {
    * 组，可选月/日捕获组。
    */
   url_date_pattern?: string;
+  /** 发表日期解析口径。`visible`（默认）在机器可读日期之外再用标题邻近与
+   *  正文可见日期启发式兜底；`conservative` 只信机器可读日期（meta/JSON-LD/
+   *  discovered/git），全空时按新政策落收录日——用于正文历史年份密集的站点
+   *  （wolfram：正文 1988/1990 被误当发表日）。 */
+  date_fallback?: 'visible' | 'conservative';
   /** 正文最小纯文本字符数；未设则用 DEFAULT_MIN_CONTENT_CHARS。
    *  短新闻源可调低、长 essay 源可调高，避免单一阈值误杀/漏放。 */
   min_content_chars?: number;
@@ -107,6 +112,9 @@ export interface SourceConfig {
   /** 为 true 时跳过全局 NON_ARTICLE_PATHS 黑名单，让 article_paths 白名单完全
    *  决定收录范围。用于博客路径含 /press /media /tag 等被全局黑名单段的公司站。 */
   allow_non_article_paths?: boolean;
+  /** 原文长度前置硬门禁豁免（2026-09-05）：'off' 跳过 300 词 / 1500 CJK 字符
+   *  前置门（质量评分模型仍照常跑）。仅用于"短而有货"的源（如 hamel FAQ）。 */
+  length_gate?: 'default' | 'off';
   /** 每次增量更新的篇数上限；未设则用 DEFAULT_LIMIT_PER_SOURCE。CLI `--limit` 仍可全局覆盖。 */
   limit?: number;
   /** 子 sitemap 抓取上限；未设则用 DEFAULT_MAX_CHILD_SITEMAPS。 */
@@ -157,10 +165,27 @@ export interface ExtractedArticle {
   author?: string;
   imageUrl?: string;
   publishedAt: string;
+  /**
+   * 日期口径（新政策：无发表日期也收录，用系统收录日期兜底）。
+   * 缺省为发表日期；'ingested' 表示 publishedAt 实为抓取入库日。
+   * 展示层未来可用它区分"发表于/收录于"，持久层暂忽略。
+   */
+  publishedAtSource?: 'published' | 'ingested';
   originalLanguage: string;
   contentMarkdown: string;
   /** Official Simplified Chinese URL when one was preferred and fetched. */
   officialZhUrl?: string;
+  /**
+   * 双语源（prefer_official_zh）的官方简体中文版本载荷（2026-09-05 政策反转：
+   * 英文母语原文作为主实体过质量门禁并入库，官方中文由调用方直接落语言版本、
+   * 跳过模型翻译）。JSON-API 源（zh_lang 直通）不走此字段，保留旧语义。
+   */
+  officialZh?: {
+    /** 官方中文页 URL。 */
+    url: string;
+    title: string;
+    contentMarkdown: string;
+  };
   /** How the content reached this state: `official-zh`, `native-zh`, or `model`. */
   contentSource?: 'official-zh' | 'native-zh' | 'model';
 }

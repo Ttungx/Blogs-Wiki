@@ -34,7 +34,8 @@ function articleFor(item: DiscoveredArticle): ExtractedArticle {
     title: item.url.split('/').at(-2) ?? 'Article',
     publishedAt: item.publishedAt ?? '2026-08-01',
     originalLanguage: 'en',
-    contentMarkdown: 'Original article body with sufficient length for the integrity gate to pass during tests. '.repeat(8),
+    // ≥300 词：原文长度前置硬门禁（length-gate）要求英文原文至少 300 词。
+    contentMarkdown: 'Original article body with sufficient length for the integrity gate to pass during tests. '.repeat(25),
   };
 }
 

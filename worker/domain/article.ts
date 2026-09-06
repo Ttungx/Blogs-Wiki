@@ -32,6 +32,7 @@ const FRONTMATTER_KEYS = [
   'image_url',
   'title',
   'published_at',
+  'published_at_source',
   'source_domain',
   'original_language',
   'provenance',
@@ -128,6 +129,10 @@ export function buildVersionFrontmatter(
   if (article.imageUrl) lines.push(`image_url: ${yamlScalar(article.imageUrl)}`);
   lines.push(`title: ${yamlScalar(version.title)}`);
   lines.push(`published_at: ${yamlDate(article.publishedAt)}`);
+  // 仅 'ingested' 落盘：缺省（真实发表日）不写，frontmatter 保持精简。
+  if (article.publishedAtSource === 'ingested') {
+    lines.push('published_at_source: ingested');
+  }
   // categories：空数组用内联 []，非空用多行格式
   if (article.categories.length === 0) {
     lines.push('categories: []');
@@ -255,6 +260,7 @@ export function parseVersionFile(id: string, fileContent: string): {
   };
   if (scalars.image_url) article.imageUrl = scalars.image_url;
   if (scalars.author) article.author = scalars.author;
+  if (scalars.published_at_source === 'ingested') article.publishedAtSource = 'ingested';
 
   const version: ArticleVersionRecord = {
     articleId,

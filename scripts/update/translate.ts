@@ -1,6 +1,6 @@
 import { categoryPrompt, normalizeCategories } from './classify';
 import { cleanTitle } from '../../src/lib/text';
-import { assertMathIntegrity } from './content-integrity';
+import { assertLinkIntegrity, assertMathIntegrity } from './content-integrity';
 import { isNativeChinese, protectMarkdown, restoreMarkdown } from './translation-plan';
 import type { ExtractedArticle, FetchLike, TranslateArticle } from './types';
 
@@ -143,6 +143,7 @@ function buildSystemPrompt(categories: readonly string[]): string {
     '- Translate the title and the full body text.',
     '- Preserve the original Markdown structure exactly: code blocks, inline code, links, images, blockquotes, tables, lists, and heading levels.',
     '- Keep URLs, image paths, code, and technical identifiers unchanged.',
+    '- Links are archival: reproduce every link/image with the SAME destination URL. Close every link with a halfwidth ")" — never a fullwidth "）". Never drop a standalone link paragraph (e.g. a "Read more" line), even when the next sentence already refers to "the link above". Never add, drop, or rebalance code fences (```).',
     '- Do not add, remove, or summarize content.',
     '- Terminology retention (critical for this wiki\'s audience of technical readers):',
     '  • Keep domain terminology in English when it is the standard term of art: model and method names (chain-of-thought, in-context learning, reinforcement learning, retrieval-augmented generation, fine-tuning, RLHF, scaling laws), system and framework concepts (Harness, Context Engineering, agent, prompt, embedding, transformer).',
@@ -378,6 +379,7 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
 
       const contentMarkdown = restoreMarkdown(protectedContent, protectedBody.spans);
       assertMathIntegrity(article.contentMarkdown, contentMarkdown);
+      assertLinkIntegrity(article.contentMarkdown, contentMarkdown);
 
       return {
         translatedTitle,

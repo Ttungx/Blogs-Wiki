@@ -13,8 +13,8 @@ const MONTHS: Record<string, number> = {
 
 /**
  * 按 url_date_pattern 从 URL 推断日期，返回 YYYY-MM-DD 或 undefined。
- * 模式必须含年份捕获组（match[1]），可选月（match[2]，Jan-Dec 缩写）与
- * 日（match[3]）捕获组。
+ * 模式必须含年份捕获组（match[1]），可选月（match[2]，Jan-Dec 缩写或 1-12
+ * 数字）与日（match[3]）捕获组。
  */
 export function urlDateFromPattern(
   pattern: string | undefined,
@@ -28,8 +28,11 @@ export function urlDateFromPattern(
     if (!Number.isInteger(year) || year < 1990 || year > 2100) return undefined;
     if (match[3] === undefined) return `${year}-01-01`;
     const monthText = match[2]?.toLowerCase().slice(0, 3);
-    const month = MONTHS[monthText ?? ''];
-    if (month === undefined) return `${year}-01-01`;
+    // 月份捕获组接受英文缩写与 1-12 数字（mindhacks 镜像文件名 `_YYYY_MM_DD_`）；
+    // 越界数字按"只有年份"降级。
+    const numericMonth = /^(\d{1,2})$/.exec(monthText ?? '');
+    const month = numericMonth ? Number(numericMonth[1]) - 1 : MONTHS[monthText ?? ''];
+    if (month === undefined || month < 0 || month > 11) return `${year}-01-01`;
     const day = Number(match[3]);
     if (!Number.isInteger(day) || day < 1 || day > 31) {
       return `${year}-${String(month + 1).padStart(2, '0')}-01`;

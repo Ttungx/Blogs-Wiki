@@ -208,6 +208,24 @@ test('parseVersionFile: 空 categories 正确解析', () => {
   assert.deepEqual(parsed.article.categories, []);
 });
 
+test('publishedAtSource: ingested 标记写入并 round-trip；缺省不落盘', () => {
+  // 日期兜底政策：无发表日期的文章（publishedAt 实为收录日）标记 'ingested'，
+  // SSR 据此显示"无"而非假装是发表日。
+  const ingestedRecord = { ...articleRecord, publishedAtSource: 'ingested' as const };
+  const fileContent = buildVersionFileContent(source, ingestedRecord, originalVersion);
+  assert.ok(fileContent.includes('published_at_source: ingested'));
+  const parsed = parseVersionFile('smoke-blog/en/hello-world', fileContent);
+  assert.ok(parsed);
+  assert.equal(parsed.article.publishedAtSource, 'ingested');
+
+  // 真实发表日（缺省）不写字段，frontmatter 保持精简
+  const defaultContent = buildVersionFileContent(source, articleRecord, originalVersion);
+  assert.ok(!defaultContent.includes('published_at_source'));
+  const defaultParsed = parseVersionFile('smoke-blog/en/hello-world', defaultContent);
+  assert.ok(defaultParsed);
+  assert.equal(defaultParsed.article.publishedAtSource, undefined);
+});
+
 test('parseVersionFile: 缺必需字段返回 null', () => {
   const content = [
     '---',

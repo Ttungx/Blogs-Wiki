@@ -26,6 +26,8 @@ import {
   verdictLine,
 } from './quality-model';
 import type { StoredQualityVerdict } from './quality-model';
+import { checkOriginalLength, LENGTH_GATE_MODEL_VERSION } from './length-gate';
+import { loadSources } from './config';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ARTICLES_DIR = join(ROOT, 'src', 'content', 'articles');
@@ -48,6 +50,14 @@ if (mode !== 'stage') {
 }
 
 const model = loadQualityModel();
+
+// 源级豁免（length_gate: 'off'，如 hamel FAQ 这类"短而有货"的源）。
+let lengthGateOff = new Set<string>();
+try {
+  const sources = await loadSources(ROOT);
+  lengthGateOff = new Set(sources.filter((s) => s.length_gate === 'off').map((s) => s.id));
+} catch { /* 配置不可用时按无豁免处理 */ }
+
 let written = 0;
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -101,6 +111,28 @@ for (const file of walk(scanBase)) {
   if (!m) continue;
   const body = m[2].trim();
   if (!body) continue;
+
+  // 原文长度前置硬门禁（2026-09-05）：只对原文版本判定，先于质量评分模型。
+  // 译文文件随原文 verdict 走（import 以原文版本结论决定 published）。
+  // 长度拒绝的 modelVersion='length-gate@1' 与真实模型版本永不相等 → 不进
+  // 增量复用，阈值调整后重扫自动生效。score 记 0（未进模型）。
+  const fileSourceId = rel.split('/')[0] ?? '';
+  if (!lengthGateOff.has(fileSourceId) && /^is_original:\s*true\b/m.test(m[1])) {
+    const originalLanguage = /^original_language:\s*["']?([^"'\n]*)["']?$/m.exec(m[1])?.[1]?.trim() ?? 'en';
+    const lengthGate = checkOriginalLength(originalLanguage, body);
+    if (!lengthGate.ok) {
+      mergedLines.push(verdictLine({
+        file: rel,
+        score: 0,
+        wouldReject: true,
+        modelVersion: LENGTH_GATE_MODEL_VERSION,
+        mtimeMs,
+      }));
+      written += 1;
+      continue;
+    }
+  }
+
   // frontmatter 里取 title（轻量解析即可：title 行）
   const titleLine = /^title:\s*["']?([^"'\n]*)["']?$/m.exec(m[1]);
   const title = titleLine?.[1]?.trim() ?? '';

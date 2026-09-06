@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { proxyUrlFor } from './network';
 import { USER_AGENT, normalizeDate, isGhostPublishedAt, resolveGitDate } from './git-date';
 import { urlDateFromPattern } from './url-date';
+import { stripInlineDataUriImages } from './markdown-sanitize';
 import { findOfficialChineseUrl, mapToOfficialZhPath } from './localization';
 import type { DiscoveredArticle, ExtractedArticle, FetchLike, SourceConfig } from './types';
 // 轮播折叠逻辑与 Worker/Defuddle 抓取链共享（worker/fetch/carousel-collapse.ts），
@@ -145,8 +146,18 @@ export function directoryBaseUrl(baseUrl: string): string {
   return url.toString();
 }
 
-function resolveHeadImage(document: Document, articleUrl: string): string | undefined {
-  const value =
+/**
+ * 封面选取：正文第一张图优先，og:image 仅 fallback。
+ * 单独导出以便单测锁定规则（见 cover-image.test.ts）。
+ */
+export function selectCoverImage(
+  firstBodyImage: string | undefined,
+  headImageUrl: string | undefined,
+): string | undefined {
+  return firstBodyImage ?? headImageUrl;
+}
+
+function resolveHeadImage(document: Document, articleUrl: string): string | undefined {  const value =
     metaContent(document, [
       'meta[property="og:image"]',
       'meta[property="og:image:url"]',
@@ -252,6 +263,9 @@ function resolvePublishedAt(document: Document, discovered: DiscoveredArticle): 
   const candidates = [
     metaContent(document, ['meta[property="article:published_time"]']),
     metaContent(document, ['meta[name="date"]']),
+    // Quarto 站点（mlabonne 等）把发表日放在 dcterms.date；不读会错拿
+    // sitemap lastmod（站点构建时间，系统性偏晚）。
+    metaContent(document, ['meta[name="dcterms.date"]']),
     metaContent(document, ['meta[itemprop="datePublished"]']),
     jsonLdDatePublished(document),
   ];
@@ -510,7 +524,7 @@ export function normalizeArticleMarkdown(markdown: string): string {
   const relatedIndex = lines.findIndex((line) => RELATED_SECTION_HEADING.test(line.trim()));
   const body = (relatedIndex >= 0 ? lines.slice(0, relatedIndex) : lines).join('\n');
 
-  return body
+  return stripInlineDataUriImages(body)
     .replace(/(?:^|\n)\s*\d{1,2}\s*\/\s*(?:\n\s*)?\d{1,2}\s*(?=\n|$)/g, '\n')
     .replace(/!\[\s*logo\s*\]/gi, '![logo]')
     .replace(/\n{3,}/g, '\n\n')
@@ -552,7 +566,10 @@ export async function fetchArticle(
   const originalLanguage = resolveLanguage(document);
   // Capture the heading-adjacent visible date before Readability rewrites the
   // DOM (it strips h1/header siblings, which would otherwise hide the date).
-  const headingDate = resolveHeadingDate(document);
+  // date_fallback='conservative' 跳过两条可见日期启发式：只信机器可读日期，
+  // 全空时落收录日兜底（wolfram 正文历史年份密集，启发式会误取）。
+  const conservative = source.date_fallback === 'conservative';
+  const headingDate = conservative ? '' : resolveHeadingDate(document);
 
   // Readability strips every <footer> (including testimonial attribution
   // inside <blockquote>s) and deletes elements whose class/id matches noise
@@ -570,12 +587,21 @@ export async function fetchArticle(
   // meta/JSON-LD (ai.meta.com, keli-wen.github.io). Runs on the extracted
   // body text so footer copyrights and nav dates are out of scope.
   // 配置了 url_date_pattern 的源（simonwillison.net）以 URL 路径日期为准。
-  const publishedAt =
+  const extractedAt = new Date().toISOString();
+  const resolvedDate =
     (source.url_date_pattern ? urlDateFromPattern(source.url_date_pattern, articleUrl) : '') ||
     resolvePublishedAt(document, discovered) ||
     headingDate ||
-    resolveVisibleDate(parsed.textContent ?? '') ||
+    (conservative ? '' : resolveVisibleDate(parsed.textContent ?? '')) ||
     (await resolveGitDate(source, articleUrl, fetchImpl));
+  // 新政策（2026-09）：无发表日期也收录——以上全空时用系统收录日期兜底，
+  // publishedAtSource 标记口径（展示层未来可据此显示"收录于"）。
+  // 兜底日期是合法 ISO，完整性门禁天然通过；决策台账见 docs/blog-source-registry.md。
+  const publishedAt = resolvedDate || extractedAt.slice(0, 10);
+  const publishedAtSource = (resolvedDate ? 'published' : 'ingested') as 'published' | 'ingested';
+  if (!resolvedDate) {
+    console.warn(`[${source.id}] ${articleUrl}: no publish date found, falling back to ingestion date`);
+  }
 
   const title = ogTitle ?? documentTitle ?? parsed.title?.trim() ?? discovered.title?.trim() ?? '';
   if (!title) {
@@ -587,8 +613,15 @@ export async function fetchArticle(
   collapseCarousels(contentNode as unknown as CarouselNode, articleUrl);
   removeNoiseBlocks(contentNode, title);
   absolutizeUrls(contentNode, articleUrl);
-  const imageUrl =
-    headImageUrl ?? absoluteHttpUrl(contentNode.querySelector('img[src]')?.getAttribute('src') ?? undefined, articleUrl);
+  // 封面规则（与列表/文章页约定一致）：正文第一张图优先，og:image 仅在
+  // 正文无图时 fallback。og:image 常是全站通用社交卡片（如 Anthropic 的
+  // sanity 默认卡），不能代表文章；且文章页会在开头渲染该头图，选正文图
+  // 才能保证“列表封面 = 文中出现的第一张图”。
+  const firstBodyImage = absoluteHttpUrl(
+    contentNode.querySelector('img[src]')?.getAttribute('src') ?? undefined,
+    articleUrl,
+  );
+  const imageUrl = selectCoverImage(firstBodyImage, headImageUrl);
 
   const textLength = (parsed.textContent ?? '').replace(/\s+/g, ' ').trim().length;
   const minContentChars = source.min_content_chars ?? MIN_CONTENT_CHARS;
@@ -609,6 +642,7 @@ export async function fetchArticle(
     author,
     ...(imageUrl ? { imageUrl } : {}),
     publishedAt,
+    publishedAtSource,
     originalLanguage,
     contentMarkdown,
   };
@@ -742,6 +776,9 @@ export async function fetchApiArticle(
     (typeof publishedAtRaw === 'number' ? new Date(publishedAtRaw * 1000).toISOString() : undefined) ??
     (typeof publishedAtRaw === 'string' && publishedAtRaw.trim() ? normalizeDate(publishedAtRaw) : undefined) ??
     '';
+  // 与 HTML 路径同口径：无日期用系统收录日期兜底（见上）。
+  const apiPublishedAt = publishedAt || new Date().toISOString().slice(0, 10);
+  const apiPublishedAtSource = (publishedAt ? 'published' : 'ingested') as 'published' | 'ingested';
   const originalLanguage =
     typeof responseLang === 'string' && /^[a-z]{2}$/i.test(responseLang.trim())
       ? responseLang.trim().toLowerCase()
@@ -752,18 +789,21 @@ export async function fetchApiArticle(
     title: resolvedTitle,
     ...(typeof author === 'string' && author.trim() ? { author: author.trim() } : {}),
     ...(typeof imageUrl === 'string' && imageUrl.trim() ? { imageUrl: imageUrl.trim() } : {}),
-    publishedAt,
+    publishedAt: apiPublishedAt,
+    publishedAtSource: apiPublishedAtSource,
     originalLanguage,
     contentMarkdown,
   };
 }
 
 /**
- * Fetch an article preferring the official Simplified Chinese alternate when
+ * Fetch an article, attaching the official Simplified Chinese alternate when
  * one is advertised via `rel=alternate` + `hreflang` (or a matching zh link).
- * When a Chinese page is found and extracted successfully, it is returned
- * with `officialZhUrl` pointing at the original URL and `contentSource:
- * 'official-zh'`; otherwise the original page is returned untouched.
+ *
+ * 2026-09-05 双语政策反转：英文母语原文保持为主实体（质量门禁只对原文跑——
+ * 质量模型以英文语料为主训练），命中的官方中文挂在 `officialZh` 由调用方
+ * 直接落语言版本（跳过模型翻译）。JSON-API 源（zh_lang 直通）保留旧语义
+ * （中文作为原文返回，officialZhUrl 指回原文 URL）。
  */
 export async function fetchArticleWithLocalization(
   source: SourceConfig,
@@ -817,7 +857,15 @@ export async function fetchArticleWithLocalization(
       fetchImpl,
     );
     if (zhArticle.originalLanguage !== 'zh') return original;
-    return { ...zhArticle, officialZhUrl: original.url, contentSource: 'official-zh' };
+    // 双语政策反转：英文原文保持主实体，官方中文挂 officialZh 由调用方直接入库。
+    return {
+      ...original,
+      officialZh: {
+        url: officialZhUrl,
+        title: zhArticle.title,
+        contentMarkdown: zhArticle.contentMarkdown,
+      },
+    };
   } catch {
     return original;
   }

@@ -141,6 +141,8 @@ export interface RawArticle {
   author?: string;
   imageUrl?: string;
   publishedAt: string;
+  /** 发表日期口径：缺省 = 真实发表日；'ingested' = 无日期按收录日兜底（展示层显示"无"）。 */
+  publishedAtSource?: 'published' | 'ingested';
   originalLanguage: string;
   contentMarkdown: string;
   /** 命中的官方简体中文 URL（preferOfficialZh 且抓取成功）。 */
@@ -173,6 +175,8 @@ export interface ArticleRecord {
   originalLanguage: string;
   /** ISO 8601 字符串，保留与原文一致的发布日期。 */
   publishedAt: string;
+  /** 日期口径（见 RawArticle.publishedAtSource）；缺省 = 真实发表日。 */
+  publishedAtSource?: 'published' | 'ingested';
   imageUrl?: string;
   author?: string;
   sourceDomain: string;

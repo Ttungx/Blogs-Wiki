@@ -26,6 +26,7 @@ import { CATEGORIES } from '../../src/config/categories';
 import { DEFAULT_LIMIT_PER_SOURCE } from './constants';
 import { checkArticleIntegrity } from './backfill-integrity';
 import { appendShadowRecord, evaluateQualityGate, resolveQualityGateMode, type QualityVerdict } from './quality-model';
+import { checkOriginalLength, LENGTH_GATE_CODE } from './length-gate';
 
 /** 质量门禁失败：内容不合格。默认永久跳过；部分码（日期抽取失败）可重试。 */
 class IntegrityGateError extends Error {
@@ -112,7 +113,7 @@ async function initializeSeenUrls(
   return seenBySource;
 }
 
-function buildTranslator(
+export function buildTranslator(
   dryRun: boolean,
   injected: TranslateArticle | undefined,
   fetchImpl: FetchLike,
@@ -280,6 +281,16 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
             throw new IntegrityGateError(blocking.map((issue) => issue.code));
           }
 
+          // 原文长度前置硬门禁（2026-09-05 用户决策，阈值 300 词 / 1500 CJK
+          // 字符见 length-gate.ts 调研注释）：先于质量评分模型。长度是确定性
+          // 的——重试无意义 → 不可重试码，走永久拒绝 + 负缓存。
+          const lengthGate = checkOriginalLength(article.originalLanguage, article.contentMarkdown, {
+            disabled: source.length_gate === 'off',
+          });
+          if (!lengthGate.ok) {
+            throw new IntegrityGateError([LENGTH_GATE_CODE]);
+          }
+
           // 质量模型门禁（plan §28/§29）：QUALITY_GATE_MODE 默认 off——不加载模型、
           // 行为与未接入完全一致；shadow 记录 wouldReject；enforce 才阻塞，
           // 且拒绝可恢复（不写 processed 终态，90 天负缓存过期后随模型升级重新评估）。
@@ -325,23 +336,56 @@ export async function runUpdate(options: UpdateRunnerOptions): Promise<UpdateSum
           // reconcile 把原文 URL 回填 seen 而形成「半成品黑洞」（缺中文版被挡住）。
           await repositories.sourceState.markProcessed(source.id, article.url);
           seenBySource.get(source.id)?.add(article.url);
-          // 2. 翻译 + 分类
-          const translation = await translate(article, CATEGORIES);
-          // 3. 保存翻译版本
-          await repositories.articles.saveVersion({
-            articleId: saved.id,
-            language: 'zh-cn',
-            title: translation.translatedTitle,
-            contentMarkdown: translation.contentMarkdown,
-            provenance: translation.translationStatus ?? 'model',
-            translationModel: translation.model,
-            translatedAt: new Date().toISOString(),
-            ...(translation.originalZhUrl ? { originalAltUrl: translation.originalZhUrl } : {}),
-            categories: translation.categories,
-          });
-          result.processed += 1;
-          summary.processed += 1;
-          logger.info(`  + ${saved.id} (${translation.translatedTitle})`);
+          // 2. 官方中文直通（双语源）或模型翻译 + 分类
+          if (article.officialZh) {
+            // 官方中文直接入库跳过模型翻译；分类复用翻译路由的中文
+            // passthrough（仅 1 次分类调用）。失败不阻断——原文已入库，
+            // zh 版本可由 translate:batch 补（届时退化为模型翻译）。
+            try {
+              const zhTranslation = await translate(
+                {
+                  ...article,
+                  title: article.officialZh.title,
+                  contentMarkdown: article.officialZh.contentMarkdown,
+                  originalLanguage: 'zh',
+                },
+                CATEGORIES,
+              );
+              await repositories.articles.saveVersion({
+                articleId: saved.id,
+                language: 'zh',
+                title: zhTranslation.translatedTitle,
+                contentMarkdown: article.officialZh.contentMarkdown,
+                provenance: 'official-zh',
+                originalAltUrl: article.officialZh.url,
+                categories: zhTranslation.categories,
+              });
+              logger.info(`  + zh (official) ${article.officialZh.url}`);
+            } catch (error) {
+              logger.warn(
+                `official zh passthrough failed (${error instanceof Error ? error.message : String(error)}); zh version left to translate:batch`,
+              );
+            }
+            result.processed += 1;
+            summary.processed += 1;
+          } else {
+            const translation = await translate(article, CATEGORIES);
+            // 3. 保存翻译版本
+            await repositories.articles.saveVersion({
+              articleId: saved.id,
+              language: 'zh-cn',
+              title: translation.translatedTitle,
+              contentMarkdown: translation.contentMarkdown,
+              provenance: translation.translationStatus ?? 'model',
+              translationModel: translation.model,
+              translatedAt: new Date().toISOString(),
+              ...(translation.originalZhUrl ? { originalAltUrl: translation.originalZhUrl } : {}),
+              categories: translation.categories,
+            });
+            result.processed += 1;
+            summary.processed += 1;
+            logger.info(`  + ${saved.id} (${translation.translatedTitle})`);
+          }
         } catch (error) {
           result.failed += 1;
           summary.failed += 1;

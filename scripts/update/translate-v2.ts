@@ -1,6 +1,6 @@
 import { categoryPrompt, normalizeCategories } from './classify';
 import { cleanTitle } from '../../src/lib/text';
-import { assertMathIntegrity } from './content-integrity';
+import { assertLinkIntegrity, assertMathIntegrity } from './content-integrity';
 import { createTranslationPlan, restoreMarkdown } from './translation-plan';
 import {
   ModelJsonError,
@@ -52,6 +52,7 @@ function buildTranslateSystemPrompt(): string {
     'Translate the provided Markdown chunk into fluent, natural Simplified Chinese. Preserve the author\'s original intent; do not rewrite or editorialize.',
     'Rules:',
     '- Preserve the Markdown structure exactly: heading levels, code blocks, inline code, links, images, blockquotes, tables, lists.',
+    '- Links are archival: reproduce every link/image with the SAME destination URL. Close every link with a halfwidth ")" — never a fullwidth "）". Never drop a standalone link paragraph, even when neighboring text already refers to "the link above". Never add, drop, or rebalance code fences (```).',
     '- Tokens like {{BW:url:1}} or {{BW:code:2}} are placeholders for protected content. They MUST appear in the output exactly as given, in the same positions.',
     '- Do not translate, modify, add, or remove any placeholder token.',
     '- Keep URLs, image paths, code, and technical identifiers unchanged.',
@@ -215,6 +216,7 @@ export function createTranslateV2Client(options: TranslateV2Options): TranslateA
 
     const contentMarkdown = translatedBodies.join('\n\n');
     assertMathIntegrity(article.contentMarkdown, contentMarkdown);
+    assertLinkIntegrity(article.contentMarkdown, contentMarkdown);
 
     return {
       translatedTitle,

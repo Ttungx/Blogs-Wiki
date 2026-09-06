@@ -134,7 +134,8 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
       'update_mode', 'prefer_official_zh', 'zh_path_map', 'git_date', 'api',
       'article_paths', 'exclude_paths', 'url_date_pattern',
       'min_content_chars', 'quality_filter', 'allow_non_article_paths',
-
+      'date_fallback',
+      'length_gate',
     ]);
     for (const key of Object.keys(value)) {
       if (!ALLOWED_KEYS.has(key)) {
@@ -156,6 +157,18 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
           issues.push({ path: `[${index}].url_date_pattern`, message: 'must be a valid regex' });
         }
       }
+    }
+
+    // date_fallback：发表日期解析口径（缺省 visible）。
+    if (value.date_fallback !== undefined
+      && value.date_fallback !== 'visible' && value.date_fallback !== 'conservative') {
+      issues.push({ path: `[${index}].date_fallback`, message: 'must be "visible" or "conservative"' });
+    }
+
+    // length_gate：原文长度前置硬门禁豁免（缺省 default）。
+    if (value.length_gate !== undefined
+      && value.length_gate !== 'default' && value.length_gate !== 'off') {
+      issues.push({ path: `[${index}].length_gate`, message: 'must be "default" or "off"' });
     }
 
     // 按源可调的正整数阈值。

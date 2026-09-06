@@ -116,6 +116,8 @@ export interface SyncArticle {
   originalUrl: string;
   originalLanguage: string;
   publishedAt: string;
+  /** 缺省 = 真实发表日；'ingested' = 无日期按收录日兜底（展示层显示"无"）。 */
+  publishedAtSource?: 'published' | 'ingested';
   imageUrl?: string;
   author?: string;
   sourceDomain: string;
@@ -301,6 +303,14 @@ function parseArticle(value: unknown, index: number): SyncArticle {
   const author = optionalString(obj.author, 'author', where, 256);
   if (imageUrl !== undefined) article.imageUrl = imageUrl;
   if (author !== undefined) article.author = author;
+  if (obj.publishedAtSource !== undefined) {
+    if (obj.publishedAtSource !== 'published' && obj.publishedAtSource !== 'ingested') {
+      throw new SyncPayloadError(
+        `invalid publishedAtSource in ${where}: expected 'published' or 'ingested'`,
+      );
+    }
+    article.publishedAtSource = obj.publishedAtSource;
+  }
 
   // 「入库但不上线」（stage）：缺省上线；quality 字段供复审与模型升级重评
   if (obj.published !== undefined) {
@@ -465,13 +475,14 @@ const SOURCE_UPSERT_SQL = `
 
 const ARTICLE_UPSERT_SQL = `
   INSERT INTO articles (
-    id, source_id, original_url, original_language, published_at,
+    id, source_id, original_url, original_language, published_at, published_at_source,
     image_url, author, source_domain, published, quality_score, quality_model, updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
   ON CONFLICT(source_id, original_url) DO UPDATE SET
     id = excluded.id,
     original_language = excluded.original_language,
     published_at = excluded.published_at,
+    published_at_source = excluded.published_at_source,
     image_url = COALESCE(excluded.image_url, articles.image_url),
     author = COALESCE(excluded.author, articles.author),
     source_domain = excluded.source_domain,
@@ -482,6 +493,7 @@ const ARTICLE_UPSERT_SQL = `
       WHEN articles.id IS excluded.id
         AND articles.original_language IS excluded.original_language
         AND articles.published_at IS excluded.published_at
+        AND articles.published_at_source IS excluded.published_at_source
         AND articles.image_url IS COALESCE(excluded.image_url, articles.image_url)
         AND articles.author IS COALESCE(excluded.author, articles.author)
         AND articles.source_domain IS excluded.source_domain
@@ -602,6 +614,7 @@ function articleUpsert(db: D1Database, article: SyncArticle): D1PreparedStatemen
       article.originalUrl,
       article.originalLanguage,
       article.publishedAt,
+      article.publishedAtSource ?? null,
       article.imageUrl ?? null,
       article.author ?? null,
       article.sourceDomain,

@@ -51,6 +51,7 @@ export function toDomainArticle(source: SourceConfig, article: ExtractedArticle)
     ...(article.author ? { author: article.author } : {}),
     ...(article.imageUrl ? { imageUrl: article.imageUrl } : {}),
     publishedAt: article.publishedAt,
+    ...(article.publishedAtSource ? { publishedAtSource: article.publishedAtSource } : {}),
     originalLanguage: article.originalLanguage,
     contentMarkdown: article.contentMarkdown,
     ...(article.officialZhUrl ? { officialZhUrl: article.officialZhUrl } : {}),

@@ -31,6 +31,7 @@ function toWorkerSource(source: SourceConfig) {
     id: source.id,
     homepageUrl: source.homepage_url,
     ...(source.url_date_pattern ? { urlDatePattern: source.url_date_pattern } : {}),
+    ...(source.date_fallback ? { dateFallback: source.date_fallback } : {}),
     ...(source.prefer_official_zh !== undefined
       ? { preferOfficialZh: source.prefer_official_zh }
       : {}),
@@ -52,6 +53,7 @@ function toExtractedArticle(article: Awaited<ReturnType<typeof fetchWorkerArticl
     contentMarkdown: article.contentMarkdown,
     ...(article.officialZhUrl ? { officialZhUrl: article.officialZhUrl } : {}),
     ...(article.contentSource ? { contentSource: article.contentSource } : {}),
+    ...(article.officialZh ? { officialZh: article.officialZh } : {}),
   };
 }
 
