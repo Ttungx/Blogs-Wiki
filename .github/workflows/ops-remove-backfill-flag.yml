@@ -11,9 +11,20 @@ jobs:
         env:
           KEY: ${{ secrets.RENDER_API_KEY }}
         run: |
-          SID=$(curl -sS -H "Authorization: Bearer $KEY" "https://api.render.com/v1/services?limit=100" | python3 -c "
-          import sys, json
-          data = json.load(sys.stdin)
+          http=$(curl -sS -o /tmp/svc.json -w "%{http_code}" -H "Authorization: Bearer $KEY" "https://api.render.com/v1/services?limit=100")
+          echo "GET /v1/services -> HTTP $http"
+          python3 - <<'PYEOF'
+          import json
+          data = json.load(open('/tmp/svc.json'))
+          if isinstance(data, dict):
+              print('API 响应(非列表):', {k: data[k] for k in list(data)[:3]})
+              raise SystemExit(1)
+          for s in data:
+              print('service:', s.get('name'), '| id:', s.get('id'))
+          PYEOF
+          SID=$(python3 -c "
+          import json
+          data = json.load(open('/tmp/svc.json'))
           ids = [s['id'] for s in data if 'updater' in (s.get('name') or '').lower()]
           print('\n'.join(ids))
           ")
