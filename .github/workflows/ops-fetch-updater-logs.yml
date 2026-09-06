@@ -1,0 +1,28 @@
+name: "Ops: fetch updater logs (temp)"
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch recent updater logs
+        env:
+          KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          SVC=srv-da7ve73bc2fs73carkh0
+          code=$(curl -sS -o /tmp/logs.json -w "%{http_code}" \
+            -H "Authorization: Bearer $KEY" \
+            "https://api.render.com/v1/services/$SVC/logs?limit=100&direction=BACKWARD&type=TEXT")
+          echo "GET logs -> HTTP $code"
+          python3 - <<'PYEOF'
+          import json
+          data = json.load(open('/tmp/logs.json'))
+          logs = data.get('logs', [])
+          print(f'共 {len(logs)} 条(倒序),取前 60 条:')
+          for entry in logs[:60]:
+              msg = (entry.get('message') or '').rstrip()
+              if msg:
+                  print(msg[:220])
+          PYEOF
