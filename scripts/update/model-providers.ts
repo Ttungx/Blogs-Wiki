@@ -17,7 +17,25 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import type { AiProviderConfig, ProviderRateLimit } from './ai-provider';
+import type { AiProviderConfig } from './ai-provider';
+
+/**
+ * 速率限制(model_provider.yaml 的 rate_limit 结构);整项 null = 不限,
+ * 子字段 null/省略 = 该项不限。tokens_* 为预留字段:当前版本解析保留、
+ * 暂不强制(token 计数需响应 usage,后续接入;429 退避仍兜底)。
+ */
+export interface ProviderRateLimit {
+  /** 并发在途请求上限(进程内信号量)。 */
+  concurrency?: number;
+  /** 每分钟请求数上限(槽位均匀铺开)。 */
+  requests_per_minute?: number;
+  /** 每日请求数上限(进程内计数、跨天重置;超限抛错,由调用方回退备用服务商)。 */
+  requests_per_day?: number;
+  /** 每分钟 token 上限(预留)。 */
+  tokens_per_minute?: number;
+  /** 每日 token 上限(预留)。 */
+  tokens_per_day?: number;
+}
 
 export interface ModelEntry extends AiProviderConfig {
   /** 所属服务商名。 */

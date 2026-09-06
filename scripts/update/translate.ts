@@ -362,6 +362,7 @@ export async function requestChatCompletion(
 
   const attempt = async (): Promise<string> => {
     let rawText: string;
+    let httpStatus = 0;
     try {
       const response = await fetchImpl(endpoint, {
         method: 'POST',
@@ -372,6 +373,7 @@ export async function requestChatCompletion(
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(timeoutMs),
       });
+      httpStatus = response.status;
       rawText = await response.text().catch((error: unknown) => {
         const reason = error instanceof Error ? error.message : String(error);
         throw new Error(`translate response read failed (HTTP ${response.status}): ${reason}`);
@@ -401,13 +403,13 @@ export async function requestChatCompletion(
     try {
       envelope = JSON.parse(rawText);
     } catch {
-      throw new Error(`translate response is not JSON (${endpoint}, HTTP ${response.status}): ${truncate(rawText, 500)}`);
+      throw new Error(`translate response is not JSON (${endpoint}, HTTP ${httpStatus}): ${truncate(rawText, 500)}`);
     }
 
     const content = extractMessageContent(envelope);
     if (typeof content !== 'string' || content.trim() === '') {
       throw new Error(
-        `translate response has no message content (${endpoint}, HTTP ${response.status}): ${truncate(rawText, 500)}`,
+        `translate response has no message content (${endpoint}, HTTP ${httpStatus}): ${truncate(rawText, 500)}`,
       );
     }
     return content;
