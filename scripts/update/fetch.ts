@@ -34,8 +34,9 @@ class HttpStatusError extends Error {
 /**
  * Some CDNs block the Node TLS fingerprint with HTTP 403 while accepting
  * other TLS stacks (curl, Python). Fall back to the system curl binary once.
+ * direct=true 时跳过代理直连(本机 clash 规则性拒连的域名直连往往可达)。
  */
-async function fetchWithCurl(url: string): Promise<string> {
+async function fetchWithCurl(url: string, direct = false): Promise<string> {
   const args = [
     '-sS',
     '-L',
@@ -46,7 +47,7 @@ async function fetchWithCurl(url: string): Promise<string> {
     '-H',
     'Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8',
   ];
-  const proxyUrl = proxyUrlFor(url);
+  const proxyUrl = direct ? undefined : proxyUrlFor(url);
   if (proxyUrl) args.push('-x', proxyUrl);
   args.push(url);
   const { stdout } = await execFileAsync('curl', args, {
@@ -90,6 +91,16 @@ async function fetchHtml(fetchImpl: FetchLike, url: string, source: SourceConfig
       } else if (error instanceof HttpStatusError && RETRY_STATUSES.has(error.status)) {
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
         html = await attempt();
+      } else if (error instanceof TypeError) {
+        // 网络层失败(undici "fetch failed":代理拒连/DNS/TLS)——回退 curl 链:
+        // 先带代理,失败再直连(本机 clash 规则性拒连的域名直连往往可达;
+        // 无代理环境一次 curl 即兜底)。
+        try {
+          html = await fetchWithCurl(url);
+        } catch (curlError) {
+          if (!proxyUrlFor(url)) throw curlError;
+          html = await fetchWithCurl(url, true);
+        }
       } else {
         throw error;
       }

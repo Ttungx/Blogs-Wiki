@@ -121,6 +121,19 @@ async function fetchWithRetry(fetchImpl: FetchLike, url: string, sourceId: strin
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
       return fetchWithRetry(fetchImpl, url, sourceId);
     }
+    if (error instanceof TypeError) {
+      // 网络层失败(undici "fetch failed":代理拒连/DNS/TLS)——回退 curl 链,
+      // 先带代理再直连(与 discovery fetchText、node fetchHtml 行为对齐)。
+      // 真 Worker 运行时无 curl runner,保持原错误。
+      if (!getCurlRunner()) throw error;
+      const proxyUrl = proxyUrlFor(url);
+      try {
+        return await fetchWithCurl(url, proxyUrl);
+      } catch (curlError) {
+        if (!proxyUrl) throw curlError;
+        return await fetchWithCurl(url);
+      }
+    }
     throw error;
   }
 }
