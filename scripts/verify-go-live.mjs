@@ -7,7 +7,7 @@
  *
  * 检查项：
  *   站点首页 / /api/health/ 200
- *   /api/content-sync/check|items 未认证 401（路由在线且受保护）
+ *   /api/content-sync/check|items|pending-translations 未认证 401（路由在线且受保护）
  *   Render /healthz ok、/status JSON（源数、忙碌态、最近一次链）
  *   --d1: wrangler 查远程 D1 最近 24h 翻译入库数（自动 tick 的落地证据；
  *         0 篇为 WARN——可能是安静期，不阻断）
@@ -54,6 +54,7 @@ const postJson = (body) => ({
 });
 await expectHttp('/api/content-sync/check/ 未认证 401', `${SITE}/api/content-sync/check/`, 401, postJson('{"items":[]}'));
 await expectHttp('/api/content-sync/items/ 未认证 401', `${SITE}/api/content-sync/items/`, 401, postJson('{"items":[]}'));
+await expectHttp('/api/content-sync/pending-translations/ 未认证 401', `${SITE}/api/content-sync/pending-translations/`, 401, postJson('{"sourceId":"x"}'));
 
 // ── Render runner ────────────────────────────────────
 const health = await expectHttp('Render /healthz', `${RUNNER}/healthz`, 200);

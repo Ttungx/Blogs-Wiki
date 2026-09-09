@@ -33,6 +33,18 @@ services:
         value: "https://blogswiki.dpdns.org/api/content-sync/check/"
       - key: MODEL_REASONING_EFFORT
         value: low
+      # 每源每轮抓取篇数。默认 3 篇在 7 小时/源的轮转节奏下吞吐过低：
+      # 高频源（openai/anthropic 等）一天的新文可能超过 3 篇，又恰逢抓取
+      # 失败就会整轮空转。提到 5 篇后按 D1 写入预算估算约 700 篇/天，
+      # 远低于 9 万行/天的警戒线（docs/d1-write-budget.md）。
+      - key: UPDATE_LIMIT
+        value: "5"
+      # 每轮从 D1 补翻的「有原文缺中译」文章数（0 = 关闭）。
+      - key: TRANSLATE_BACKLOG_LIMIT
+        value: "2"
+      # node 后端抽出过短正文时回退 Defuddle 的阈值（字符）。
+      - key: FETCH_FALLBACK_MIN_CHARS
+        value: "200"
       - key: RUNNER_KEY
         sync: false
       - key: CONTENT_SYNC_TOKEN
@@ -42,4 +54,15 @@ services:
       - key: OPENAI_BASE_URL
         sync: false
       - key: TRANSLATION_MODEL
+        sync: false
+      # 翻译提供商注册表（2026-09-09 起统一遵从 model_provider.yaml）：
+      # 该文件敏感已 gitignore，Render 容器拿不到，两种注入方式二选一：
+      #   A. MODEL_PROVIDER_YAML —— 在 dashboard 把 model_provider.yaml 全文
+      #      贴进这个环境变量（推荐，重启不丢）；
+      #   B. MODEL_PROVIDER_FILE —— 配合 Render Secret Files 把文件挂到
+      #      容器内路径（如 /etc/secrets/model_provider.yaml），此变量填该路径。
+      # 设置任一变量后，AI_PROVIDER* 槽位链与平铺变量即被忽略（所有翻译
+      # 入口——update 内联 / translate:batch / translate:backlog——统一走
+      # 注册表的 priority 链，含 rate_limit 与 expire 自动剔除）。
+      - key: MODEL_PROVIDER_YAML
         sync: false

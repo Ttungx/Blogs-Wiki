@@ -90,6 +90,58 @@ function pruneLogs() {
 
 let busy = false;
 let lastRun = null;
+// 每源最近若干轮的运行结果。容器每 1-2 轮重建，内存态随之重置；这里只求
+// 「本实例可见的最近历史」，够用来回答「这个源到底还活着吗」。
+const RUN_HISTORY_LIMIT = 60;
+const runHistory = [];
+
+/**
+ * 从链日志里抠出本轮吞吐指标。日志行形如：
+ *   [openai] discovered 205, new 7, processing 3
+ *   openai: discovered=205 new=7 processed=1 failed=2
+ */
+function extractRunMetrics(text) {
+  const metrics = { discovered: null, new: null, processing: null, processed: null, failed: null };
+  const progress = text.match(/discovered\s+(\d+),\s+new\s+(\d+),\s+processing\s+(\d+)/);
+  if (progress) {
+    metrics.discovered = Number(progress[1]);
+    metrics.new = Number(progress[2]);
+    metrics.processing = Number(progress[3]);
+  }
+  const summary = text.match(/processed=(\d+)\s+failed=(\d+)/);
+  if (summary) {
+    metrics.processed = Number(summary[1]);
+    metrics.failed = Number(summary[2]);
+  }
+  return metrics;
+}
+
+/** 值得打进日志流的行：抓取失败、翻译降级、门禁拒绝、OOM 等。 */
+const NOISE_RE = /error:|Error:|warning:|WARN |FATAL|failed|rejected|degraded/i;
+
+function extractNotableLines(text) {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && NOISE_RE.test(line))
+    .slice(-25);
+}
+
+/**
+ * 按源汇总「最近 N 轮是否持续零产出」。只统计本实例见到的轮次；
+ * 阈值 2 轮即可报警——7 小时一轮的源，连续 2 轮空转就是 14 小时没进新文章。
+ */
+function summarizeZeroYield(history) {
+  const bySource = new Map();
+  for (const run of history) {
+    if (!run || !run.sourceId) continue;
+    const entry = bySource.get(run.sourceId) ?? { sourceId: run.sourceId, runs: 0, zeroRuns: 0 };
+    entry.runs += 1;
+    if (run.metrics?.processed === 0) entry.zeroRuns += 1;
+    bySource.set(run.sourceId, entry);
+  }
+  return [...bySource.values()].filter((e) => e.runs >= 2 && e.zeroRuns === e.runs);
+}
 
 function buildChainScript(sourceId, limitArg, startedAt) {
   // 单条链：发现/去重/抓取/翻译 → 补翻缺失译文 → 质量打分（仅本源）→
@@ -114,10 +166,23 @@ function buildChainScript(sourceId, limitArg, startedAt) {
   const translateStep =
     `npm run translate:batch -- ${sourceArg} --report logs/report` +
     ` || echo "[runner] WARN translate degraded, continuing with originals (${sourceId})"`;
+  // D1 补翻（2026-09-09）：translate:batch 只扫容器本地磁盘，而免费实例每
+  // 1-2 轮就重建，历史英文原文永远扫不到。这一步直接向 D1 要「有原文、缺
+  // 中译」的清单，翻译后写回，与容器本地状态解耦——这是英文残留的自愈通道。
+  // 默认每轮 2 篇（翻译配额考虑），TRANSLATE_BACKLOG_LIMIT=0 可关闭。
+  const backlogLimit = Number((process.env.TRANSLATE_BACKLOG_LIMIT ?? '2').trim());
+  const backlogStep =
+    Number.isFinite(backlogLimit) && backlogLimit > 0
+      ? [
+          `npm run translate:backlog -- ${sourceArg} --limit ${Math.floor(backlogLimit)}` +
+            ` || echo "[runner] WARN translate backlog degraded (${sourceId})"`,
+        ]
+      : [];
   return [
     'set -e',
     fetchStep,
     translateStep,
+    ...backlogStep,
     `npm run quality-scan -- ${sourceArg}`,
     `node scripts/import-local-articles.mjs --json ${sinceArg} ${sourceArg} --output logs/.tmp-import-articles.json`,
     `node scripts/sync-local-articles.mjs --input logs/.tmp-import-articles.json`,
@@ -152,18 +217,46 @@ function startUpdateChain(sourceId, limitArg) {
       busy = false;
       lastRun.status = code === 0 ? 'ok' : `exit-${code}`;
       lastRun.finishedAt = new Date().toISOString();
-      console.log(`[runner] ${sourceId} chain ${lastRun.status} (${lastRun.logFile})`);
-      // 链路失败时把日志尾部打到 stdout（Render 日志流可见），并存入
-      // lastRun.errorTail（/status 暴露），否则错误只在容器文件里。
+
+      let logText = '';
+      try {
+        logText = readFileSync(lastRun.logFile, 'utf8');
+      } catch (e) {
+        console.error(`[runner] failed to read chain log: ${e.message}`);
+      }
+      lastRun.metrics = extractRunMetrics(logText);
+      const m = lastRun.metrics;
+
+      console.log(
+        `[runner] ${sourceId} chain ${lastRun.status} (${lastRun.logFile})` +
+          (m.processed !== null ? ` processed=${m.processed} failed=${m.failed}` : ''),
+      );
+
       if (code !== 0) {
-        try {
-          const tail = readFileSync(lastRun.logFile, 'utf8').split('\n').slice(-40).join('\n');
-          lastRun.errorTail = tail.slice(-4000);
-          console.error(`[runner] === chain failure log tail (${sourceId}) ===\n${tail}`);
-        } catch (e) {
-          console.error(`[runner] failed to read chain log: ${e.message}`);
+        // 链路失败：把日志尾部打到 stdout（Render 日志流可见），并存入
+        // lastRun.errorTail（/status 暴露），否则错误只在容器文件里。
+        const tail = logText.split('\n').slice(-40).join('\n');
+        lastRun.errorTail = tail.slice(-4000);
+        console.error(`[runner] === chain failure log tail (${sourceId}) ===\n${tail}`);
+      } else {
+        // 成功轮次同样要把告警行打进日志流。2026-09-09 事故根因：源级失败
+        // 与篇级失败都不改退出码，链照常 CHAIN_OK，于是「每轮 0 篇入库」
+        // 在 Render 日志流里和「正常运转」长得一模一样，连续 7 天无人察觉。
+        const notable = extractNotableLines(logText);
+        if (notable.length > 0) {
+          lastRun.warningTail = notable.join('\n').slice(-4000);
+          console.warn(`[runner] === chain warning summary (${sourceId}) ===\n${lastRun.warningTail}`);
+        }
+        if (m.processed === 0) {
+          console.warn(
+            `[runner] ${sourceId} produced 0 new article(s) this round ` +
+              `(discovered=${m.discovered} new=${m.new} processing=${m.processing})`,
+          );
         }
       }
+
+      runHistory.push(lastRun);
+      if (runHistory.length > RUN_HISTORY_LIMIT) runHistory.shift();
       pruneLogs();
     });
     child.on('error', (err) => {
@@ -226,6 +319,10 @@ function handle(req, res, sources, bootAt) {
     respond(res, 200, {
       busy,
       lastRun,
+      // 最近若干轮（本实例内存态）。用来判断某个源是不是长期 0 产出：
+      // 连着几轮 processed=0 就说明它已经事实停更，而不是「暂时没新文章」。
+      history: runHistory,
+      zeroYieldSources: summarizeZeroYield(runHistory),
       activeSources: sources.length,
       intervalMinutes: Math.round(INTERVAL_MS / 60_000),
       uptimeSeconds: Math.round((Date.now() - bootAt) / 1000),

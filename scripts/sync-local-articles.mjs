@@ -127,6 +127,17 @@ for (const [index, chunk] of chunks.entries()) {
   updated += result.articles?.updated ?? 0;
   const skipped = result.articles?.skipped ?? 0;
   console.log(`Synced chunk ${index + 1}/${chunks.length}: ${result.articles?.received ?? 0} articles (skipped ${skipped})`);
+  // 部分失败不再整批回滚（Worker 侧已降级为逐条隔离），但仍要在日志流里
+  // 留痕——否则「每轮都有几篇写不进去」会静默累积成源的长期缺口。
+  if (result.failedStatements > 0) {
+    console.warn(
+      `WARN content sync partial failure (chunk ${index + 1}/${chunks.length}): ` +
+        `${result.failedStatements} statement(s) skipped`,
+    );
+    for (const failure of result.failures ?? []) {
+      console.warn(`  - ${failure}`);
+    }
+  }
 }
 
 console.log(`Content sync complete: ${payload.articles.length} articles, created ${created}, updated ${updated}`);

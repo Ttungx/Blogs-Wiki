@@ -155,6 +155,14 @@ export interface ContentSyncResult {
   };
   /** 实际执行的 D1 batch 数（每批 ≤ D1_BATCH_LIMIT 条）。 */
   batches: number;
+  /**
+   * 降级执行时被跳过（执行失败）的语句数。>0 表示本批部分失败：其余文章
+   * 已正常入库，只有这些语句被隔离丢弃。2026-09-09 之前 db.batch 是原子的，
+   * 一条 UNIQUE 冲突就让整源整批回滚，源因此永久停更。
+   */
+  failedStatements?: number;
+  /** 被跳过语句的错误摘要（最多 10 条，供 Render 日志流审计）。 */
+  failures?: string[];
 }
 
 /** 端点 env：D1 + Bearer secret（secret 未注入时端点拒绝服务）。 */
@@ -924,6 +932,54 @@ function findExistingArticleKeys(db: D1Database, articles: SyncArticle[]): Promi
 }
 
 /**
+ * 主键冲突预检：找出「载荷里的 id 已被库中另一篇不同 (source_id,
+ * original_url) 的文章占用」的 id 集合。
+ *
+ * 背景（2026-09-09 事故）：articles 主键是 `id`，而 ARTICLE_UPSERT_SQL 的
+ * 冲突目标是 `(source_id, original_url)`，两者口径不一致。slug 只取 URL 末段
+ * （urls.ts），不同路径可能塌缩成同一个 id。此时按 (source_id, original_url)
+ * 的预检查不到任何既有行 → 判为 created → 不做身份预清理 → INSERT 撞
+ * UNIQUE(articles.id)。而 db.batch 原子，一条冲突让整批回滚、整源永久停更
+ * （evomap / cursor / qwen 连续多日每轮 HTTP 500）。
+ *
+ * 只在确实冲突时返回对应 id，绝大多数轮次为空集 → 零额外写入。
+ */
+async function findIdCollisions(
+  db: D1Database,
+  articles: SyncArticle[],
+): Promise<Set<string>> {
+  const ids = [...new Set(articles.map((a) => a.id))].filter(Boolean);
+  const collisions = new Set<string>();
+  if (ids.length === 0) return collisions;
+
+  const chunkSize = 100;
+  const owners = new Map<string, { sourceId: string; originalUrl: string }>();
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const slice = ids.slice(i, i + chunkSize);
+    const placeholders = slice.map(() => '?').join(', ');
+    const result = await db
+      .prepare(`SELECT id, source_id, original_url FROM articles WHERE id IN (${placeholders})`)
+      .bind(...slice)
+      .all();
+    for (const row of result.results ?? []) {
+      owners.set(String(row.id), {
+        sourceId: String(row.source_id),
+        originalUrl: String(row.original_url),
+      });
+    }
+  }
+
+  for (const article of articles) {
+    const owner = owners.get(article.id);
+    if (!owner) continue;
+    if (owner.sourceId !== article.sourceId || owner.originalUrl !== article.originalUrl) {
+      collisions.add(article.id);
+    }
+  }
+  return collisions;
+}
+
+/**
  * 构建全部写入语句并分类 created/updated/skipped。
  * 语句顺序：sources upsert → 每篇 (article upsert → versions upsert →
  * categories 整体替换) → sql 直通语句。同一 batch 内保持该顺序。
@@ -945,6 +1001,7 @@ async function prepareSyncWrite(
 
   const existingKeys = await findExistingArticleKeys(db, payload.articles);
   const existingRows = await pointQueryExistingArticles(db, payload.articles, existingKeys);
+  const idCollisions = await findIdCollisions(db, payload.articles);
   let created = 0;
   let updated = 0;
   let skipped = 0;
@@ -954,6 +1011,12 @@ async function prepareSyncWrite(
     const existing = existingKeys.has(key) ? (existingRows.get(key) ?? null) : null;
     if (existing == null) {
       created += 1;
+      // 全新 URL 也可能撞主键：id 已被库中另一篇不同身份的文章占用（见
+      // findIdCollisions 注释）。此时必须先做身份预清理腾出主键，否则
+      // INSERT 直接 UNIQUE 失败并回滚整批。
+      if (idCollisions.has(article.id)) {
+        statements.push(...articleIdentityPreClean(db, article));
+      }
     } else {
       // 阶段 B：整篇跳过判定（身份 id + 全部版本指纹 + 分类全等 → 零写入）。
       if (isArticleUnchanged(existing, article)) {
@@ -1002,6 +1065,22 @@ async function prepareSyncWrite(
   return { statements, created, updated, skipped };
 }
 
+/** 逐条执行一批语句，把失败项隔离掉（返回失败摘要）。 */
+async function executeStatementsIndividually(
+  db: D1Database,
+  chunk: D1PreparedStatement[],
+): Promise<string[]> {
+  const failures: string[] = [];
+  for (const statement of chunk) {
+    try {
+      await db.batch([statement]);
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  return failures;
+}
+
 /** 执行同步：分批 db.batch() 写入，返回统计。 */
 export async function executeContentSync(
   db: D1Database,
@@ -1010,8 +1089,22 @@ export async function executeContentSync(
   const { statements, created, updated, skipped } = await prepareSyncWrite(db, payload);
 
   let batches = 0;
+  const failures: string[] = [];
   for (let i = 0; i < statements.length; i += D1_BATCH_LIMIT) {
-    await db.batch(statements.slice(i, i + D1_BATCH_LIMIT));
+    const chunk = statements.slice(i, i + D1_BATCH_LIMIT);
+    try {
+      await db.batch(chunk);
+    } catch (error) {
+      // db.batch 是原子的：一条语句冲突就回滚整批。2026-09-09 事故中，这意味
+      // 着一篇文章的主键冲突能让整个源连续多日零入库。降级为逐条执行，把坏
+      // 语句隔离，其余文章照常入库并在响应里报告失败数。
+      const isolated = await executeStatementsIndividually(db, chunk);
+      if (isolated.length === 0) {
+        failures.push(error instanceof Error ? error.message : String(error));
+      } else {
+        failures.push(...isolated);
+      }
+    }
     batches += 1;
   }
 
@@ -1028,6 +1121,9 @@ export async function executeContentSync(
       executed: payload.sql.length,
     },
     batches,
+    ...(failures.length > 0
+      ? { failedStatements: failures.length, failures: failures.slice(0, 10) }
+      : {}),
   };
 }
 
@@ -1274,6 +1370,100 @@ export async function handleContentCheck(
       { error: error instanceof Error ? error.message : String(error) },
       500,
     );
+  }
+}
+
+// ── 待补翻清单（从 D1 取缺中译的原文） ──────────────
+
+/**
+ * 2026-09-09：补翻必须能从 D1 取数。此前 translate:batch 只扫容器本地磁盘，
+ * 而 Render 免费实例每 1-2 轮就换一个 instance、本地文件系统随之重置，
+ * 历史英文原文永远扫不到 —— 译文缺失因此不可自愈。改由 D1 提供「有原文、
+ * 无中文版本」的清单，补翻才真正闭环。
+ */
+
+/** 单次可取的待补翻文章上限（正文随行返回，需限制条数）。 */
+export const MAX_PENDING_TRANSLATIONS = 50;
+
+export interface PendingTranslation {
+  id: string;
+  sourceId: string;
+  originalUrl: string;
+  originalLanguage: string;
+  publishedAt: string;
+  publishedAtSource?: 'published' | 'ingested';
+  imageUrl?: string;
+  author?: string;
+  sourceDomain: string;
+  title: string;
+  contentMarkdown: string;
+}
+
+const PENDING_TRANSLATIONS_SQL = `
+  SELECT a.id, a.source_id, a.original_url, a.original_language, a.published_at,
+         a.published_at_source, a.image_url, a.author, a.source_domain,
+         v.title, v.content_markdown
+  FROM articles a
+  JOIN article_versions v
+    ON v.article_id = a.id AND v.language = a.original_language
+  WHERE a.source_id = ?
+    AND NOT EXISTS (
+      SELECT 1 FROM article_versions z
+      WHERE z.article_id = a.id AND z.language IN ('zh', 'zh-cn')
+    )
+  ORDER BY a.published_at IS NULL, a.published_at DESC
+  LIMIT ?
+`;
+
+export async function findPendingTranslations(
+  db: D1Database,
+  sourceId: string,
+  limit: number,
+): Promise<PendingTranslation[]> {
+  const result = await db.prepare(PENDING_TRANSLATIONS_SQL).bind(sourceId, limit).all();
+  return (result.results ?? []).map((row) => ({
+    id: String(row.id),
+    sourceId: String(row.source_id),
+    originalUrl: String(row.original_url),
+    originalLanguage: String(row.original_language ?? 'en'),
+    publishedAt: String(row.published_at ?? ''),
+    ...(row.published_at_source
+      ? { publishedAtSource: String(row.published_at_source) as 'published' | 'ingested' }
+      : {}),
+    ...(row.image_url ? { imageUrl: String(row.image_url) } : {}),
+    ...(row.author ? { author: String(row.author) } : {}),
+    sourceDomain: String(row.source_domain ?? ''),
+    title: String(row.title ?? ''),
+    contentMarkdown: String(row.content_markdown ?? ''),
+  }));
+}
+
+/** POST /api/content-sync/pending-translations —— 取某源缺中译的文章。 */
+export async function handlePendingTranslations(
+  request: Request,
+  env: ContentSyncEnv,
+): Promise<Response> {
+  const authorized = await authorizeAndReadBody(request, env);
+  if ('ok' in authorized) return authorized;
+
+  let payload: { sourceId?: unknown; limit?: unknown };
+  try {
+    payload = JSON.parse(new TextDecoder().decode(authorized.body)) as typeof payload;
+  } catch {
+    return json({ error: 'invalid payload' }, 400);
+  }
+
+  const sourceId = typeof payload.sourceId === 'string' ? payload.sourceId.trim() : '';
+  if (!sourceId) return json({ error: 'sourceId is required' }, 400);
+
+  const raw = typeof payload.limit === 'number' ? payload.limit : Number(payload.limit);
+  const limit =
+    Number.isFinite(raw) && raw > 0 ? Math.min(Math.floor(raw), MAX_PENDING_TRANSLATIONS) : 20;
+
+  try {
+    return json({ articles: await findPendingTranslations(env.DB, sourceId, limit) });
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
 }
 

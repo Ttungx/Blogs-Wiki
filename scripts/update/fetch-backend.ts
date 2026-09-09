@@ -58,6 +58,63 @@ function toExtractedArticle(article: Awaited<ReturnType<typeof fetchWorkerArticl
   };
 }
 
+/**
+ * node（Readability）抽出「过短」正文时回退 Defuddle 的阈值。
+ * 2026-09-09 事故：openai.com 等 JS 渲染站点用 Readability 拿不到正文
+ * （Readability failed to extract article content），而 Defuddle 同一篇能
+ * 抽到 3 万字符。生产默认后端是 node，于是这些源长期零收录。
+ */
+const FALLBACK_MIN_CHARS = Number(process.env.FETCH_FALLBACK_MIN_CHARS ?? '200');
+
+function isThin(article: ExtractedArticle | null, minChars: number): boolean {
+  if (!article) return true;
+  return (article.contentMarkdown ?? '').trim().length < minChars;
+}
+
+type NodeFn = (
+  source: SourceConfig,
+  discovered: DiscoveredArticle,
+  fetchImpl: FetchLike,
+) => Promise<ExtractedArticle>;
+
+type WorkerFn = (
+  source: ReturnType<typeof toWorkerSource>,
+  discovered: DiscoveredArticle,
+  fetchImpl: FetchLike,
+) => ReturnType<typeof fetchWorkerArticle>;
+
+/** node 抽取失败/过短时，用 worker（Defuddle）再试一次。 */
+async function withDefuddleFallback(
+  source: SourceConfig,
+  discovered: DiscoveredArticle,
+  fetchImpl: FetchLike,
+  nodeFn: NodeFn,
+  workerFn: WorkerFn,
+): Promise<ExtractedArticle> {
+  const minChars = source.min_content_chars ?? FALLBACK_MIN_CHARS;
+  let firstReason: string | null = null;
+
+  try {
+    const article = await nodeFn(source, discovered, fetchImpl);
+    if (!isThin(article, minChars)) return article;
+    firstReason = `thin content (${(article.contentMarkdown ?? '').trim().length} < ${minChars} chars)`;
+  } catch (error) {
+    firstReason = error instanceof Error ? error.message : String(error);
+  }
+  console.warn(
+    `fetch: node extractor unusable for ${discovered.url} (${firstReason}); retrying with defuddle`,
+  );
+
+  try {
+    return toExtractedArticle(await workerFn(toWorkerSource(source), discovered, fetchImpl));
+  } catch (error) {
+    const secondReason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `both extractors failed for ${discovered.url} (node: ${firstReason}; defuddle: ${secondReason})`,
+    );
+  }
+}
+
 export function createFetchBackend(
   backend: string | undefined,
 ): FetchBackend {
@@ -65,8 +122,16 @@ export function createFetchBackend(
   if (name === 'node') {
     return {
       name,
-      fetchArticle: fetchNodeArticle,
-      fetchArticleWithLocalization: fetchNodeArticleWithLocalization,
+      fetchArticle: (source, discovered, fetchImpl) =>
+        withDefuddleFallback(source, discovered, fetchImpl, fetchNodeArticle, fetchWorkerArticle),
+      fetchArticleWithLocalization: (source, discovered, fetchImpl) =>
+        withDefuddleFallback(
+          source,
+          discovered,
+          fetchImpl,
+          fetchNodeArticleWithLocalization,
+          fetchWorkerArticleWithLocalization,
+        ),
     };
   }
   if (name === 'worker') {

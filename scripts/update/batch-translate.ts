@@ -19,7 +19,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createTranslateClient, routeTranslator } from './translate';
+import { createTranslateClient, routeTranslator, envPositiveInt } from './translate';
 import { createTranslateV2Client } from './translate-v2';
 import { normalizeArticleMarkdown } from './fetch';
 import { resolveAiProviderChain, type AiProviderConfig } from './ai-provider';
@@ -242,9 +242,18 @@ async function run() {
   const errors: string[] = [];
   const startedAt = new Date().toISOString();
 
+  // 提供商熔断（2026-09-09）：主槽位若整体不可用（key 失效/配额耗尽/端点
+  // 下线），逐篇「先试主再回退」会为每篇文章白烧一次注定失败的请求，
+  // 配额与耗时双双翻倍。连续失败达到阈值就在本轮剩余任务里熔断该槽位，
+  // 直接从下一个可用提供商开始。成功即清零计数，临时抖动不会误伤。
+  const providerMaxFailures = envPositiveInt('TRANSLATE_PROVIDER_MAX_FAILURES', 3);
+  const consecutiveFailures = new Array<number>(translates.length).fill(0);
+  const tripped = new Array<boolean>(translates.length).fill(false);
+
   await runWithConcurrency(targets, options.concurrency * translates.length, async (item) => {
     let lastError: unknown;
     for (let i = 0; i < translates.length; i += 1) {
+      if (tripped[i] && i < translates.length - 1) continue;
       try {
         const translation = await translates[i](item.article, CATEGORIES);
         await repositories.articles.saveVersion({
@@ -258,12 +267,20 @@ async function run() {
           categories: translation.categories,
         });
         success += 1;
+        consecutiveFailures[i] = 0;
         logger.info(`  + ${item.articleId} (${translation.translatedTitle})`);
         return;
       } catch (error) {
         lastError = error;
-        if (i < translates.length - 1) {
-          logger.warn(`  ! ${item.articleId}: ${providers[i].model} 失败，回退 ${providers[i + 1].model}（${error instanceof Error ? error.message.slice(0, 80) : error}）`);
+        consecutiveFailures[i] += 1;
+        const canTrip = i < translates.length - 1;
+        if (canTrip && consecutiveFailures[i]! >= providerMaxFailures && !tripped[i]) {
+          tripped[i] = true;
+          logger.warn(
+            `  ! provider ${providers[i]!.model} 连续失败 ${consecutiveFailures[i]} 次，本轮剩余任务改用 ${providers[i + 1]!.model}`,
+          );
+        } else if (canTrip && !tripped[i]) {
+          logger.warn(`  ! ${item.articleId}: ${providers[i]!.model} 失败，回退 ${providers[i + 1]!.model}（${error instanceof Error ? error.message.slice(0, 80) : error}）`);
         }
       }
     }

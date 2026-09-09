@@ -108,6 +108,25 @@ async function run() {
     }, summary);
     console.log(`Report written: ${jsonPath} ${mdPath}`);
   }
+
+  // 源级失败（发现失败 / 整源异常）必须让退出码非零。
+  // 2026-09-09 事故：runner 捕获源级异常后只 logger.error 就继续，链尾
+  // 照常 echo CHAIN_OK，Render 日志流只剩 "chain ok"——openai 连续 7 天
+  // 每轮 0 篇入库却显示一切正常。篇级失败（抓取/翻译）仍按「原文先行」
+  // 保持零退出码，不牵连整条链。
+  const fatalSources = summary.sources.filter((source) =>
+    source.errors.some((error) => error.kind === 'fatal' && !error.url),
+  );
+  if (fatalSources.length > 0) {
+    for (const source of fatalSources) {
+      for (const error of source.errors) {
+        if (error.kind === 'fatal' && !error.url) {
+          console.error(`fatal: [${source.sourceId}] ${error.message}`);
+        }
+      }
+    }
+    process.exitCode = 1;
+  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -1,9 +1,9 @@
 import { createFetchBackend, type FetchBackend } from './fetch-backend';
 import { fetchKnownRemoteUrls, reportRejectedUrls, type RejectedItem } from './dedupe';
 import { discoverSource } from './discovery';
-import { createTranslateClient, routeTranslator } from './translate';
+import { createTranslateClient, routeTranslator, envPositiveInt } from './translate';
 import { createTranslateV2Client } from './translate-v2';
-import { resolveAiProvider } from './ai-provider';
+import { resolveAiProviderChain } from './ai-provider';
 import { selectSourcesForRun } from './source-policy';
 import { loadSources } from './config';
 import { createFetchImpl } from './network';
@@ -121,21 +121,61 @@ export function buildTranslator(
   if (dryRun) return undefined;
   if (injected) return injected;
 
-  // AI_PROVIDER 未设时回落平铺变量，报错口径不变。
-  const provider = resolveAiProvider(process.env);
-  if (!provider.apiKey || !provider.baseUrl || !provider.model) {
+  // 统一走提供商注册表链（2026-09-09 用户决策：所有翻译入口一致遵从
+  // model_provider.yaml——本地 MODEL_PROVIDER_FILE / 生产 MODEL_PROVIDER_YAML
+  // 内联，两者都未配置时回落 .env 槽位与平铺变量，报错口径不变）。
+  // 此前这里只取链首不回退：主槽位坏掉时内联翻译逐篇失败、原文降级，
+  // 而 batch-translate 却能靠回退成功——同一篇文章两条路径两种命运。
+  const providers = resolveAiProviderChain(process.env);
+  if (
+    providers.length === 0 ||
+    !providers[0]!.apiKey ||
+    !providers[0]!.baseUrl ||
+    !providers[0]!.model
+  ) {
     throw new Error(
       'OPENAI_API_KEY, OPENAI_BASE_URL and TRANSLATION_MODEL are required unless --dry-run is used.',
     );
   }
-  const { apiKey, baseUrl, model } = provider;
 
-  const reasoningEffort = provider.reasoningEffort;
   // 默认 V1 整篇一次（吞吐高）；TRANSLATION_PIPELINE=v2 强制 V2；超长（>100K 字符）兜底 V2。
   const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
-  const v1 = createTranslateClient({ apiKey, baseUrl, model, fetchImpl, reasoningEffort, rateLimit: provider.rateLimit });
-  const v2 = createTranslateV2Client({ apiKey, baseUrl, model, fetchImpl, reasoningEffort, rateLimit: provider.rateLimit });
-  return routeTranslator(v1, v2, forceV2);
+  const translates = providers.map((provider) => {
+    const common = {
+      apiKey: provider.apiKey,
+      baseUrl: provider.baseUrl,
+      model: provider.model,
+      reasoningEffort: provider.reasoningEffort,
+      rateLimit: provider.rateLimit,
+      fetchImpl,
+    } as const;
+    return routeTranslator(createTranslateClient(common), createTranslateV2Client(common), forceV2);
+  });
+  if (translates.length === 1) return translates[0]!;
+
+  // 多提供商：失败依次回退；主槽位连续失败达阈值即熔断（与 batch-translate
+  // 相同语义，避免坏槽位在整轮 update 里逐篇白烧请求）。
+  const maxFailures = envPositiveInt('TRANSLATE_PROVIDER_MAX_FAILURES', 3);
+  let consecutiveFailures = 0;
+  let tripped = false;
+  return async (article, categories) => {
+    let lastError: unknown;
+    for (let i = 0; i < translates.length; i += 1) {
+      if (tripped && i < translates.length - 1) continue;
+      try {
+        const result = await translates[i]!(article, categories);
+        consecutiveFailures = 0;
+        return result;
+      } catch (error) {
+        lastError = error;
+        consecutiveFailures += 1;
+        if (i < translates.length - 1 && consecutiveFailures >= maxFailures) {
+          tripped = true;
+        }
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  };
 }
 
 /** 门禁拒绝上报端点：由 CONTENT_SYNC_URL 派生（…/api/content-sync/items/）。 */

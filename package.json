@@ -23,6 +23,7 @@
     "block:source": "tsx scripts/update/block-source.ts",
     "backfill": "tsx --env-file-if-exists=.env scripts/update/backfill.ts",
     "translate:batch": "tsx --env-file-if-exists=.env scripts/update/batch-translate.ts",
+    "translate:backlog": "tsx --env-file-if-exists=.env scripts/update/translate-backlog.ts",
     "update": "tsx --env-file-if-exists=.env scripts/update/index.ts",
     "update:dry": "tsx --env-file-if-exists=.env scripts/update/index.ts --dry-run",
     "quality-scan": "tsx --env-file-if-exists=.env scripts/update/quality-scan-local.ts"
