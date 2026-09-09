@@ -234,6 +234,13 @@ async function run() {
   };
   const translates = providers.map((p) => makeTranslate(p));
   logger.info(`Translation providers: ${providers.map((p) => p.model).join(' → ')}（主→回退）`);
+  // WARN 前缀使其进入 render-runner 的 chain warning summary（Render 日志流
+  // 唯一可见窗口），远程即可审计 MODEL_PROVIDER_YAML 是否真的生效。
+  logger.warn(
+    `WARN provider chain audit: ${providers.map((p) => p.model).join(' -> ')}` +
+      ` (inline=${Boolean((process.env.MODEL_PROVIDER_YAML ?? '').trim())},` +
+      ` file=${(process.env.MODEL_PROVIDER_FILE ?? '').trim() || '-'})`,
+  );
   logger.info(`Translation pipeline: ${forceV2 ? 'v2 (forced)' : 'v1 whole-article (v2 fallback >100k chars)'}`);
   const repositories = createUpdateRepositories({ rootDir, backend: 'file' });
 

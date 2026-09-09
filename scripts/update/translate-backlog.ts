@@ -181,6 +181,13 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
 
   const providers = resolveAiProviderChain(process.env);
   if (providers.length === 0) throw new Error('no translation provider configured');
+  // WARN 前缀使其进入 render-runner 的 chain warning summary，远程审计
+  // MODEL_PROVIDER_YAML 是否真的生效（MCP/Dashboard 写值曾多次未落地）。
+  console.warn(
+    `WARN provider chain audit: ${providers.map((p) => p.model).join(' -> ')}` +
+      ` (inline=${Boolean((process.env.MODEL_PROVIDER_YAML ?? '').trim())},` +
+      ` file=${(process.env.MODEL_PROVIDER_FILE ?? '').trim() || '-'})`,
+  );
   const forceV2 = (process.env.TRANSLATION_PIPELINE ?? 'v1').trim().toLowerCase() === 'v2';
   const translates = providers.map((p) => {
     const common = {
