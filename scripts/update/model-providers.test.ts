@@ -150,6 +150,25 @@ providers:
   assert.equal(chain[0].model, 'm-inline', '内联应优先于文件');
 });
 
+test('model-providers: 只设 MODEL_PROVIDER_YAML(无 FILE)时链入口也走注册表', () => {
+  // 2026-09-09 生产事故：resolveAiProviderChain 入口只认 FILE，Render 只设
+  // YAML 时被静默忽略，翻译回落 AI_PROVIDER 槽位（audit 行 inline=true 却
+  // 走 MiniMax 暴露）。此测试锁定「仅 inline」场景。
+  const inline = `
+providers:
+- name: inline-only
+  base_url: https://inline.example/v1
+  api_key: ki
+  models:
+  - model: m-only-inline
+    priority: 1
+`;
+  const chain = resolveAiProviderChain({ MODEL_PROVIDER_YAML: inline });
+  assert.equal(chain.length, 1);
+  assert.equal(chain[0].model, 'm-only-inline');
+  assert.equal(resolveAiProvider({ MODEL_PROVIDER_YAML: inline }).model, 'm-only-inline');
+});
+
 test('model-providers: modelProviderFilePath 相对路径基于 cwd 解析', () => {
   assert.equal(modelProviderFilePath({}), null);
   assert.equal(

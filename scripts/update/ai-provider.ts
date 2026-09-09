@@ -74,7 +74,7 @@ function readSlot(env: AiProviderEnv, slot: AiProviderSlotId): AiProviderConfig 
  *   （保持 runner/batch-translate 现有报错文案与 dry-run 行为不变）。
  */
 export function resolveAiProvider(env: AiProviderEnv = process.env): AiProviderConfig {
-  if ((env.MODEL_PROVIDER_FILE ?? '').trim()) {
+  if ((env.MODEL_PROVIDER_FILE ?? '').trim() || (env.MODEL_PROVIDER_YAML ?? '').trim()) {
     return resolveAiProviderChain(env)[0];
   }
   const selector = trimmed(env.AI_PROVIDER);
@@ -102,7 +102,12 @@ export function resolveAiProvider(env: AiProviderEnv = process.env): AiProviderC
  * 每个 concurr配额/限速由翻译请求层按模型独立执行。
  */
 export function resolveAiProviderChain(env: AiProviderEnv = process.env): AiProviderConfig[] {
-  if ((env.MODEL_PROVIDER_FILE ?? '').trim()) {
+  // 注册表入口：文件（MODEL_PROVIDER_FILE）或内联（MODEL_PROVIDER_YAML）任一
+  // 设置即走 model_provider.yaml 链。2026-09-09 修复：入口此前只认 FILE，
+  // inline 支持只做在了 loadModelProviders 内部——生产（Render）只设 YAML
+  // 时被静默忽略，翻译一直回落 AI_PROVIDER 槽位（audit 行 inline=true 却
+  // 走 MiniMax 暴露了这一点）。
+  if ((env.MODEL_PROVIDER_FILE ?? '').trim() || (env.MODEL_PROVIDER_YAML ?? '').trim()) {
     return loadModelProviders(env).providers;
   }
   return resolveAiProviderPair(env);
@@ -115,7 +120,7 @@ export function resolveAiProviderChain(env: AiProviderEnv = process.env): AiProv
  * 文件模式请改用 resolveAiProviderChain。
  */
 export function resolveAiProviderPair(env: AiProviderEnv = process.env): AiProviderConfig[] {
-  if ((env.MODEL_PROVIDER_FILE ?? '').trim()) {
+  if ((env.MODEL_PROVIDER_FILE ?? '').trim() || (env.MODEL_PROVIDER_YAML ?? '').trim()) {
     const { providers } = loadModelProviders(env);
     return providers.slice(0, 2);
   }
