@@ -18,12 +18,14 @@
  *   CONTENT_SYNC_URL / CONTENT_SYNC_TOKEN      写回 D1
  *   BACKLOG_SYNC_URL（可选）                   取清单端点，缺省由
  *     CONTENT_SYNC_URL 推导为 .../pending-translations/
- *   TRANSLATE_BACKLOG_LIMIT                    默认每轮 2 篇（翻译配额考虑）
+ *   TRANSLATE_BACKLOG_LIMIT                    默认每轮 4 篇（翻译配额考虑）
+ *   TRANSLATE_PROVIDER_MAX_FAILURES            提供商熔断阈值（默认连败 3 次；
+ *                                              认证类失败首败即熔断）
  */
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createTranslateClient, routeTranslator } from './translate';
+import { createTranslateClient, routeTranslator, envPositiveInt, isAuthError } from './translate';
 import { createTranslateV2Client } from './translate-v2';
 import { resolveAiProviderChain } from './ai-provider';
 import { runWithConcurrency } from './concurrency';
@@ -165,6 +167,32 @@ async function pushTranslation(
   throw new Error(`content-sync write-back failed: ${lastError}`);
 }
 
+/**
+ * 补翻失败记账：写入 source_items 负缓存（code=translate-failed）。
+ * pending-translations 取单 SQL 按失败次数升序——反复失败的文章沉到
+ * 队尾，不再霸占队头阻塞整个来源的补翻进度。上报失败只 WARN 不阻断。
+ */
+async function reportTranslateFailure(item: PendingTranslation, fetchImpl: typeof fetch): Promise<void> {
+  try {
+    const endpoint = `${requireEnv('CONTENT_SYNC_URL').replace(/\/+$/, '')}/items/`;
+    const response = await fetchImpl(endpoint, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${requireEnv('CONTENT_SYNC_TOKEN')}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        items: [{ sourceId: item.sourceId, url: item.originalUrl, code: 'translate-failed' }],
+      }),
+    });
+    if (!response.ok) {
+      console.warn(`  ! WARN translate-failure report: HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.warn(`  ! WARN translate-failure report: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 export async function runTranslateBacklog(options: BacklogOptions): Promise<BacklogSummary> {
   const fetchImpl = createFetchImpl(console);
   const summary: BacklogSummary = {
@@ -210,6 +238,14 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
     return routeTranslator(createTranslateClient(common), createTranslateV2Client(common), forceV2);
   });
 
+  // 提供商熔断（与 batch-translate 对齐，2026-09-12）：认证类失败（key
+  // 失效/未授权）一轮内不会自愈，首败即熔断；其余连续失败达阈值熔断。
+  // 否则坏提供商会让每篇文章都白烧一次注定失败的请求（实例：gemini 条目
+  // key 误填，6/8 模型带病运行数周）。
+  const providerMaxFailures = envPositiveInt('TRANSLATE_PROVIDER_MAX_FAILURES', 3);
+  const consecutiveFailures = new Array<number>(translates.length).fill(0);
+  const tripped = new Array<boolean>(translates.length).fill(false);
+
   await runWithConcurrency(pending, options.concurrency, async (item) => {
     let lastError: unknown;
     const article: ExtractedArticle = {
@@ -223,6 +259,7 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
       ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
     };
     for (let i = 0; i < translates.length; i += 1) {
+      if (tripped[i] && i < translates.length - 1) continue;
       try {
         const translation = await translates[i]!(article, CATEGORIES);
         await pushTranslation(
@@ -233,11 +270,20 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
           fetchImpl,
         );
         summary.translated += 1;
+        consecutiveFailures[i] = 0;
         console.log(`  + ${item.id} (${translation.translatedTitle})`);
         return;
       } catch (error) {
         lastError = error;
-        if (i < translates.length - 1) {
+        consecutiveFailures[i] += 1;
+        const canTrip = i < translates.length - 1;
+        const authFailure = isAuthError(error);
+        if (canTrip && !tripped[i] && (authFailure || consecutiveFailures[i]! >= providerMaxFailures)) {
+          tripped[i] = true;
+          console.warn(
+            `  ! WARN provider ${providers[i]!.model} 熔断（${authFailure ? '认证失败' : `连续失败 ${consecutiveFailures[i]} 次`}），本轮剩余任务改用 ${providers[i + 1]!.model}`,
+          );
+        } else if (canTrip && !tripped[i]) {
           console.warn(
             `  ! ${item.id}: ${providers[i]!.model} 失败，回退 ${providers[i + 1]!.model}` +
               `（${fallbackReason(error)}）`,
@@ -249,6 +295,7 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
     const message = lastError instanceof Error ? lastError.message : String(lastError);
     summary.errors.push(`${item.id} | ${item.originalUrl}: ${message}`);
     console.error(`  - ${item.id}: ${message}`);
+    await reportTranslateFailure(item, fetchImpl);
   });
 
   console.log(`translate-backlog: translated=${summary.translated} failed=${summary.failed}`);
@@ -257,7 +304,7 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
 
 function parseArgs(argv: string[]) {
   let sourceId = '';
-  let limit = Number(process.env.TRANSLATE_BACKLOG_LIMIT ?? '2');
+  let limit = Number(process.env.TRANSLATE_BACKLOG_LIMIT ?? '4');
   let concurrency = 1;
   let dryRun = false;
   for (let i = 0; i < argv.length; i += 1) {

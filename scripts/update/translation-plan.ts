@@ -118,6 +118,15 @@ export const DEFAULT_CJK_THRESHOLD = 0.5;
 export const DEFAULT_MAX_TOKENS = 1200;
 export const DEFAULT_MAX_CHUNKS = 64;
 
+/** 还原失败重试提示：要求逐字复现保护占位符（模型丢/重了 {{BW:...}} 时附带）。 */
+export const RETRY_PROTECT_HINT =
+  '\n\nYour previous response lost or duplicated protected placeholders. You MUST reproduce EVERY `{{BW:...}}` token from the source EXACTLY once, verbatim, in the corresponding position of the translated text. Never translate, merge, drop, or repeat placeholder tokens.';
+
+/** 判断错误是否为保护占位符还原失败（restore failed: ...）。 */
+export function isRestoreError(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith('restore failed');
+}
+
 /** Reserved token pattern; source text containing it fails fast instead of corrupting. */
 const TOKEN_PATTERN = /\{\{BW:(?:url|code|inline-code|html|math|inline-math):\d+\}\}/g;
 

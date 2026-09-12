@@ -1406,12 +1406,19 @@ const PENDING_TRANSLATIONS_SQL = `
   FROM articles a
   JOIN article_versions v
     ON v.article_id = a.id AND v.language = a.original_language
+  LEFT JOIN source_items tf
+    ON tf.source_id = a.source_id
+   AND tf.original_url = a.original_url
+   AND tf.status = 'skipped'
+   AND tf.last_error = 'translate-failed'
   WHERE a.source_id = ?
     AND NOT EXISTS (
       SELECT 1 FROM article_versions z
       WHERE z.article_id = a.id AND z.language IN ('zh', 'zh-cn')
     )
-  ORDER BY a.published_at IS NULL, a.published_at DESC
+  /* 毒文章沉底：反复补翻失败（translate-failed 负缓存，backlog 上报）的
+     排到队尾，不阻塞同来源其它文章的补翻进度；失败计数随重试递增。 */
+  ORDER BY COALESCE(tf.attempt_count, 0) ASC, a.published_at IS NULL, a.published_at DESC
   LIMIT ?
 `;
 

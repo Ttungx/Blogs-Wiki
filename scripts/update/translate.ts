@@ -1,7 +1,7 @@
 import { categoryPrompt, normalizeCategories } from './classify';
 import { cleanTitle } from '../../src/lib/text';
 import { assertLinkIntegrity, assertMathIntegrity } from './content-integrity';
-import { isNativeChinese, protectMarkdown, restoreMarkdown } from './translation-plan';
+import { isNativeChinese, protectMarkdown, restoreMarkdown, isRestoreError, RETRY_PROTECT_HINT } from './translation-plan';
 import { execFile } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,8 +16,11 @@ import type { ProviderRateLimit } from './model-providers';
  * 整篇塞入触发空输出（V2 引入动机，见 commit 215814d）。输出预算提升到
  * 128K token 后 V1 可整篇消化更长文章，阈值相应从 100K 上调。其余一律
  * V1 整篇一次——吞吐远高于分块（V2 实测 3000-3600 字符/分钟，V1 单次调用）。
+ * 60K 是实测拐点（2026-09-12）：>60K 字符的长文 V1 输出数万 token，
+ * 300s 请求超时内完不成必失败（cameron-wolfe 152K 全链 8 模型超时实证），
+ * 一律走 V2 分块兜底，单块输出可控。
  */
-export const SUPER_LONG_THRESHOLD = 200_000;
+export const SUPER_LONG_THRESHOLD = 60_000;
 
 /** 解析正整数 env（缺失/非法回退默认值）。 */
 export function envPositiveInt(name: string, fallback: number): number {
@@ -121,6 +124,16 @@ export class RateLimitError extends Error {
     this.name = 'RateLimitError';
     this.retryAfterMs = retryAfterMs;
   }
+}
+
+/**
+ * 认证类失败（HTTP 401/403 或 "invalid api key" 类文案）。key 失效不会在
+ * 一轮内自愈：命中即熔断该提供商（本轮剩余任务直接从下一个开始），
+ * 避免每篇文章都白烧一次注定失败的请求。
+ */
+export function isAuthError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /HTTP 40[13]\b|invalid[_ ]api[_ ]key|valid api key|unauthorized/i.test(message);
 }
 
 function parseRetryAfter(header: string | null): number | null {
@@ -494,40 +507,56 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
         return parseModelJson(content);
       };
 
-      let parsed: Record<string, unknown>;
-      try {
-        parsed = await run(baseMessages);
-      } catch (error) {
-        // Retry once (same request, with a "must output valid JSON" hint)
-        // when the model output could not be parsed as JSON.
-        if (!(error instanceof ModelJsonError)) throw error;
-        parsed = await run([
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `${userMessage}${RETRY_JSON_HINT}` },
-        ]);
-      }
+      // 标题/正文提取 + 占位符还原 + 完整性断言；还原失败重试时会再次走这里。
+      const finalize = (parsed: Record<string, unknown>) => {
+        const rawTitle = parsed.translated_title;
+        const translatedTitle = typeof rawTitle === 'string' && rawTitle.trim() !== ''
+          ? cleanTitle(rawTitle)
+          : article.title;
 
-      const rawTitle = parsed.translated_title;
-      const translatedTitle = typeof rawTitle === 'string' && rawTitle.trim() !== ''
-        ? cleanTitle(rawTitle)
-        : article.title;
+        const rawContent = parsed.content_markdown;
+        const protectedContent = typeof rawContent === 'string' ? rawContent : '';
+        if (protectedContent.trim() === '') {
+          throw new Error('model returned an empty content_markdown');
+        }
 
-      const rawContent = parsed.content_markdown;
-      const protectedContent = typeof rawContent === 'string' ? rawContent : '';
-      if (protectedContent.trim() === '') {
-        throw new Error('model returned an empty content_markdown');
-      }
+        const contentMarkdown = restoreMarkdown(protectedContent, protectedBody.spans);
+        assertMathIntegrity(article.contentMarkdown, contentMarkdown);
+        assertLinkIntegrity(article.contentMarkdown, contentMarkdown);
 
-      const contentMarkdown = restoreMarkdown(protectedContent, protectedBody.spans);
-      assertMathIntegrity(article.contentMarkdown, contentMarkdown);
-      assertLinkIntegrity(article.contentMarkdown, contentMarkdown);
-
-      return {
-        translatedTitle,
-        categories: normalizeCategories(parsed.categories, categories),
-        contentMarkdown,
-        model,
+        return {
+          translatedTitle,
+          categories: normalizeCategories(parsed.categories, categories),
+          contentMarkdown,
+          model,
+        };
       };
+
+      try {
+        let parsed: Record<string, unknown>;
+        try {
+          parsed = await run(baseMessages);
+        } catch (error) {
+          // Retry once (same request, with a "must output valid JSON" hint)
+          // when the model output could not be parsed as JSON.
+          if (!(error instanceof ModelJsonError)) throw error;
+          parsed = await run([
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `${userMessage}${RETRY_JSON_HINT}` },
+          ]);
+        }
+        return finalize(parsed);
+      } catch (error) {
+        // 占位符还原失败（模型丢/重了 {{BW:...}}）：带提示整篇重试一次，
+        // 再失败才抛给回退链换下一个模型。2026-09-12 生产排障：链接多的
+        // 文章 stepfun 常丢占位符直接整篇报废。
+        if (!isRestoreError(error)) throw error;
+        const parsed = await run([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `${userMessage}${RETRY_PROTECT_HINT}` },
+        ]);
+        return finalize(parsed);
+      }
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       throw new Error(`translate failed for ${article.url} (model: ${model}): ${reason}`);

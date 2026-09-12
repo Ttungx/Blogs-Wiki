@@ -1,7 +1,7 @@
 import { categoryPrompt, normalizeCategories } from './classify';
 import { cleanTitle } from '../../src/lib/text';
 import { assertLinkIntegrity, assertMathIntegrity } from './content-integrity';
-import { createTranslationPlan, restoreMarkdown } from './translation-plan';
+import { createTranslationPlan, isRestoreError, restoreMarkdown, RETRY_PROTECT_HINT } from './translation-plan';
 import type { ProviderRateLimit } from './model-providers';
 import {
   ModelJsonError,
@@ -127,6 +127,7 @@ async function translateChunk(
   endpoint: string,
   source: string,
   headingPath: string[],
+  extraHint?: string,
 ): Promise<string> {
   const messages: ChatMessage[] = [
     { role: 'system', content: buildTranslateSystemPrompt() },
@@ -137,6 +138,7 @@ async function translateChunk(
         content_markdown: source,
       }, null, 2),
     },
+    ...(extraHint ? [{ role: 'user' as const, content: extraHint }] : []),
   ];
   const body: Record<string, unknown> = {
     model: options.model,
@@ -213,7 +215,15 @@ export function createTranslateV2Client(options: TranslateV2Options): TranslateA
     const translatedBodies: string[] = [];
     for (const chunk of plan.chunks) {
       const translated = await translateChunk(options, endpoint, chunk.source, chunk.headingPath);
-      const restored = restoreMarkdown(translated, chunk.spans);
+      let restored: string;
+      try {
+        restored = restoreMarkdown(translated, chunk.spans);
+      } catch (error) {
+        // 占位符丢失/重复：只重译当前块一次（不放大成本），再失败才整篇回退。
+        if (!isRestoreError(error)) throw error;
+        const retried = await translateChunk(options, endpoint, chunk.source, chunk.headingPath, RETRY_PROTECT_HINT);
+        restored = restoreMarkdown(retried, chunk.spans);
+      }
       translatedBodies.push(restored);
     }
 

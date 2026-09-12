@@ -19,7 +19,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createTranslateClient, routeTranslator, envPositiveInt } from './translate';
+import { createTranslateClient, routeTranslator, envPositiveInt, isAuthError, SUPER_LONG_THRESHOLD } from './translate';
 import { createTranslateV2Client } from './translate-v2';
 import { normalizeArticleMarkdown } from './fetch';
 import { resolveAiProviderChain, type AiProviderConfig } from './ai-provider';
@@ -250,7 +250,7 @@ async function run() {
       ` (inline=${Boolean((process.env.MODEL_PROVIDER_YAML ?? '').trim())},` +
       ` file=${(process.env.MODEL_PROVIDER_FILE ?? '').trim() || '-'})`,
   );
-  logger.info(`Translation pipeline: ${forceV2 ? 'v2 (forced)' : 'v1 whole-article (v2 fallback >100k chars)'}`);
+  logger.info(`Translation pipeline: ${forceV2 ? 'v2 (forced)' : `v1 whole-article (v2 fallback >${SUPER_LONG_THRESHOLD / 1000}k chars)`}`);
   const repositories = createUpdateRepositories({ rootDir, backend: 'file' });
 
   let success = 0;
@@ -290,10 +290,13 @@ async function run() {
         lastError = error;
         consecutiveFailures[i] += 1;
         const canTrip = i < translates.length - 1;
-        if (canTrip && consecutiveFailures[i]! >= providerMaxFailures && !tripped[i]) {
+        // 认证类失败（key 失效/未授权）一轮内不会自愈，首败即熔断；
+        // 其余连续失败达阈值熔断（成功清零在上方，临时抖动不误伤）。
+        const authFailure = isAuthError(error);
+        if (canTrip && !tripped[i] && (authFailure || consecutiveFailures[i]! >= providerMaxFailures)) {
           tripped[i] = true;
           logger.warn(
-            `  ! provider ${providers[i]!.model} 连续失败 ${consecutiveFailures[i]} 次，本轮剩余任务改用 ${providers[i + 1]!.model}`,
+            `  ! WARN provider ${providers[i]!.model} 熔断（${authFailure ? '认证失败' : `连续失败 ${consecutiveFailures[i]} 次`}），本轮剩余任务改用 ${providers[i + 1]!.model}`,
           );
         } else if (canTrip && !tripped[i]) {
           logger.warn(`  ! ${item.articleId}: ${providers[i]!.model} 失败，回退 ${providers[i + 1]!.model}（${fallbackReason(error)}）`);

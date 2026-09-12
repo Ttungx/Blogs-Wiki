@@ -10,6 +10,8 @@ import { env, applyD1Migrations } from 'cloudflare:test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
   handleContentSync,
+  handleContentItems,
+  handlePendingTranslations,
   MAX_BODY_BYTES,
 } from '../../runtime/content-sync';
 import type { ContentSyncEnv, SyncPayload } from '../../runtime/content-sync';
@@ -494,5 +496,73 @@ describe('content-sync sql 直通模式', () => {
     }
     const evilTable = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='evil'").first();
     expect(evilTable).toBeNull();
+  });
+});
+
+describe('pending-translations 取单', () => {
+  test('translate-failed 负缓存把毒文章沉到队尾（沉底不排除）', async () => {
+    const sourceId = `pending-blog-${Date.now()}`;
+    await handleContentSync(post(JSON.stringify({
+      sources: [{
+        id: sourceId,
+        name: 'Pending Blog',
+        type: 'company',
+        homepageUrl: 'https://pending.example/',
+        blogUrl: 'https://pending.example/blog',
+        domain: 'pending.example',
+      }],
+      articles: [],
+      sql: [],
+    })), syncEnv());
+
+    const urls = {
+      newest: uniqueUrl(),
+      middle: uniqueUrl(),
+      oldest: uniqueUrl(),
+    };
+    const article = (url: string, publishedAt: string, seq: number) => ({
+      id: `${sourceId}/post-${seq}`,
+      sourceId,
+      originalUrl: url,
+      originalLanguage: 'en',
+      publishedAt,
+      sourceDomain: 'pending.example',
+      categories: ['AI'],
+      versions: [{
+        language: 'en',
+        title: `Post ${seq}`,
+        contentMarkdown: `# Post ${seq}\n\nBody.`,
+        provenance: 'original' as const,
+      }],
+    });
+    const articlesPayload: SyncPayload = {
+      sources: [],
+      articles: [
+        article(urls.newest, '2026-08-03', 1),
+        article(urls.middle, '2026-08-02', 2),
+        article(urls.oldest, '2026-08-01', 3),
+      ],
+      sql: [],
+    };
+    const synced = await handleContentSync(post(JSON.stringify(articlesPayload)), syncEnv());
+    expect(synced.status).toBe(200);
+
+    // 最新一篇连续两轮补翻失败 → attempt_count=2
+    for (let i = 0; i < 2; i += 1) {
+      const report = await handleContentItems(post(JSON.stringify({
+        items: [{ sourceId, url: urls.newest, code: 'translate-failed' }],
+      })), syncEnv());
+      expect(report.status).toBe(200);
+    }
+
+    // 无失败记录的 middle/oldest 按 published_at DESC 在前，毒文章沉底但不排除
+    const pending = await handlePendingTranslations(
+      post(JSON.stringify({ sourceId, limit: 10 })),
+      syncEnv(),
+    );
+    expect(pending.status).toBe(200);
+    const body = await pending.json() as { articles: Array<{ originalUrl: string }> };
+    const order = body.articles.map((a) => a.originalUrl);
+    expect(order).toEqual([urls.middle, urls.oldest, urls.newest]);
   });
 });

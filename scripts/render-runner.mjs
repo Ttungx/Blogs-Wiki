@@ -23,12 +23,15 @@
  *   管线 CONTENT_SYNC_CHECK_URL 预检避免重复抓取+翻译（含 90 天内
  *   门禁拒绝负缓存，经 /api/content-sync/items 上报）。
  * - 忙碌保护：同一时刻最多一条链在跑；忙时返回 202 busy，下轮自动补位。
+ * - 轮次看门狗：单轮超过 RUNNER_ROUND_STALL_MINUTES（默认 45 分钟）视为
+ *   失速，标记 stalled-watchdog 并放行新轮（链路幂等，重叠安全）。
  *
  * 环境变量：
  *   PORT                  监听端口（Render 注入，默认 8080）
  *   RUNNER_KEY            /run 鉴权 key（必须设置；与 CF Worker 的
  *                         CONTENT_SYNC_TOKEN 同值）
  *   RUN_INTERVAL_MINUTES  无状态轮转时间片长度（默认 15）
+ *   RUNNER_ROUND_STALL_MINUTES  单轮失速看门狗阈值（默认 45）
  *   UPDATE_LIMIT          每源单次最大文章数（默认走 sources.json 配置）
  *   CONTENT_SYNC_TOKEN / CONTENT_SYNC_URL / CONTENT_SYNC_CHECK_URL /
  *   OPENAI_API_KEY / OPENAI_BASE_URL / TRANSLATION_MODEL /
@@ -119,6 +122,10 @@ function extractRunMetrics(text) {
 /** 值得打进日志流的行：抓取失败、翻译降级、门禁拒绝、OOM 等。 */
 const NOISE_RE = /error:|Error:|warning:|WARN |FATAL|failed|rejected|degraded/i;
 
+/** 单轮失速上限（毫秒），超过即被看门狗放行；RUNNER_ROUND_STALL_MINUTES 可调。 */
+const ROUND_STALL_LIMIT_MS =
+  Math.max(1, Number((process.env.RUNNER_ROUND_STALL_MINUTES ?? '45').trim()) || 45) * 60_000;
+
 function extractNotableLines(text) {
   return text
     .split('\n')
@@ -169,8 +176,8 @@ function buildChainScript(sourceId, limitArg, startedAt) {
   // D1 补翻（2026-09-09）：translate:batch 只扫容器本地磁盘，而免费实例每
   // 1-2 轮就重建，历史英文原文永远扫不到。这一步直接向 D1 要「有原文、缺
   // 中译」的清单，翻译后写回，与容器本地状态解耦——这是英文残留的自愈通道。
-  // 默认每轮 2 篇（翻译配额考虑），TRANSLATE_BACKLOG_LIMIT=0 可关闭。
-  const backlogLimit = Number((process.env.TRANSLATE_BACKLOG_LIMIT ?? '2').trim());
+  // 默认每轮 4 篇（翻译配额考虑），TRANSLATE_BACKLOG_LIMIT=0 可关闭。
+  const backlogLimit = Number((process.env.TRANSLATE_BACKLOG_LIMIT ?? '4').trim());
   const backlogStep =
     Number.isFinite(backlogLimit) && backlogLimit > 0
       ? [
@@ -197,13 +204,16 @@ function startUpdateChain(sourceId, limitArg) {
   const startedAt = new Date().toISOString();
 
   busy = true;
-  lastRun = {
+  // 每轮独立 run 对象（而非引用模块级 lastRun）：看门狗放行新轮后，旧子
+  // 进程的 close 回调只回写自己的 run，不会污染新一轮的状态。
+  const run = {
     sourceId,
     startedAt,
     finishedAt: null,
     status: 'running',
     logFile: path.relative(ROOT, logFile),
   };
+  lastRun = run;
 
   let fd;
   try {
@@ -215,28 +225,28 @@ function startUpdateChain(sourceId, limitArg) {
     );
     child.on('close', (code) => {
       busy = false;
-      lastRun.status = code === 0 ? 'ok' : `exit-${code}`;
-      lastRun.finishedAt = new Date().toISOString();
+      run.status = code === 0 ? 'ok' : `exit-${code}`;
+      run.finishedAt = new Date().toISOString();
 
       let logText = '';
       try {
-        logText = readFileSync(lastRun.logFile, 'utf8');
+        logText = readFileSync(run.logFile, 'utf8');
       } catch (e) {
         console.error(`[runner] failed to read chain log: ${e.message}`);
       }
-      lastRun.metrics = extractRunMetrics(logText);
-      const m = lastRun.metrics;
+      run.metrics = extractRunMetrics(logText);
+      const m = run.metrics;
 
       console.log(
-        `[runner] ${sourceId} chain ${lastRun.status} (${lastRun.logFile})` +
+        `[runner] ${sourceId} chain ${run.status} (${run.logFile})` +
           (m.processed !== null ? ` processed=${m.processed} failed=${m.failed}` : ''),
       );
 
       if (code !== 0) {
         // 链路失败：把日志尾部打到 stdout（Render 日志流可见），并存入
-        // lastRun.errorTail（/status 暴露），否则错误只在容器文件里。
+        // run.errorTail（/status 暴露），否则错误只在容器文件里。
         const tail = logText.split('\n').slice(-40).join('\n');
-        lastRun.errorTail = tail.slice(-4000);
+        run.errorTail = tail.slice(-4000);
         console.error(`[runner] === chain failure log tail (${sourceId}) ===\n${tail}`);
       } else {
         // 成功轮次同样要把告警行打进日志流。2026-09-09 事故根因：源级失败
@@ -244,8 +254,8 @@ function startUpdateChain(sourceId, limitArg) {
         // 在 Render 日志流里和「正常运转」长得一模一样，连续 7 天无人察觉。
         const notable = extractNotableLines(logText);
         if (notable.length > 0) {
-          lastRun.warningTail = notable.join('\n').slice(-4000);
-          console.warn(`[runner] === chain warning summary (${sourceId}) ===\n${lastRun.warningTail}`);
+          run.warningTail = notable.join('\n').slice(-4000);
+          console.warn(`[runner] === chain warning summary (${sourceId}) ===\n${run.warningTail}`);
         }
         if (m.processed === 0) {
           console.warn(
@@ -255,25 +265,25 @@ function startUpdateChain(sourceId, limitArg) {
         }
       }
 
-      runHistory.push(lastRun);
+      runHistory.push(run);
       if (runHistory.length > RUN_HISTORY_LIMIT) runHistory.shift();
       pruneLogs();
     });
     child.on('error', (err) => {
       busy = false;
-      lastRun.status = 'spawn-error';
+      run.status = 'spawn-error';
       console.error(`[runner] spawn failed: ${err.message}`);
     });
     child.unref();
   } catch (error) {
     busy = false;
-    lastRun.status = 'start-error';
+    run.status = 'start-error';
     throw error;
   } finally {
     if (fd !== undefined) closeSync(fd);
   }
 
-  return lastRun;
+  return run;
 }
 
 function pickSource(sources, explicitId) {
@@ -348,8 +358,24 @@ function handle(req, res, sources, bootAt) {
       return;
     }
     if (busy) {
-      respond(res, 202, { status: 'busy', lastRun });
-      return;
+      // 看门狗（2026-09-12）：单轮失速（实证：4 篇长文 × 全链 8 模型各 300s
+      // 超时能把一轮拖到数小时）不得阻塞整个轮转。超时后标记 stalled-watchdog
+      // 并放行新轮；旧子进程照常跑完，链路按 (source_id, original_url) 幂等，
+      // 与新轮重叠安全。RUNNER_ROUND_STALL_MINUTES 可调（默认 45 分钟）。
+      const startedMs = lastRun?.startedAt ? Date.parse(lastRun.startedAt) : NaN;
+      if (Number.isFinite(startedMs) && Date.now() - startedMs > ROUND_STALL_LIMIT_MS) {
+        const stalledSource = lastRun?.sourceId ?? '?';
+        lastRun.status = 'stalled-watchdog';
+        lastRun.finishedAt = new Date().toISOString();
+        busy = false;
+        console.warn(
+          `[runner] WARN round watchdog: ${stalledSource} exceeded ` +
+            `${Math.round(ROUND_STALL_LIMIT_MS / 60_000)}min, releasing busy for next round`,
+        );
+      } else {
+        respond(res, 202, { status: 'busy', lastRun });
+        return;
+      }
     }
 
     let limitArg;
