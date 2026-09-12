@@ -3160,3 +3160,14 @@ curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
   - published_at 缺失且无显式 fallback
 - **integrity** [looks-like-navigation-list] `https://www.paulgraham.com/rss.html`
   - 正文 55 字符但含 3 个外链，疑似导航/归档列表
+
+---
+
+## 2026-09-12T16:40:32.053Z（openai-developers）
+
+- 错误总数：1
+
+### openai-developers（1 条）
+
+- **integrity** [original-too-short] `https://developers.openai.com/blog/intro`
+  - non-zh original 262 words (min 300)

@@ -20,6 +20,22 @@
     ]
   },
   {
+    "id": "openai-developers",
+    "name": "OpenAI Developers",
+    "type": "company",
+    "homepage_url": "https://developers.openai.com/",
+    "blog_url": "https://developers.openai.com/blog",
+    "domain": "developers.openai.com",
+    "article_paths": [
+      "/blog/"
+    ],
+    "exclude_paths": [
+      "/blog/topic"
+    ],
+    "date_fallback": "conservative",
+    "update_mode": "active"
+  },
+  {
     "id": "anthropic",
     "name": "Anthropic",
     "type": "company",
