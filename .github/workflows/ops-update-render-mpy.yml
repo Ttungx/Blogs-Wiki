@@ -42,6 +42,18 @@ jobs:
             "https://api.render.com/v1/services/$sid/env-vars/MODEL_PROVIDER_YAML")
           echo "PUT MODEL_PROVIDER_YAML -> HTTP $code"
           if [ "$code" != "200" ] && [ "$code" != "201" ]; then echo "env var update failed"; exit 1; fi
+      - name: Upsert TRANSLATE_BACKLOG_LIMIT=4
+        env:
+          KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          payload=$(python3 -c "import json;print(json.dumps({'value': '4'}))")
+          code=$(curl -sS -o /dev/null -w "%{http_code}" -X PUT \
+            -H "Authorization: Bearer $KEY" \
+            -H "content-type: application/json" \
+            -d "$payload" \
+            "https://api.render.com/v1/services/$sid/env-vars/TRANSLATE_BACKLOG_LIMIT")
+          echo "PUT TRANSLATE_BACKLOG_LIMIT -> HTTP $code"
+          if [ "$code" != "200" ] && [ "$code" != "201" ]; then echo "env var update failed"; exit 1; fi
       - name: Trigger deploy to apply
         env:
           KEY: ${{ secrets.RENDER_API_KEY }}
