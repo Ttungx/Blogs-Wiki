@@ -22,11 +22,34 @@
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { createFetchBackend } from './fetch-backend';
 import { createFetchImpl } from './network';
 import { loadSources } from './config';
+import { parseVersionFile } from '../../worker/domain/article';
 import type { SourceConfig } from './types';
+
+/** 本地语料兜底：抓取失败时从 src/content/articles/<source>/<lang>/<slug>.md 恢复。 */
+function localCorpusVersion(sourceId: string, lang: 'en' | 'zh', articleId: string): { title: string; contentMarkdown: string; excerpt?: string; provenance?: string } | undefined {
+  const slug = articleId.split('/').slice(1).join('/');
+  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  const file = path.join(rootDir, 'src', 'content', 'articles', sourceId, lang, `${slug}.md`);
+  try {
+    const parsed = parseVersionFile(articleId, readFileSync(file, 'utf8'));
+    if (parsed?.version?.title && parsed?.version?.contentMarkdown) {
+      return {
+        title: parsed.version.title,
+        contentMarkdown: parsed.version.contentMarkdown,
+        ...(parsed.version.excerpt ? { excerpt: parsed.version.excerpt } : {}),
+        provenance: parsed.version.provenance,
+      };
+    }
+  } catch {
+    // 文件不存在：无本地兜底
+  }
+  return undefined;
+}
 
 /** zh 页 → en 页的确定性前缀映射（与三源的官方中文路径一一对应）。 */
 const ZH_TO_EN_PREFIX: Record<string, Array<[from: string, to: string]>> = {
@@ -234,28 +257,44 @@ async function main(): Promise<void> {
       if (enMarkdown.trim().length >= 400 && enTitle.trim()) {
         console.log('    en reused from D1');
       } else {
-        const article = await fetchBackend.fetchArticle(source, { url: enUrl }, fetchImpl);
-        if (!article.title?.trim()) throw new Error('empty title');
-        if (article.contentMarkdown.trim().length < 400) {
-          throw new Error(`extracted content too short (${article.contentMarkdown.trim().length} chars)`);
+        const localEn = localCorpusVersion(row.source_id, 'en', row.id);
+        if (localEn && localEn.contentMarkdown.trim().length >= 400) {
+          enTitle = localEn.title;
+          enMarkdown = localEn.contentMarkdown;
+          console.log('    en restored from local corpus');
+        } else {
+          const article = await fetchBackend.fetchArticle(source, { url: enUrl }, fetchImpl);
+          if (!article.title?.trim()) throw new Error('empty title');
+          if (article.contentMarkdown.trim().length < 400) {
+            throw new Error(`extracted content too short (${article.contentMarkdown.trim().length} chars)`);
+          }
+          enTitle = article.title;
+          enMarkdown = article.contentMarkdown;
         }
-        enTitle = article.title;
-        enMarkdown = article.contentMarkdown;
       }
-      // zh 版本缺失或 --id 强制模式：从 zh 页重建（坏行的 original_url 已翻正，
-      // 用反向映射还原 zh 页地址）。
+      // zh 版本缺失或 --id 强制模式：本地语料优先，抓 zh 页次之（坏行的
+      // original_url 已翻正，用反向映射还原 zh 页地址）。
       if (!row.zh_markdown || idFilter) {
-        const zhSourceUrl = row.original_language === 'zh'
-          ? row.original_url
-          : toZhUrl(row.source_id, row.original_url) ?? row.original_url;
-        const zhArticle = await fetchBackend.fetchArticle(source, { url: zhSourceUrl }, fetchImpl);
-        if (!zhArticle.title?.trim() || zhArticle.contentMarkdown.trim().length < 400) {
-          throw new Error(`zh version rebuild failed from ${zhSourceUrl}`);
+        const localZh = localCorpusVersion(row.source_id, 'zh', row.id);
+        if (localZh && localZh.contentMarkdown.trim().length >= 400 && !idFilter) {
+          row.zh_title = localZh.title;
+          row.zh_markdown = localZh.contentMarkdown;
+          row.zh_excerpt = localZh.excerpt ?? null;
+          row.zh_provenance = localZh.provenance ?? 'official-zh';
+          console.log('    zh restored from local corpus');
+        } else {
+          const zhSourceUrl = row.original_language === 'zh'
+            ? row.original_url
+            : toZhUrl(row.source_id, row.original_url) ?? row.original_url;
+          const zhArticle = await fetchBackend.fetchArticle(source, { url: zhSourceUrl }, fetchImpl);
+          if (!zhArticle.title?.trim() || zhArticle.contentMarkdown.trim().length < 400) {
+            throw new Error(`zh version rebuild failed from ${zhSourceUrl}`);
+          }
+          row.zh_title = zhArticle.title;
+          row.zh_markdown = zhArticle.contentMarkdown;
+          row.zh_provenance = 'official-zh';
+          console.log(`    zh rebuilt from ${zhSourceUrl}`);
         }
-        row.zh_title = zhArticle.title;
-        row.zh_markdown = zhArticle.contentMarkdown;
-        row.zh_provenance = 'official-zh';
-        console.log(`    zh rebuilt from ${zhSourceUrl}`);
       }
       await pushRepair(row, enUrl, enTitle, enMarkdown);
       ok += 1;
