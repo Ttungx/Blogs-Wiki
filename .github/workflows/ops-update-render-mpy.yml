@@ -14,7 +14,11 @@ jobs:
           SID=$(curl -sS -H "Authorization: Bearer $KEY" "https://api.render.com/v1/services?limit=100" | python3 -c "
           import sys, json
           data = json.load(sys.stdin)
-          ids = [s['id'] for s in data if 'updater' in (s.get('name') or '').lower()]
+          items = [x.get('service', x) for x in data]
+          ids = [s['id'] for s in items if 'updater' in (s.get('name') or '').lower()]
+          if not ids:
+              names = [s.get('name') for s in items]
+              print('available services:', names, file=sys.stderr)
           print('\n'.join(ids))
           ")
           count=$(printf '%s' "$SID" | grep -c . || true)
