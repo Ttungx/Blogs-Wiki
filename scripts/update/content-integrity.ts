@@ -12,6 +12,7 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import { isPseudoMath } from '../../src/lib/server/math-guard';
 
 export type MathNodeKind = 'math' | 'inlineMath';
 
@@ -31,11 +32,15 @@ interface MdNode {
 function walkMath(node: MdNode, out: MathInventoryEntry[]): void {
   if (node.type === 'math' || node.type === 'inlineMath') {
     const value = typeof node.value === 'string' ? node.value : '';
-    out.push({
-      kind: node.type,
-      value,
-      hash: createHash('sha256').update(value).digest('hex'),
-    });
+    // 伪数学（如正文里的 `$600 ... $7,000` 金额对）不是公式：不入清单，
+    // 否则完整性校验会强迫译文保留原样的英文金额段。
+    if (!isPseudoMath(value)) {
+      out.push({
+        kind: node.type,
+        value,
+        hash: createHash('sha256').update(value).digest('hex'),
+      });
+    }
   }
   for (const child of node.children ?? []) walkMath(child, out);
 }

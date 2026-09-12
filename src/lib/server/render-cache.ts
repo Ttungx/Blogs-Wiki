@@ -9,8 +9,8 @@
 import { createHash } from 'node:crypto';
 import { renderMarkdown } from './markdown';
 
-/** 渲染逻辑变更时递增，全局失效缓存。 */
-export const RENDERER_VERSION = 'v1';
+/** 渲染逻辑变更时递增，全局失效缓存。v2：伪数学降级（$ 金额对不再当公式渲染）。 */
+export const RENDERER_VERSION = 'v2';
 
 /** 超大 HTML 不入缓存（防御 D1 单值过大），直接返回现渲染结果。 */
 const MAX_CACHED_HTML_BYTES = 1_500_000;

@@ -22,6 +22,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkRehype from 'remark-rehype';
 import rehypeKatex from 'rehype-katex';
+import { isPseudoMath } from './math-guard';
 // 细粒度导入（shiki/core + 按需语言/主题模块）：shiki 主入口会把全量语言图
 // （cpp/emacs-lisp/wasm 引擎等）预打包进 server bundle（曾致 dist/server 14M），
 // 这里只带 13 种语言 + 1 主题，JS 引擎见 @shikijs/engine-javascript。
@@ -313,6 +314,48 @@ function isExternalHttpUrl(value: string, baseUrl: string | undefined): boolean 
   }
 }
 
+/**
+ * 伪数学防护：`$...$` / `$$...$$` 内容缺少 TeX 特征（反斜杠命令、上下标、
+ * 花括号、对齐符、换行符）时按字面文本渲染。
+ *
+ * 动机（2026-09-12 openai/research-acceleration-view-inside-openai）：
+ * 正文里的美元金额 `$600 ... $7,000` 被 remark-math 配对成行内公式，
+ * 中间一整段英文被 KaTeX 渲染成无空格斜体。真公式几乎必带 TeX 信号，
+ * 而普通 `$` 金额/文本没有——缺信号即降级，宁可把 `$x + y$` 显示成
+ * 字面文本，也不吞掉一整段正文。
+ */
+/**
+ * 伪数学防护：`$...$` / `$$...$$` 内容缺少 TeX 特征时按字面文本渲染
+ * （判定规则见 math-guard.ts，与翻译保护/完整性校验共用）。
+ */
+interface MathLikeNode {
+  type: string;
+  value?: unknown;
+}
+
+function mathNodeText(node: MathLikeNode, dollars: string): { type: 'text'; value: string } {
+  const value = typeof node.value === 'string' ? node.value : '';
+  return { type: 'text', value: `${dollars}${value}${dollars}` };
+}
+
+function remarkDemoteFakeMath() {
+  return (tree: Root) => {
+    visit(tree, 'inlineMath', (node, index, parent) => {
+      if (index === undefined || !parent) return;
+      const math = node as unknown as MathLikeNode;
+      if (!isPseudoMath(typeof math.value === 'string' ? math.value : undefined)) return;
+      (parent as { children: unknown[] }).children[index] = mathNodeText(math, '$');
+    });
+    visit(tree, 'math', (node, index, parent) => {
+      if (index === undefined || !parent) return;
+      const math = node as unknown as MathLikeNode;
+      if (!isPseudoMath(typeof math.value === 'string' ? math.value : undefined)) return;
+      (parent as { children: unknown[] }).children[index] = mathNodeText(math, '$$');
+    });
+    return tree;
+  };
+}
+
 /** 预构建 highlighter（JS 引擎，无 WASM，Worker 兼容；细粒度模块导入控制 bundle）。 */
 const highlighterPromise = createHighlighterCore({
   themes: [themeGithubLightDefault],
@@ -327,6 +370,7 @@ const processorPromise = highlighterPromise
       .use(remarkParse)
       .use(remarkGfm)
       .use(remarkMath)
+      .use(remarkDemoteFakeMath)
       .use(remarkRehype)
       .use(rehypeKatex)
       .use(rehypeHighlight, { highlighter })
@@ -339,6 +383,7 @@ const processorPromise = highlighterPromise
       .use(remarkParse)
       .use(remarkGfm)
       .use(remarkMath)
+      .use(remarkDemoteFakeMath)
       .use(remarkRehype)
       .use(rehypeKatex)
       .use(rehypeReaderEnhancements)

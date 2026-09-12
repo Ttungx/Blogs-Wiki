@@ -26,6 +26,7 @@ import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkStringify from 'remark-stringify';
+import { isPseudoMath } from '../../src/lib/server/math-guard';
 
 /** Which pipeline action the plan prescribes. */
 export type TranslationMode = 'official-zh' | 'native-zh' | 'translate';
@@ -255,11 +256,15 @@ function collectSpans(
       protect('html', 'value', node);
       break;
     case 'math':
-      protect('math', 'value', node);
+    case 'inlineMath': {
+      // 伪数学（缺 TeX 信号的 `$...$`，典型是美元金额对）不保护：保护会让
+      // 模型原样保留整段外文。留着让模型当普通正文翻译，两侧完整性校验
+      // （collectMathInventory）同样跳过伪数学，不会因译文形态变化而误报。
+      const kind: SpanKind = node.type === 'math' ? 'math' : 'inline-math';
+      const value = typeof node.value === 'string' ? node.value : '';
+      if (!isPseudoMath(value)) protect(kind, 'value', node);
       break;
-    case 'inlineMath':
-      protect('inline-math', 'value', node);
-      break;
+    }
     default:
       break;
   }

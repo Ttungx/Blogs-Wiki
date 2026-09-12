@@ -101,3 +101,29 @@ test('非法 TeX 产生可观测诊断（katex-error 或 VFile message）', asyn
   const hasMessage = warnings.some((warning) => /katex|parse|undefined/i.test(warning.message));
   assert.equal(hasErrorClass || hasMessage, true);
 });
+
+test('美元金额对不再被当成行内公式（伪数学降级为字面文本）', async () => {
+  const { html } = await renderMarkdownDetailed(
+    '每天使用的 token 超过 $600 per day of inference at API prices. The 90th percentile user now uses more than $7,000 of tokens per day.',
+  );
+
+  assert.doesNotMatch(html, /class="katex"/);
+  assert.match(html, /\$600 per day of inference at API prices/);
+  assert.match(html, /\$7,000/);
+  // 被吞的英文段必须完整可见（金额对之间的正文不能消失）
+  assert.match(html, /The 90th percentile user now uses more than/);
+});
+
+test('无 TeX 信号的 display 数学同样降级为字面文本', async () => {
+  const { html } = await renderMarkdownDetailed('$$99.6 与 99.8 之间的差距$$');
+  assert.doesNotMatch(html, /class="katex"/);
+  // 行内 $$..$$ 形态 remark-math 归为 inlineMath，降级还原为单 $ 包裹；内容必须完整可见
+  assert.match(html, /\$+99\.6 与 99\.8 之间的差距\$+/);
+});
+
+test('带 TeX 信号的真公式不受降级影响', async () => {
+  const { html } = await renderMarkdownDetailed('能量公式 $E = mc^2$ 与 $\\frac{a}{b}$。');
+  assert.match(html, /class="katex"/);
+  assert.match(html, /mc\^2|mc\^\{2\}/);
+  assert.match(html, /frac/);
+});
