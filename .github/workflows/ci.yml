@@ -183,7 +183,9 @@ jobs:
             -d "{\"commitId\": \"${{ github.sha }}\"}" \
             "https://api.render.com/v1/services/$SERVICE_ID/deploys")
           cat /tmp/render-deploy.json
-          if [ "$code" != "201" ]; then
+          # 201=新建部署；202=已有部署在进行（如手工 Render ops 刚触发过），
+          # 同样算成功——Render 会按队列依次部署，本次 commit 不会丢。
+          if [ "$code" != "201" ] && [ "$code" != "202" ]; then
             echo "::error::Render 部署触发失败：HTTP $code"
             exit 1
           fi
