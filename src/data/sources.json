@@ -553,16 +553,6 @@
     "rss_url": "https://vickiboykis.com/index.xml"
   },
   {
-    "id": "maxime-labonne",
-    "name": "Maxime Labonne",
-    "type": "personal",
-    "homepage_url": "https://mlabonne.github.io/blog/",
-    "blog_url": "https://mlabonne.github.io/blog/",
-    "domain": "mlabonne.github.io",
-    "update_mode": "active",
-    "sitemap_url": "https://mlabonne.github.io/blog/sitemap.xml"
-  },
-  {
     "id": "cameron-wolfe",
     "name": "Cameron R. Wolfe",
     "type": "personal",

@@ -343,24 +343,6 @@ export const staticBlogs: StaticBlogEntry[] = [
     }
   },
   {
-    "id": "maxime-labonne",
-    "data": {
-      "name": "Maxime Labonne",
-      "type": "personal",
-      "author": "Maxime Labonne",
-      "description": "Maxime Labonne 的大模型微调、量化与对齐实操教程，代码优先的工程视角。",
-      "homepageUrl": "https://mlabonne.github.io/blog/",
-      "blogUrl": "https://mlabonne.github.io/blog/",
-      "domain": "mlabonne.github.io",
-      "avatar": "https://github.com/mlabonne.png",
-      "sitemapUrl": "https://mlabonne.github.io/blog/sitemap.xml",
-      "categories": [
-        "AI",
-        "AI Coding / Developer Tools"
-      ]
-    }
-  },
-  {
     "id": "meta-ai",
     "data": {
       "name": "Meta AI",

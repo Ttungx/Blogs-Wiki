@@ -69,7 +69,7 @@
 | `ness-labs` | 候选 | [Ness Labs](https://nesslabs.com/articles) | https://nesslabs.com/articles | 学习 / 心智 / 个人成长 | RSS | 无已知官方中文 | https://nesslabs.com/articles（优先 Thinking / Learning / Neuroscience topics） | Articles + topics 比首页干净，与扩大认知方向匹配 |
 | `philipp-schmid` | 正在适配 | [Philipp Schmid](https://www.philschmid.de/) | https://www.philschmid.de/ | Agent 架构 / 评测实操 | listing（19） | 无已知官方中文 | https://www.philschmid.de/ | 2026-09-05 audit PASS（listing）；混入项目页/简介页，需配文章 RSS 或收窄列表 |
 | `vicki-boykis` | 正在适配 | [Vicki Boykis](https://vickiboykis.com/) | https://vickiboykis.com/ | ML 系统 / 生产实践 | RSS（`https://vickiboykis.com/index.xml` 已验证 200，20 候选） | 无已知官方中文 | https://vickiboykis.com/ | 2026-09-05 复测 audit PASS（当日早些时候的 FAIL 为本机网络瞬时故障，非代码问题）；listing 0 候选无碍，RSS 为主入口。具备转 active 条件，待用户点头 |
-| `maxime-labonne` | 已适配 | [Maxime Labonne](https://mlabonne.github.io/blog/) | https://mlabonne.github.io/blog/ | 微调 / 量化实操 | Sitemap（`https://mlabonne.github.io/blog/sitemap.xml`，51 候选） | 无已知官方中文 | https://mlabonne.github.io/blog/ | 2026-09-05 纯度抽查定性：提取干净，MB 级 markdown 系 Quarto 把配图 base64 内联（占 99%+）→ 已落地 `stripInlineDataUriImages`（Node+Worker 双路径，data-URI 图不落库），复审计 markdown 降为 7-8K 字符级、date 与 URL 逐一吻合（dcterms.date 候选生效）；listing 入口 25s 超时靠 sitemap 兜底。已转 active |
+| `maxime-labonne` | **已移除（2026-09-12 拉黑，见「已移除源」表）** | [Maxime Labonne](https://mlabonne.github.io/blog/) | https://mlabonne.github.io/blog/ | 微调 / 量化实操 | Sitemap（`https://mlabonne.github.io/blog/sitemap.xml`，51 候选） | 无已知官方中文 | https://mlabonne.github.io/blog/ | 曾已转 active；2026-09-12 因 Quarto base64 内联大页面（单页 HTML ~12MB）把 Render 免费实例打进 OOM exit-134，用户决定移除。技术遗产保留：`stripInlineDataUriImages`（Node+Worker 双路径）即为此源落地 |
 | `cameron-wolfe` | 已适配 | [Cameron R. Wolfe](https://cameronrwolfe.substack.com/) | https://cameronrwolfe.substack.com/ | Agent Evals / LLM RL | RSS（20）+ Sitemap（114 候选含 lastmod） | 无已知官方中文 | https://cameronrwolfe.substack.com/archive | 2026-09-05 /archive 分页待办由 sitemap 化解（配 sitemap_url + exclude_paths /archive /podcast）；复审计 PASS，已转 active |
 | `neel-nanda` | 正在适配 | [Neel Nanda](https://www.neelnanda.io/) | https://www.neelnanda.io/ | 可解释性 | listing（25） | 无已知官方中文 | https://www.neelnanda.io/ | 2026-09-05 audit 部分通过：全站无发布日期（收录日兜底可收），`/cart` 等非文章页混入需 exclude |
 | `dwarkesh` | 已适配 | [Dwarkesh Patel](https://www.dwarkesh.com/) | https://www.dwarkesh.com/ | AI 思想访谈 / 长文 | RSS（20）+ Sitemap（183 候选含 lastmod） | 无已知官方中文 | https://www.dwarkesh.com/archive | 2026-09-05 补 sitemap_url + exclude_paths（/archive /podcast）；复审计 PASS；narration 音频转写页字符数偏低（669），属站点形态；播客页靠 exclude 过滤，文本版完整性增量观察。已转 active |
@@ -152,8 +152,9 @@
 | `simon-willison` | simonwillison.net | 2026-08-28 | 700 | 文章量过大（清点 ~4000+），不匹配定位 |
 | `paul-graham` | paulgraham.com | 2026-08-28 | 1 | 无机器可读发布日期，结构性不适配（2026-09-04 连 `demo:true` 展示条目一并下掉，书架不再占位）→ **2026-09-05 解除拉黑回归**（新日期政策：收录日兜底；blocked-sources 条目已删，账本留痕；上方适配表已恢复） |
 | `tencent-cloud` | cloud.tencent.com | 2026-09-02 | 0 | 巨大 UGC 社区（官方团队 + 第三方 + 媒体转载混排），边界太差，无法建立干净技术索引；sources.json / blogs-static 展示条目已清理 |
+| `maxime-labonne` | mlabonne.github.io | 2026-09-12 | 47 | Quarto 把配图 base64 内联（单页 HTML ~12MB），Render 免费实例 512MB 内存扛不住增量轮解析 → OOM exit-134，用户决定移除；`stripInlineDataUriImages` 救得了落库纯度、救不了抓取期内存峰值。sources.json / blogs 展示条目已清理，D1 存量 48 篇未动 |
 
-合计 **1469** 条 URL，账本见 `src/data/blocked-urls.json`（append-only 决策留痕，解除拉黑也不删）。
+合计 **1516** 条 URL，账本见 `src/data/blocked-urls.json`（append-only 决策留痕，解除拉黑也不删）。
 
 **拦截语义**：只要某源的 id 或域名（含子域/父域/`extra_domains` 双向相交）命中 `src/data/blocked-sources.json`，`loadSources` 直接抛 `Blocked source violation` **拒绝加载整份源配置**——update/backfill/census/audit 四个抓取驱动入口全部经它，故结构上不可能再发现或抓取被拉黑源。这是刻意的"停摆好过偷偷重抓"取舍。
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-09-02T08:11:01.561Z",
+  "updated_at": "2026-09-12T06:37:23.641Z",
   "blocked": [
     {
       "id": "cloudflare",
@@ -27,6 +27,15 @@
       "blocked_at": "2026-08-28",
       "reason": "2026-08-28 用户指令：官方全量池 ~700+ 且增量快，文章量过大",
       "url_count": 250,
+      "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
+    },
+    {
+      "id": "maxime-labonne",
+      "name": "Maxime Labonne",
+      "domain": "mlabonne.github.io",
+      "blocked_at": "2026-09-12",
+      "reason": "免费实例 512MB 内存扛不住其 Quarto 大页面(单页 HTML ~12MB),增量轮 OOM exit-134;用户决定移除",
+      "url_count": 47,
       "registry": "docs/blog-source-registry.md#已移除源拉黑--tombstone"
     },
     {

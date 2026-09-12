@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-09-02T08:11:01.563Z",
+  "updated_at": "2026-09-12T06:37:23.644Z",
   "records": {
     "cloudflare": {
       "domain": "blog.cloudflare.com",
@@ -1553,6 +1553,65 @@
       ],
       "count": 0,
       "urls": []
+    },
+    "maxime-labonne": {
+      "domain": "mlabonne.github.io",
+      "blocked_at": "2026-09-12",
+      "collected_from": [
+        "corpus-archive",
+        "src\\content\\articles",
+        "processed-urls"
+      ],
+      "count": 47,
+      "urls": [
+        "https://mlabonne.github.io/blog/notes.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/extending_context.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/few_shot_text_classification.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/gptq.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/incoder.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/inference_optimization.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/lima.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/local_llm.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/longnet.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/lora.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/lorahub.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/multipack_sampler.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/orca.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/phi1.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/self_rewarding_lm.html",
+        "https://mlabonne.github.io/blog/notes/Large%20Language%20Models/tart.html",
+        "https://mlabonne.github.io/blog/notes/Machine%20Learning/data_influence.html",
+        "https://mlabonne.github.io/blog/posts/2022-02-13-Q_learning.html",
+        "https://mlabonne.github.io/blog/posts/2022-03-02-Linear_Programming.html",
+        "https://mlabonne.github.io/blog/posts/2022-03-05-Integer_Programming.html",
+        "https://mlabonne.github.io/blog/posts/2022-03-09-Graph_Attention_Network.html",
+        "https://mlabonne.github.io/blog/posts/2022-03-21-Efficiently_iterating_over_rows_in_a_Pandas_DataFrame.html",
+        "https://mlabonne.github.io/blog/posts/2022-03-28-What_is_a_Tensor_in_Deep_Learning.html",
+        "https://mlabonne.github.io/blog/posts/2022-04-25-Graph_Isomorphism_Network.html",
+        "https://mlabonne.github.io/blog/posts/2022-05-02-Constraint_Programming.html",
+        "https://mlabonne.github.io/blog/posts/2022-05-25-Minecraft.html",
+        "https://mlabonne.github.io/blog/posts/2022_02_20_Graph_Convolution_Network.html",
+        "https://mlabonne.github.io/blog/posts/2023-05-21-Nonlinear_optimization.html",
+        "https://mlabonne.github.io/blog/posts/2023-06-07-Decoding_strategies.html",
+        "https://mlabonne.github.io/blog/posts/2024-01-08_Merge_LLMs_with_mergekit.html",
+        "https://mlabonne.github.io/blog/posts/2024-03-28_Create_Mixture_of_Experts_with_MergeKit.html",
+        "https://mlabonne.github.io/blog/posts/2024-04-19_Fine_tune_Llama_3_with_ORPO.html",
+        "https://mlabonne.github.io/blog/posts/2024-06-04_Uncensor_any_LLM_with_abliteration.html",
+        "https://mlabonne.github.io/blog/posts/2024-07-15_The_Rise_of_Agentic_Data_Generation.html",
+        "https://mlabonne.github.io/blog/posts/2024-07-29_Finetune_Llama31.html",
+        "https://mlabonne.github.io/blog/posts/2026-02-12_GLM-5.html",
+        "https://mlabonne.github.io/blog/posts/2026-02-13_minimaxm25.html",
+        "https://mlabonne.github.io/blog/posts/2026-02-16_qwen35.html",
+        "https://mlabonne.github.io/blog/posts/2026-02-19_kimik25.html",
+        "https://mlabonne.github.io/blog/posts/4_bit_Quantization_with_GPTQ.html",
+        "https://mlabonne.github.io/blog/posts/A_Beginners_Guide_to_LLM_Finetuning.html",
+        "https://mlabonne.github.io/blog/posts/Article_Improve_ChatGPT_with_Knowledge_Graphs.html",
+        "https://mlabonne.github.io/blog/posts/ExLlamaV2_The_Fastest_Library_to_Run%C2%A0LLMs.html",
+        "https://mlabonne.github.io/blog/posts/Fine_Tune_Your_Own_Llama_2_Model_in_a_Colab_Notebook.html",
+        "https://mlabonne.github.io/blog/posts/Fine_tune_Mistral_7b_with_DPO.html",
+        "https://mlabonne.github.io/blog/posts/Introduction_to_Weight_Quantization.html",
+        "https://mlabonne.github.io/blog/posts/Quantize_Llama_2_models_using_ggml.html"
+      ]
     }
   }
 }
