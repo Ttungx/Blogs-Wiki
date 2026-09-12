@@ -1803,3 +1803,1360 @@ placeholder 泄漏、图片 URL 非绝对、缺日期、缺标题、超出回填
   - wolfram https://writings.stephenwolfram.com/2025/12/instant-supercompute-launching-wolfram-compute-services: fetch failed
 - **fetch** `https://writings.stephenwolfram.com/2026/01/what-is-ruliology`
   - wolfram https://writings.stephenwolfram.com/2026/01/what-is-ruliology: fetch failed
+
+---
+
+## 2026-09-06T07:55:25.393Z（paul-graham）
+
+- 错误总数：234
+
+### paul-graham（234 条）
+
+- **integrity** [missing-published-date] `https://www.paulgraham.com/kids.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/selfindulgence.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/greatwork.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/lies.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/re.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/mean.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/vb.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hs.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/prepare.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/earn.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/winc.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/brandage.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/field.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/goodwriting.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/do.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/writes.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/woke.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/when.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/persistence.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/foundermode.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/reddits.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/best.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/google.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/superlinear.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/read.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/getideas.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/want.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/alien.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/users.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/heresy.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/goodtaste.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/words.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/smart.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/weird.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hwh.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/own.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fn.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/newideas.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/nft.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/richnow.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/real.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/simply.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/donate.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/worked.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/earnest.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ace.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/airbnbs.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/think.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/early.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/wtax.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/conformism.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/orth.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/cred.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/useful.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/noob.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/mod.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fh.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fp.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/nov.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/lesson.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/genius.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/sun.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/pow.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/disc.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ineq.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/talk.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/bias.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/jessica.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/aord.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/safe.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/name.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ronco.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/altair.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/work.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/corpdev.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/95.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ecw.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/know.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/pinch.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/before.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/herd.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fr.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/convince.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/invtrend.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ds.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/startupideas.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/growth.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/swan.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [todo-marker] `https://www.paulgraham.com/todo.html`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [missing-published-date] `https://www.paulgraham.com/todo.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/speak.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ycstart.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/property.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [todo-marker] `https://www.paulgraham.com/ambitious.html`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ambitious.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/word.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/vw.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/schlep.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hubs.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/patentpledge.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/founders.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/control.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/tablets.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/seesv.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hiresfund.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/superangels.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/yahoo.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/future.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/addiction.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/top.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/organic.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/apple.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/discover.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/really.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/publishing.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/determination.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/nthings.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/kate.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/segway.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ramenprofitable.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/makersschedule.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/revolution.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [original-too-short] `https://www.paulgraham.com/twitter.html`
+  - non-zh original 147 words (min 300)
+- **integrity** [missing-published-date] `https://www.paulgraham.com/foundervisa.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/relres.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/5founders.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/angelinvesting.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/convergence.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/maybe.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hackernews.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/13sentences.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/identity.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/credentials.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/divergence.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/highres.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/artistsship.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/badeconomy.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/prcmc.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fundraising.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/cities.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/distraction.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/good.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/googles.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/heroes.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/disagree.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/boss.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/trolls.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ycombinator.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/newthings.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/philosophy.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/startuphubs.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/webstartups.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/colleges.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/head.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/die.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/unions.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/equity.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/stuff.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/judgement.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/microsoft.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/guidetoinvestors.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/wisdom.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/notnot.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/foundersatwork.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/startupmistakes.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/goodart.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/mit.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/copy.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/investors.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/island.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/america.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/marginal.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/siliconvalley.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/randomness.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/startuplessons.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/softwarepatents.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/6631327.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/whyyc.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/love.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/procrastination.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/startupfunding.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/vcsqueeze.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ideas.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/sfp.html`
+  - published_at 缺失且无显式 fallback
+- **fetch** `https://www.paulgraham.com/inequality.html`
+  - paul-graham https://www.paulgraham.com/inequality.html: fetch failed
+- **fetch** `https://www.paulgraham.com/ladder.html`
+  - paul-graham https://www.paulgraham.com/ladder.html: fetch failed
+- **fetch** `https://www.paulgraham.com/opensource.html`
+  - paul-graham https://www.paulgraham.com/opensource.html: fetch failed
+- **fetch** `https://www.paulgraham.com/bronze.html`
+  - paul-graham https://www.paulgraham.com/bronze.html: fetch failed
+- **fetch** `https://www.paulgraham.com/submarine.html`
+  - paul-graham https://www.paulgraham.com/submarine.html: fetch failed
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hiring.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/writing44.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/mac.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/venturecapital.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/start.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [todo-marker] `https://www.paulgraham.com/college.html`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [missing-published-date] `https://www.paulgraham.com/college.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/charisma.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/usa.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/polls.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/laundry.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/bubble.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/essay.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/gh.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/pypar.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/gap.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/gba.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/wealth.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/say.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ffb.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hp.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/iflisp.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/nerds.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hundred.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/better.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [todo-marker] `https://www.paulgraham.com/spam.html`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [missing-published-date] `https://www.paulgraham.com/spam.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/desres.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/icad.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/power.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fix.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/taste.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/noop.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/diff.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/road.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/rootsoflisp.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/popular.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/javacover.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/avg.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/lwba.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/progbot.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/prop62.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [content-too-short] `https://www.paulgraham.com/rss.html`
+  - 正文纯文本 55 字符，低于 200
+- **integrity** [missing-published-date] `https://www.paulgraham.com/rss.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [looks-like-navigation-list] `https://www.paulgraham.com/rss.html`
+  - 正文 55 字符但含 3 个外链，疑似导航/归档列表
+
+---
+
+## 2026-09-06T09:20:41.172Z（venkatesh-rao）
+
+- 错误总数：109
+
+### venkatesh-rao（109 条）
+
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/august-break`
+  - non-zh original 236 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/mindmap-june-6-2026`
+  - non-zh original 192 words (min 300)
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/getting-gooier`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/ai-in-world-machine-theory`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/the-world-machines-project`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/the-physics-of-intelligence`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/contraption-mansion`
+  - non-zh original 95 words (min 300)
+- **fetch** `https://contraptions.venkateshrao.com/p/robot-auras`
+  - Cannot destructure property 'firstElementChild' of 'documentElement' as it is null.
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/fall-break-8d9`
+  - non-zh original 219 words (min 300)
+- **fetch** `https://contraptions.venkateshrao.com/p/protocol-narratives`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/protocol-narratives: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://contraptions.venkateshrao.com/p/protocol-narratives
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/logics-of-caring`
+  - non-zh original 209 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/video-recording-protocols-preview`
+  - non-zh original 110 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/manichean-realpolitik`
+  - non-zh original 237 words (min 300)
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/mappy-new-year`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/an-important-question`
+  - non-zh original 58 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/two-little-contraptions`
+  - non-zh original 90 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/projects`
+  - non-zh original 42 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/mediocre-computing`
+  - non-zh original 215 words (min 300)
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/the-dawn-of-mediocre-computing`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/fall-break`
+  - non-zh original 128 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/summer-reverie`
+  - non-zh original 96 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-art-of-pretending-to-govern`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/bangalore-diary`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-ooze-grows`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/benefit-of-doubt-calculus`
+  - non-zh original 97 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/spring-break`
+  - non-zh original 129 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/does-reality-have-a-surprising-_lack_`
+  - non-zh original 220 words (min 300)
+- **fetch** `https://contraptions.venkateshrao.com/p/a-camera-not-an-engine`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/a-camera-not-an-engine: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://contraptions.venkateshrao.com/p/a-camera-not-an-engine
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **fetch** `https://contraptions.venkateshrao.com/p/glued-time-forked-time`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/glued-time-forked-time: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://contraptions.venkateshrao.com/p/glued-time-forked-time
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **fetch** `https://contraptions.venkateshrao.com/p/state-of-the-studio-2023`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/state-of-the-studio-2023: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://contraptions.venkateshrao.com/p/state-of-the-studio-2023
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/boundary-intelligence`
+  - non-zh original 101 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/a-tale-of-two-cycle-memes`
+  - non-zh original 88 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/youve-been-matrix-multiplied`
+  - non-zh original 87 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/thick-time`
+  - non-zh original 85 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/my-climate-posture`
+  - non-zh original 93 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/sweating-solarpunk`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/grimdark-hopepunk-with-a-chance-of`
+  - non-zh original 258 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/summer-break-6a0`
+  - non-zh original 181 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/history-after-history`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-firmament`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/two-black-holes`
+  - non-zh original 88 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/a-territory-and-a-map`
+  - non-zh original 88 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/hello-again-world`
+  - non-zh original 88 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-one-trading-system`
+  - non-zh original 102 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-anthropic-cheat-code`
+  - non-zh original 83 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/eventfulness`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-end-of-alpha`
+  - non-zh original 84 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/august-2022-core-dump`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/memiads`
+  - non-zh original 90 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/inner-graph-monologues`
+  - non-zh original 217 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/graph-vitalism`
+  - non-zh original 93 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/surrender-and-assimilation`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/big-graph-of-mud`
+  - non-zh original 90 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/transaction-cost-utopias-reconsidered`
+  - non-zh original 87 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/theory-shaped-debris`
+  - non-zh original 83 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-backstopper-economy`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/through-a-scanner-darkly`
+  - non-zh original 88 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/winter-break`
+  - non-zh original 189 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-best-of-times-the-worst-of-timesagain`
+  - non-zh original 94 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/goalposts-complete-problems`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/pitchdark-futures`
+  - non-zh original 83 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/summer-break`
+  - non-zh original 206 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/superhistory-redux`
+  - non-zh original 90 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/accidental-designs-2`
+  - non-zh original 87 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/accidental-designs-1`
+  - non-zh original 93 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/maker-studio-manager-studio`
+  - non-zh original 86 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/perpetuated-beta`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/living-with-problems`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/late-style-thinking`
+  - non-zh original 94 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/illusions-and-collisions-2`
+  - non-zh original 91 words (min 300)
+- **fetch** `https://contraptions.venkateshrao.com/p/welcome-to-the-world-of-tomorrow`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/welcome-to-the-world-of-tomorrow: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://contraptions.venkateshrao.com/p/welcome-to-the-world-of-tomorrow
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **fetch** `https://contraptions.venkateshrao.com/p/illusions-and-collisions-3`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/illusions-and-collisions-3: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://contraptions.venkateshrao.com/p/illusions-and-collisions-3
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/illusions-and-collisions-1`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/moving-to-tuesdays`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/late-sceneification`
+  - non-zh original 85 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/tick-tock-talk-2`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/shadowland-1`
+  - non-zh original 86 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/selfies-in-vaporworlds`
+  - non-zh original 90 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/weird-moneys`
+  - non-zh original 81 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/tick-tock-talk-1`
+  - non-zh original 87 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/in-the-wake-of-the-eighties`
+  - non-zh original 98 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/economic-reveries`
+  - non-zh original 91 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/involvement-music`
+  - non-zh original 85 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/darker-things`
+  - non-zh original 101 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/hitting-pause`
+  - non-zh original 141 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/shadowland-2`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/tunnelhead`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/notes-on-textual-capital`
+  - non-zh original 86 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/a-bad-prequel`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/post-covid-circularity`
+  - non-zh original 86 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/control-failure-2`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/control-failure-1`
+  - non-zh original 79 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/operating-in-time-2`
+  - non-zh original 78 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/no-newsletter-this-week`
+  - non-zh original 99 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/operating-in-time`
+  - non-zh original 89 words (min 300)
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/the-next-experiments-in-elitism`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/indoors-in-time`
+  - non-zh original 89 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/a-little-gift`
+  - non-zh original 92 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/life-go-brrr`
+  - non-zh original 95 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/econtalk-and-zion-20-podcasts`
+  - non-zh original 170 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/a-wabi-sabi-technology-age`
+  - non-zh original 227 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/the-waiting-place`
+  - non-zh original 277 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/good-afternoon-internet-im-listening`
+  - non-zh original 239 words (min 300)
+- **integrity** [todo-marker] `https://contraptions.venkateshrao.com/p/stream-time`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **fetch** `https://contraptions.venkateshrao.com/p/life-after-ai`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/life-after-ai: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://contraptions.venkateshrao.com/p/life-after-ai
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **fetch** `https://contraptions.venkateshrao.com/p/the-splintering-of-the-second-world`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/the-splintering-of-the-second-world: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://contraptions.venkateshrao.com/p/the-splintering-of-the-second-world
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **fetch** `https://contraptions.venkateshrao.com/p/how-circled-are-your-wagons`
+  - venkatesh-rao https://contraptions.venkateshrao.com/p/how-circled-are-your-wagons: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://contraptions.venkateshrao.com/p/how-circled-are-your-wagons
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/graph-minds-notebook`
+  - non-zh original 98 words (min 300)
+- **integrity** [original-too-short] `https://contraptions.venkateshrao.com/p/after-westphalia`
+  - non-zh original 81 words (min 300)
+
+---
+
+## 2026-09-06T09:24:04.948Z（dwarkesh）
+
+- 错误总数：49
+
+### dwarkesh（49 条）
+
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/openai-huggingface-narration`
+  - non-zh original 46 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/why-compute-might-get-10x-more-expensive-video`
+  - non-zh original 97 words (min 300)
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/what-i-learned-april-15`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/adam-marblestone`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/the-vital-question`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/sholto-douglas-trenton-bricken`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/holden-karnofsky`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/ai-firms-narration`
+  - non-zh original 99 words (min 300)
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/nadia-asparouhova`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/why-i-dont-think-agi-is-right-around`
+  - non-zh original 54 words (min 300)
+- **fetch** `https://www.dwarkesh.com/p/victor-shih`
+  - dwarkesh https://www.dwarkesh.com/p/victor-shih: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://www.dwarkesh.com/p/victor-shih
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **fetch** `https://www.dwarkesh.com/p/timelines-june-2025`
+  - dwarkesh https://www.dwarkesh.com/p/timelines-june-2025: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://www.dwarkesh.com/p/timelines-june-2025
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **fetch** `https://www.dwarkesh.com/p/scaling-ama`
+  - dwarkesh https://www.dwarkesh.com/p/scaling-ama: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://www.dwarkesh.com/p/scaling-ama
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/sarah-paine-6-part-july-lecture-series`
+  - non-zh original 230 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/notes-on-china-narration`
+  - non-zh original 67 words (min 300)
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/progress-update`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/dwarkesh-patel-wants-people-to-learn`
+  - non-zh original 259 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/japan-at-war-announcement`
+  - non-zh original 86 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/sarah-paine-lecture-series-public`
+  - non-zh original 192 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/sarah-paine-lecture-series`
+  - non-zh original 253 words (min 300)
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/brian-potter`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/joseph-carlsmith`
+  - non-zh original 159 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/fin-moorhouse`
+  - non-zh original 239 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/alexander-mikaberidze`
+  - non-zh original 194 words (min 300)
+- **integrity** [todo-marker] `https://www.dwarkesh.com/p/sbf`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/agustin-lebron`
+  - non-zh original 220 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/ananyo-bhattacharya`
+  - non-zh original 177 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/stephen-grugett`
+  - non-zh original 187 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/pradyu-prasad`
+  - non-zh original 197 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/razib-khan`
+  - non-zh original 143 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/jimmy-soni`
+  - non-zh original 173 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/richard-hanania`
+  - non-zh original 248 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/bryan-caplan-2`
+  - non-zh original 225 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/byrne-hobart`
+  - non-zh original 164 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/david-friedman`
+  - non-zh original 128 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/sarah-fitz`
+  - non-zh original 154 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/michael-huemer`
+  - non-zh original 203 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/uncle-bob`
+  - non-zh original 162 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/scott-aaronson`
+  - non-zh original 154 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/scott-young`
+  - non-zh original 173 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/charles-murray`
+  - non-zh original 239 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/alex-tabarrok`
+  - non-zh original 169 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/caleb-watney`
+  - non-zh original 135 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/robin-hanson`
+  - non-zh original 128 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/matjaz-leonardis`
+  - non-zh original 103 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/bryan-caplan`
+  - non-zh original 138 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/will-scaling-work-narration`
+  - non-zh original 96 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/lyndon-johnson-narration`
+  - non-zh original 111 words (min 300)
+- **integrity** [original-too-short] `https://www.dwarkesh.com/p/jason-crawford`
+  - non-zh original 135 words (min 300)
+
+---
+
+## 2026-09-06T09:24:45.830Z（cameron-wolfe）
+
+- 错误总数：2
+
+### cameron-wolfe（2 条）
+
+- **fetch** `https://cameronrwolfe.substack.com/p/beyond-llama-the-power-of-open-llms`
+  - cameron-wolfe https://cameronrwolfe.substack.com/p/beyond-llama-the-power-of-open-llms: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://cameronrwolfe.substack.com/p/beyond-llama-the-power-of-open-llms
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **fetch** `https://cameronrwolfe.substack.com/p/moe-llms`
+  - cameron-wolfe https://cameronrwolfe.substack.com/p/moe-llms: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://cameronrwolfe.substack.com/p/moe-llms
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+---
+
+## 2026-09-06T09:27:20.552Z（maxime-labonne）
+
+- 错误总数：5
+
+### maxime-labonne（5 条）
+
+- **integrity** [original-too-short] `https://mlabonne.github.io/blog/about.html`
+  - non-zh original 109 words (min 300)
+- **integrity** [original-too-short] `https://mlabonne.github.io/blog/book.html`
+  - non-zh original 292 words (min 300)
+- **fetch** `https://mlabonne.github.io/blog/posts/2022-04-06-GraphSAGE.html`
+  - maxime-labonne https://mlabonne.github.io/blog/posts/2022-04-06-GraphSAGE.html: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://mlabonne.github.io/blog/posts/2022-04-06-GraphSAGE.html
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **fetch** `https://mlabonne.github.io/blog/posts/2022-03-28-What_is_a_Tensor_in_Deep_Learning.html`
+  - maxime-labonne https://mlabonne.github.io/blog/posts/2022-03-28-What_is_a_Tensor_in_Deep_Learning.html: Command failed: curl -sS -L --max-time 30 -A BlogsWikiBot/0.1 (+https://github.com; article fetch) -H Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8 https://mlabonne.github.io/blog/posts/2022-03-28-What_is_a_Tensor_in_Deep_Learning.html
+curl: (35) schannel: failed to receive handshake, SSL/TLS connection failed
+
+- **integrity** [original-too-short] `https://mlabonne.github.io/blog/publications.html`
+  - non-zh original 246 words (min 300)
+
+---
+
+## 2026-09-06T09:27:30.800Z（wolfram）
+
+- 错误总数：0
+
+无错误。
+
+---
+
+## 2026-09-06T09:28:16.953Z（paul-graham）
+
+- 错误总数：233
+
+### paul-graham（233 条）
+
+- **integrity** [missing-published-date] `https://www.paulgraham.com/selfindulgence.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/kids.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/greatwork.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/re.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/lies.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/mean.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/prepare.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/vb.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hs.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/winc.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/earn.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/brandage.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/goodwriting.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/field.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/do.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/when.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/writes.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/woke.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/foundermode.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/persistence.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/reddits.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/google.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/superlinear.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/best.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/getideas.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/read.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/want.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/alien.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/users.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/heresy.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/goodtaste.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/words.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/smart.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/weird.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hwh.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/own.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/newideas.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fn.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/nft.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/real.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/richnow.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/simply.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/earnest.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/donate.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/worked.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/airbnbs.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ace.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/think.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/wtax.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/early.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/conformism.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/cred.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/orth.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/useful.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/noob.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fh.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/mod.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fp.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/lesson.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/nov.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/sun.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/genius.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/pow.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/disc.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ineq.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/jessica.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/bias.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/talk.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/aord.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/name.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/safe.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/altair.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/corpdev.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ronco.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/work.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/95.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ecw.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/know.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/pinch.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/before.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fr.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/herd.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/convince.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ds.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/invtrend.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/startupideas.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/growth.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/swan.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [todo-marker] `https://www.paulgraham.com/todo.html`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [missing-published-date] `https://www.paulgraham.com/todo.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/speak.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ycstart.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/property.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [todo-marker] `https://www.paulgraham.com/ambitious.html`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ambitious.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/word.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/schlep.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/vw.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hubs.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/patentpledge.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/control.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/tablets.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/founders.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/superangels.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/seesv.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hiresfund.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/yahoo.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/future.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/addiction.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/top.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/organic.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/apple.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/really.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/discover.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/publishing.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/nthings.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/determination.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/kate.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/segway.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ramenprofitable.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/makersschedule.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/revolution.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [original-too-short] `https://www.paulgraham.com/twitter.html`
+  - non-zh original 147 words (min 300)
+- **integrity** [missing-published-date] `https://www.paulgraham.com/foundervisa.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/5founders.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/relres.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/angelinvesting.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/convergence.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/maybe.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/13sentences.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hackernews.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/identity.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/divergence.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/credentials.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/highres.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/badeconomy.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/artistsship.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fundraising.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/cities.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/prcmc.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/googles.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/distraction.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/good.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/heroes.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/disagree.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/boss.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/trolls.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/newthings.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ycombinator.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/webstartups.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/startuphubs.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/philosophy.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/die.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/colleges.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/head.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/stuff.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/equity.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/unions.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/judgement.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/guidetoinvestors.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/microsoft.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/notnot.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/wisdom.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/foundersatwork.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/goodart.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/startupmistakes.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/mit.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/investors.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/copy.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/island.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/marginal.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/america.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/siliconvalley.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/startuplessons.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/randomness.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/softwarepatents.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/6631327.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/whyyc.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/love.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/procrastination.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/startupfunding.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/vcsqueeze.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ideas.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/sfp.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/inequality.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ladder.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/opensource.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hiring.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/bronze.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/mac.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/writing44.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [todo-marker] `https://www.paulgraham.com/college.html`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [missing-published-date] `https://www.paulgraham.com/college.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/venturecapital.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/start.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/usa.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/charisma.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/polls.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/laundry.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/bubble.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/essay.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/pypar.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/gh.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/gap.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/wealth.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/gba.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/say.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/ffb.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hp.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/iflisp.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/hundred.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/nerds.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/better.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/desres.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [todo-marker] `https://www.paulgraham.com/spam.html`
+  - warn: 正文含 todo-marker 标记（提示性）
+- **integrity** [missing-published-date] `https://www.paulgraham.com/spam.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/icad.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/power.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/fix.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/taste.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/noop.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/diff.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/rootsoflisp.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/road.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/popular.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/javacover.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/avg.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/lwba.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/progbot.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [missing-published-date] `https://www.paulgraham.com/prop62.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [content-too-short] `https://www.paulgraham.com/rss.html`
+  - 正文纯文本 55 字符，低于 200
+- **integrity** [missing-published-date] `https://www.paulgraham.com/rss.html`
+  - published_at 缺失且无显式 fallback
+- **integrity** [looks-like-navigation-list] `https://www.paulgraham.com/rss.html`
+  - 正文 55 字符但含 3 个外链，疑似导航/归档列表

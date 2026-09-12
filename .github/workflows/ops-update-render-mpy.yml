@@ -1,0 +1,49 @@
+name: "Ops: update Render MODEL_PROVIDER_YAML (temp)"
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  update-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Locate updater service
+        env:
+          KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          SID=$(curl -sS -H "Authorization: Bearer $KEY" "https://api.render.com/v1/services?limit=100" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          ids = [s['id'] for s in data if 'updater' in (s.get('name') or '').lower()]
+          print('\n'.join(ids))
+          ")
+          count=$(printf '%s' "$SID" | grep -c . || true)
+          if [ "$count" != "1" ]; then
+            echo "expected exactly 1 updater service, got $count: $SID"
+            exit 1
+          fi
+          echo "sid=$SID" >> "$GITHUB_ENV"
+          echo "updater service: $SID"
+      - name: Update MODEL_PROVIDER_YAML env var
+        env:
+          KEY: ${{ secrets.RENDER_API_KEY }}
+          MPY: ${{ secrets.RENDER_MODEL_PROVIDER_YAML }}
+        run: |
+          if [ -z "$MPY" ]; then echo "RENDER_MODEL_PROVIDER_YAML secret is empty"; exit 1; fi
+          payload=$(python3 -c "import json,os;print(json.dumps({'value': os.environ['MPY']}))")
+          code=$(curl -sS -o /dev/null -w "%{http_code}" -X PUT \
+            -H "Authorization: Bearer $KEY" \
+            -H "content-type: application/json" \
+            -d "$payload" \
+            "https://api.render.com/v1/services/$sid/env-vars/MODEL_PROVIDER_YAML")
+          echo "PUT MODEL_PROVIDER_YAML -> HTTP $code"
+          if [ "$code" != "200" ] && [ "$code" != "201" ]; then echo "env var update failed"; exit 1; fi
+      - name: Trigger deploy to apply
+        env:
+          KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          code=$(curl -sS -o /tmp/dep.json -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $KEY" \
+            "https://api.render.com/v1/services/$sid/deploys")
+          echo "trigger deploy -> HTTP $code"
+          if [ "$code" != "201" ] && [ "$code" != "200" ] && [ "$code" != "202" ]; then echo "deploy trigger failed"; exit 1; fi

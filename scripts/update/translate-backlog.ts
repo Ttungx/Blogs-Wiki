@@ -72,6 +72,15 @@ function pendingEndpoint(): string {
   return `${requireEnv('CONTENT_SYNC_URL').replace(/\/+$/, '')}/pending-translations/`;
 }
 
+/**
+ * 回退告警的报错摘录：真实原因在 `(model: X): ` 之后的报错末尾
+ * （前面是长 URL），截头部只会得到 `(m…` 这样的废串，所以保尾部。
+ */
+function fallbackReason(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.length > 160 ? `…${message.slice(-160)}` : message;
+}
+
 async function fetchPending(
   sourceId: string,
   limit: number,
@@ -231,7 +240,7 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
         if (i < translates.length - 1) {
           console.warn(
             `  ! ${item.id}: ${providers[i]!.model} 失败，回退 ${providers[i + 1]!.model}` +
-              `（${error instanceof Error ? error.message.slice(0, 80) : error}）`,
+              `（${fallbackReason(error)}）`,
           );
         }
       }

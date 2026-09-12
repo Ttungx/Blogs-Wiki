@@ -127,3 +127,46 @@
 - 本次翻译：成功 0 / 失败 1
 
 - `langchain/incorporating-domain-specific-knowledge-in-sql-llm-solut | https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions: translate failed for https://www.langchain.com/blog/incorporating-domain-specific-knowledge-in-sql-llm-solutions (model: gemini-3.5-flash-lite): link integrity failed: source has 8 link(s), translated has 11`
+
+---
+
+## 2026-09-06T12:57:55.565Z（anthropic · concurrency=2）
+
+- 本次翻译：成功 6 / 失败 16
+
+- `anthropic/discovering-cryptographic-weaknesses | https://www.anthropic.com/research/discovering-cryptographic-weaknesses: translate failed for https://www.anthropic.com/research/discovering-cryptographic-weaknesses (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/estimating-productivity-gains | https://www.anthropic.com/research/estimating-productivity-gains: translate failed for https://www.anthropic.com/research/estimating-productivity-gains (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/economic-index-june-2026-report | https://www.anthropic.com/research/economic-index-june-2026-report: translate failed for https://www.anthropic.com/research/economic-index-june-2026-report (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/economic-policy-responses | https://www.anthropic.com/research/economic-policy-responses: translate failed for https://www.anthropic.com/research/economic-policy-responses (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/economic-index-geography | https://www.anthropic.com/research/economic-index-geography: translate failed for https://www.anthropic.com/research/economic-index-geography (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/anthropic-economic-index-september-2025-report | https://www.anthropic.com/research/anthropic-economic-index-september-2025-report: translate failed for https://www.anthropic.com/research/anthropic-economic-index-september-2025-report (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/persona-selection-model | https://www.anthropic.com/research/persona-selection-model: translate failed for https://www.anthropic.com/research/persona-selection-model (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/next-generation-constitutional-classifiers | https://www.anthropic.com/research/next-generation-constitutional-classifiers: translate failed for https://www.anthropic.com/research/next-generation-constitutional-classifiers (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/teaching-claude-why | https://www.anthropic.com/research/teaching-claude-why: translate failed for https://www.anthropic.com/research/teaching-claude-why (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/mythos-preview | https://www.anthropic.com/research/mythos-preview: translate failed for https://www.anthropic.com/research/mythos-preview (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/how-ai-is-transforming-work-at-anthropic | https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic: translate failed for https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/2028-ai-leadership | https://www.anthropic.com/research/2028-ai-leadership: translate failed for https://www.anthropic.com/research/2028-ai-leadership (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/swe-bench-sonnet-2 | https://www.anthropic.com/research/swe-bench-sonnet: translate failed for https://www.anthropic.com/research/swe-bench-sonnet (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/sabotage-evaluations | https://www.anthropic.com/research/sabotage-evaluations: translate failed for https://www.anthropic.com/research/sabotage-evaluations (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/building-effective-agents-2 | https://www.anthropic.com/research/building-effective-agents: translate failed for https://www.anthropic.com/research/building-effective-agents (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/formalizing-fermats-last-theorem | https://www.anthropic.com/research/formalizing-fermats-last-theorem: translate failed for https://www.anthropic.com/research/formalizing-fermats-last-theorem (model: spark-x2.5-4b): The operation was aborted due to timeout`
+
+---
+
+## 2026-09-06T13:20:28.516Z（anthropic · concurrency=2）
+
+- 本次翻译：成功 3 / 失败 13
+
+- `anthropic/economic-index-geography | https://www.anthropic.com/research/economic-index-geography: translate failed for https://www.anthropic.com/research/economic-index-geography (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/estimating-productivity-gains | https://www.anthropic.com/research/estimating-productivity-gains: translate failed for https://www.anthropic.com/research/estimating-productivity-gains (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/discovering-cryptographic-weaknesses | https://www.anthropic.com/research/discovering-cryptographic-weaknesses: translate failed for https://www.anthropic.com/research/discovering-cryptographic-weaknesses (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/economic-index-june-2026-report | https://www.anthropic.com/research/economic-index-june-2026-report: translate failed for https://www.anthropic.com/research/economic-index-june-2026-report (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/economic-policy-responses | https://www.anthropic.com/research/economic-policy-responses: translate failed for https://www.anthropic.com/research/economic-policy-responses (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/anthropic-economic-index-september-2025-report | https://www.anthropic.com/research/anthropic-economic-index-september-2025-report: translate failed for https://www.anthropic.com/research/anthropic-economic-index-september-2025-report (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/next-generation-constitutional-classifiers | https://www.anthropic.com/research/next-generation-constitutional-classifiers: translate failed for https://www.anthropic.com/research/next-generation-constitutional-classifiers (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/persona-selection-model | https://www.anthropic.com/research/persona-selection-model: translate failed for https://www.anthropic.com/research/persona-selection-model (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/mythos-preview | https://www.anthropic.com/research/mythos-preview: translate failed for https://www.anthropic.com/research/mythos-preview (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/how-ai-is-transforming-work-at-anthropic | https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic: translate failed for https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/2028-ai-leadership | https://www.anthropic.com/research/2028-ai-leadership: translate failed for https://www.anthropic.com/research/2028-ai-leadership (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/building-effective-agents-2 | https://www.anthropic.com/research/building-effective-agents: translate failed for https://www.anthropic.com/research/building-effective-agents (model: spark-x2.5-4b): The operation was aborted due to timeout`
+- `anthropic/formalizing-fermats-last-theorem | https://www.anthropic.com/research/formalizing-fermats-last-theorem: translate failed for https://www.anthropic.com/research/formalizing-fermats-last-theorem (model: spark-x2.5-4b): The operation was aborted due to timeout`
