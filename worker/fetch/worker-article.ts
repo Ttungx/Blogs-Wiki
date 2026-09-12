@@ -2,7 +2,7 @@ import { extractArticle } from './extractor';
 import { findOfficialChineseUrl, mapToOfficialZhPath } from './worker-localization';
 import { getCurlRunner } from './curl-runner';
 import { proxyUrlFor } from '../../scripts/update/proxy';
-import { resolveGitDate } from '../../scripts/update/git-date';
+import { articleUserAgent, resolveGitDate } from '../../scripts/update/git-date';
 import { urlDateFromPattern } from '../../scripts/update/url-date';
 import type { SourceConfig } from '../../scripts/update/types';
 import { DEFAULT_MIN_CONTENT_CHARS as MIN_CONTENT_CHARS } from '../../scripts/update/constants';
@@ -90,7 +90,7 @@ async function fetchWithCurl(url: string, proxyUrl?: string): Promise<string> {
     '--max-time',
     String(FETCH_TIMEOUT_MS / 1000),
     '-A',
-    'BlogsWikiBot/0.1 (+https://github.com; article fetch)',
+    articleUserAgent(),
     '-H',
     'Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8',
   ];
@@ -108,7 +108,7 @@ async function fetchWithRetry(fetchImpl: FetchLike, url: string, sourceId: strin
     const response = await fetchImpl(url, {
       headers: {
         accept: 'text/html, application/xhtml+xml;q=0.9, */*;q=0.8',
-        'user-agent': 'BlogsWikiBot/0.1 (+https://github.com; article fetch)',
+        'user-agent': articleUserAgent(),
       },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -251,7 +251,7 @@ async function fetchWorkerApiArticle(
       headers: {
         accept: 'application/json, text/plain, */*',
         'content-type': 'application/json',
-        'user-agent': 'BlogsWikiBot/0.1 (+https://github.com; article fetch)',
+        'user-agent': articleUserAgent(),
         origin: requestOrigin,
         referer: source.homepageUrl,
         ...(api.detail_headers

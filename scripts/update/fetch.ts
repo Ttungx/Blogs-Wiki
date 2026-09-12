@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { proxyUrlFor } from './network';
-import { USER_AGENT, normalizeDate, isGhostPublishedAt, resolveGitDate } from './git-date';
+import { USER_AGENT, articleUserAgent, normalizeDate, isGhostPublishedAt, resolveGitDate } from './git-date';
 import { urlDateFromPattern } from './url-date';
 import { stripInlineDataUriImages } from './markdown-sanitize';
 import { findOfficialChineseUrl, mapToOfficialZhPath } from './localization';
@@ -43,7 +43,7 @@ async function fetchWithCurl(url: string, direct = false): Promise<string> {
     '--max-time',
     String(FETCH_TIMEOUT_MS / 1000),
     '-A',
-    USER_AGENT,
+    articleUserAgent(),
     '-H',
     'Accept: text/html, application/xhtml+xml;q=0.9, */*;q=0.8',
   ];
@@ -64,7 +64,7 @@ async function fetchHtml(fetchImpl: FetchLike, url: string, source: SourceConfig
       const response = await fetchImpl(url, {
         headers: {
           accept: 'text/html, application/xhtml+xml;q=0.9, */*;q=0.8',
-          'user-agent': USER_AGENT,
+          'user-agent': articleUserAgent(),
         },
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
@@ -712,7 +712,7 @@ export async function fetchApiArticle(
       headers: {
         accept: 'application/json, text/plain, */*',
         'content-type': 'application/json',
-        'user-agent': USER_AGENT,
+        'user-agent': articleUserAgent(),
         origin: requestOrigin,
         referer: source.blog_url,
         ...(api.detail_headers

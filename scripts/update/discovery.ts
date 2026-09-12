@@ -2,6 +2,7 @@ import type { DiscoveredArticle, FetchLike, SourceConfig } from './types';
 import { canonicalizeUrl, isLikelyArticleUrl, uniqueCanonicalUrls } from './urls';
 import { DEFAULT_MAX_CHILD_SITEMAPS } from './constants';
 import { proxyUrlFor } from './proxy';
+import { articleUserAgent } from './git-date';
 import { getCurlRunner } from '../../worker/fetch/curl-runner';
 
 export interface DiscoveryPathDiagnostic {
@@ -20,7 +21,8 @@ export interface DiscoveryDiagnostic {
   candidates: DiscoveredArticle[];
 }
 
-const USER_AGENT = 'BlogsWikiBot/0.1 (+https://github.com; article discovery only)';
+// UA 可被 FETCH_USER_AGENT 覆盖(个别站点对非浏览器 UA 整站 403,如 2026-09 起 openai.com)。
+const USER_AGENT = () => articleUserAgent();
 
 function decodeEntities(value: string): string {
   const entities: Record<string, string> = {
@@ -104,7 +106,7 @@ async function fetchText(fetchImpl: FetchLike, url: string, context: string): Pr
     const response = await fetchImpl(url, {
       headers: {
         accept: 'application/atom+xml, application/rss+xml, application/xml, text/xml, text/html;q=0.8',
-        'user-agent': USER_AGENT,
+        'user-agent': USER_AGENT(),
       },
       signal: AbortSignal.timeout(25_000),
     });
@@ -120,7 +122,7 @@ async function fetchText(fetchImpl: FetchLike, url: string, context: string): Pr
         const proxyUrl = proxyUrlFor(url);
         const args = [
           '-sS', '-L', '--max-time', '25',
-          '-A', USER_AGENT,
+          '-A', USER_AGENT(),
           '-H', 'Accept: application/atom+xml, application/rss+xml, application/xml, text/xml, text/html;q=0.8',
         ];
         if (proxyUrl) args.push('-x', proxyUrl);
@@ -286,7 +288,7 @@ async function fromApi(source: SourceConfig, fetchImpl: FetchLike): Promise<Disc
     headers: {
       accept: 'application/json, text/plain, */*',
       'content-type': 'application/json',
-      'user-agent': USER_AGENT,
+      'user-agent': USER_AGENT(),
       origin: new URL(api.list_url).origin,
       referer: source.blog_url,
     },

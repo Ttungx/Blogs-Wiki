@@ -12,6 +12,17 @@ import type { FetchLike, SourceConfig } from './types';
 
 export const USER_AGENT = 'BlogsWikiBot/0.1 (+https://github.com; article fetch)';
 
+/**
+ * 文章抓取 UA：默认 BlogsWikiBot；`FETCH_USER_AGENT` 可覆盖。
+ * 个别站点（2026-09 起 openai.com）对非浏览器 UA 整站 403，需要用浏览器
+ * UA 通过。process.env 在 Workers 运行时不存在，函数式读取保证双端安全：
+ * Worker 侧落到默认值，Node 侧（本地/Render）可被 env 覆盖。
+ */
+export function articleUserAgent(): string {
+  return (typeof process !== 'undefined' ? process.env?.FETCH_USER_AGENT : undefined)?.trim()
+    || USER_AGENT;
+}
+
 /** Anthropic 全站 Next.js 模板里的幽灵 `_createdAt`，不是文章发布日期。 */
 const GHOST_PUBLISHED_AT_MS = Date.parse('2023-11-03T16:49:36Z');
 
