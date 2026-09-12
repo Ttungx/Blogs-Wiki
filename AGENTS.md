@@ -54,7 +54,7 @@ Render 相关服务通过 Render MCP 工具
 
 ## 架构硬约束（⚠️ 违反必炸）
 
-- SSR 页面**严禁 `import astro:content`**：会连带整个内容数据层（曾 125MB）打进服务端 bundle，超 Worker 64MiB 上限。博客元数据用生成物 `src/data/blogs-static.ts`：改 `src/content/blogs/*.md` 后跑 `npx tsx scripts/generate-blogs-static.ts` 再提交生成物。
+- SSR 页面**严禁 `import astro:content`**：会连带整个内容数据层（曾 125MB）打进服务端 bundle——运行时内存（免费版 128MB）直接爆；2026-09-04 体积新政后 bundle 未压缩上限也才 64MiB，装不下。根因是运行时内存与 D1 架构，不随体积新政改变。博客元数据用生成物 `src/data/blogs-static.ts`：改 `src/content/blogs/*.md` 后跑 `npx tsx scripts/generate-blogs-static.ts` 再提交生成物。
 - binding 用 `import { env } from 'cloudflare:workers'`（勿用 Astro.locals.runtime.env）；类型由 `wrangler types` 产物 `worker-configuration.d.ts` 提供。
 - 双配置：`wrangler.jsonc`（dev/build）+ `wrangler.deploy.jsonc`（部署，`main` → `dist/server/_entry.mjs`，scheduled 由 `scripts/inject-worker-entry.js` 生成）。改 `worker/` 前必读 `docs/migration-to-cloudflare.md`。
 - 部署前置：先 `wrangler d1 migrations apply blogs-wiki --remote` 再 deploy（CI 已内置，且新 SSR 读 `article_versions.translated_at`，缺迁移文章页 500）。API 路径带尾斜杠，否则可能 301/308。
