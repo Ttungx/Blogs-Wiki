@@ -428,7 +428,7 @@ export const staticBlogs: StaticBlogEntry[] = [
       "homepageUrl": "https://developers.openai.com/",
       "blogUrl": "https://developers.openai.com/blog",
       "domain": "developers.openai.com",
-      "logo": "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.94.0/icons/openai.svg",
+      "logo": "/vendors/openai-developers.png",
       "categories": [
         "AI",
         "AI Coding / Developer Tools",
