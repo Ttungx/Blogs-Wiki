@@ -257,17 +257,28 @@ export function resolveVisibleDate(text: string): string {
  * <h1>). Scan the heading's siblings and the page head text before
  * extraction, so the date survives even when it never reaches
  * `parsed.textContent`.
+ *
+ * h1 邻域没有日期时兜底逐个扫页面 `<header>`（日期可能在文章自身的
+ * header 而非首个站点导航，如 developers.openai.com）。只匹配完整日期
+ * 模式，导航/栏目链接不会误配。
  */
-function resolveHeadingDate(document: Document): string {
+export function resolveHeadingDate(document: Document): string {
   const heading = document.querySelector('article h1, main h1, [role="main"] h1, h1');
-  if (!heading) return '';
-  const siblings = heading.parentElement
-    ? Array.from(heading.parentElement.children).filter((child) => child !== heading)
-    : [];
-  const nearby = [heading.parentElement, ...siblings]
-    .map((node) => (node?.textContent ?? '').replace(/\s+/g, ' ').trim())
-    .join(' | ');
-  return resolveVisibleDate(nearby);
+  if (heading) {
+    const siblings = heading.parentElement
+      ? Array.from(heading.parentElement.children).filter((child) => child !== heading)
+      : [];
+    const nearby = [heading.parentElement, ...siblings]
+      .map((node) => (node?.textContent ?? '').replace(/\s+/g, ' ').trim())
+      .join(' | ');
+    const fromSiblings = resolveVisibleDate(nearby);
+    if (fromSiblings) return fromSiblings;
+  }
+  for (const header of document.querySelectorAll('header')) {
+    const found = resolveVisibleDate(header.textContent ?? '');
+    if (found) return found;
+  }
+  return '';
 }
 
 function resolvePublishedAt(document: Document, discovered: DiscoveredArticle): string {
