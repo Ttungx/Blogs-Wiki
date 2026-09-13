@@ -61,7 +61,7 @@ Render 相关服务通过 Render MCP 工具
 
 ## 内容更新（链路细节见 docs/go-live.md）
 
-- 链路：Worker cron（表达式 `7,22,37,52 * * * *`）→ ping Render `/run?key=` → runner 单源轮转 → update → translate:batch → import+sync 写 D1。`scheduled` 必须挂在 default export 上。
+- 链路：Worker cron（表达式 `*/5 * * * *`，2026-09-13 自 15 分钟提频以驱动补翻饱和）→ ping Render `/run?key=` → runner 单源轮转 → update → translate:batch → import+sync 写 D1。补翻 backlog 默认 12 篇/轮 · 并发 3 · 10 分钟时间预算（模型 RPM 由限流器把关，不会超速）。`scheduled` 必须挂在 default export 上。
 - **2026-09-02 紧急暂停 cron**（D1 日写入配额）：增量 sync（A/B/C）已在 `main`。本次上线恢复 `crons=["7,22,37,52 * * * *"]`，须先 deploy（含 migration 0011）再让 cron 生效。详见 [`docs/d1-write-budget.md`](docs/d1-write-budget.md)。
 - 去重四层：URL 规范化（`urls.ts`）→ D1 点查预检（articles + 90 天拒绝缓存，fail-open）→ `source_items` 拒绝负缓存（`/api/content-sync/items` 上报）→ 写入按 `(source_id, original_url)` 幂等。
 - `POST /api/trigger` 返回 410；GitHub Actions 内容更新与 Cloudflare Workflow 均已退役（备份：gitignored `workflow-backup/`），不作为运维依据。

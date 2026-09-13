@@ -23,7 +23,7 @@
  *   管线 CONTENT_SYNC_CHECK_URL 预检避免重复抓取+翻译（含 90 天内
  *   门禁拒绝负缓存，经 /api/content-sync/items 上报）。
  * - 忙碌保护：同一时刻最多一条链在跑；忙时返回 202 busy，下轮自动补位。
- * - 轮次看门狗：单轮超过 RUNNER_ROUND_STALL_MINUTES（默认 45 分钟）视为
+ * - 轮次看门狗：单轮超过 RUNNER_ROUND_STALL_MINUTES（默认 90 分钟，容纳长文预算轮）视为
  *   失速，标记 stalled-watchdog 并放行新轮（链路幂等，重叠安全）。
  *
  * 环境变量：
@@ -124,7 +124,7 @@ const NOISE_RE = /error:|Error:|warning:|WARN |FATAL|failed|rejected|degraded/i;
 
 /** 单轮失速上限（毫秒），超过即被看门狗放行；RUNNER_ROUND_STALL_MINUTES 可调。 */
 const ROUND_STALL_LIMIT_MS =
-  Math.max(1, Number((process.env.RUNNER_ROUND_STALL_MINUTES ?? '45').trim()) || 45) * 60_000;
+  Math.max(1, Number((process.env.RUNNER_ROUND_STALL_MINUTES ?? '90').trim()) || 90) * 60_000;
 
 function extractNotableLines(text) {
   return text
@@ -176,8 +176,8 @@ function buildChainScript(sourceId, limitArg, startedAt) {
   // D1 补翻（2026-09-09）：translate:batch 只扫容器本地磁盘，而免费实例每
   // 1-2 轮就重建，历史英文原文永远扫不到。这一步直接向 D1 要「有原文、缺
   // 中译」的清单，翻译后写回，与容器本地状态解耦——这是英文残留的自愈通道。
-  // 默认每轮 4 篇（翻译配额考虑），TRANSLATE_BACKLOG_LIMIT=0 可关闭。
-  const backlogLimit = Number((process.env.TRANSLATE_BACKLOG_LIMIT ?? '4').trim());
+  // 默认每轮 12 篇（并发 3 + 10 分钟预算内），TRANSLATE_BACKLOG_LIMIT=0 可关闭。
+  const backlogLimit = Number((process.env.TRANSLATE_BACKLOG_LIMIT ?? '12').trim());
   const backlogStep =
     Number.isFinite(backlogLimit) && backlogLimit > 0
       ? [

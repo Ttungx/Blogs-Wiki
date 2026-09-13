@@ -18,7 +18,13 @@
  *   CONTENT_SYNC_URL / CONTENT_SYNC_TOKEN      写回 D1
  *   BACKLOG_SYNC_URL（可选）                   取清单端点，缺省由
  *     CONTENT_SYNC_URL 推导为 .../pending-translations/
- *   TRANSLATE_BACKLOG_LIMIT                    默认每轮 4 篇（翻译配额考虑）
+ *   TRANSLATE_BACKLOG_LIMIT                    默认每轮 12 篇
+ *   TRANSLATE_BACKLOG_CONCURRENCY              并发翻译篇数（默认 3；模型 RPM
+ *                                              由 translate.ts 限流器统一把关，
+ *                                              并行不会突破任何模型的速率限制）
+ *   TRANSLATE_BACKLOG_BUDGET_MINUTES           单轮时间预算（默认 10 分钟，
+ *                                              超时后不再开新篇、在途跑完——
+ *                                              防长文轮把整个轮转堵死）
  *   TRANSLATE_PROVIDER_MAX_FAILURES            提供商熔断阈值（默认连败 3 次；
  *                                              认证类失败首败即熔断）
  */
@@ -246,7 +252,14 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
   const consecutiveFailures = new Array<number>(translates.length).fill(0);
   const tripped = new Array<boolean>(translates.length).fill(false);
 
+  // 时间预算：超时后不再开新篇（在途的跑完），至少完成 1 篇。防止长文轮
+  // （V2 分块 ~35 分钟/篇）把整个轮转堵死——昨日仅 92 篇的根因就是
+  // 单源串行 4 篇 + 长文轮占死 busy、其余源 ping 全被跳过。
+  const budgetMs = envPositiveInt('TRANSLATE_BACKLOG_BUDGET_MINUTES', 10) * 60_000;
+  const startedAtMs = Date.now();
+  let completed = 0;
   await runWithConcurrency(pending, options.concurrency, async (item) => {
+    if (completed > 0 && Date.now() - startedAtMs > budgetMs) return;
     let lastError: unknown;
     const article: ExtractedArticle = {
       url: item.originalUrl,
@@ -270,6 +283,7 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
           fetchImpl,
         );
         summary.translated += 1;
+        completed += 1;
         consecutiveFailures[i] = 0;
         console.log(`  + ${item.id} (${translation.translatedTitle})`);
         return;
@@ -304,8 +318,8 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
 
 function parseArgs(argv: string[]) {
   let sourceId = '';
-  let limit = Number(process.env.TRANSLATE_BACKLOG_LIMIT ?? '4');
-  let concurrency = 1;
+  let limit = Number(process.env.TRANSLATE_BACKLOG_LIMIT ?? '12');
+  let concurrency = Number(process.env.TRANSLATE_BACKLOG_CONCURRENCY ?? '3');
   let dryRun = false;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
