@@ -129,6 +129,19 @@ export function isRestoreError(error: unknown): boolean {
   return error instanceof Error && error.message.startsWith('restore failed');
 }
 
+/** 判断错误是否为链接/数学完整性失败（模型污染链接、私加或丢失公式）。 */
+export function isIntegrityError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.message.startsWith('link integrity failed') ||
+    error.message.startsWith('math integrity failed')
+  );
+}
+
+/** 完整性失败重试提示：链接/行内码逐字保留、不得私加公式。 */
+export const RETRY_INTEGRITY_HINT =
+  '\n\nYour previous translation broke content integrity. You MUST: (1) keep every link URL, image URL and inline-code span EXACTLY as in the source — never put translated text inside link parentheses, never drop or rewrite a URL; (2) never add math ($...$ or $$...$$) that is not present in the source, and keep existing math verbatim. Redo the full translation under these constraints.';
+
 /** Reserved token pattern; source text containing it fails fast instead of corrupting. */
 const TOKEN_PATTERN = /\{\{BW:(?:url|code|inline-code|html|math|inline-math):\d+\}\}/g;
 

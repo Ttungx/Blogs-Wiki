@@ -54,14 +54,15 @@ interface PendingTranslation {
 }
 
 export interface BacklogOptions {
-  sourceId: string;
+  /** 空 = 全局清扫模式（跨来源取全库最优先积压）。 */
+  sourceId?: string;
   limit: number;
   concurrency: number;
   dryRun: boolean;
 }
 
 interface BacklogSummary {
-  sourceId: string;
+  sourceId?: string;
   pending: number;
   translated: number;
   failed: number;
@@ -90,7 +91,7 @@ function fallbackReason(error: unknown): string {
 }
 
 async function fetchPending(
-  sourceId: string,
+  sourceId: string | undefined,
   limit: number,
   fetchImpl: typeof fetch,
 ): Promise<PendingTranslation[]> {
@@ -101,7 +102,7 @@ async function fetchPending(
       authorization: `Bearer ${token}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ sourceId, limit }),
+    body: JSON.stringify({ ...(sourceId ? { sourceId } : {}), limit }),
   });
   if (!response.ok) {
     throw new Error(`pending-translations failed: HTTP ${response.status} ${await response.text()}`);
@@ -212,10 +213,10 @@ export async function runTranslateBacklog(options: BacklogOptions): Promise<Back
   const pending = await fetchPending(options.sourceId, options.limit, fetchImpl);
   summary.pending = pending.length;
   if (pending.length === 0) {
-    console.log(`translate-backlog: ${options.sourceId} has no untranslated articles`);
+    console.log(`translate-backlog: ${options.sourceId ?? "(global sweep)"} has no untranslated articles`);
     return summary;
   }
-  console.log(`translate-backlog: ${pending.length} article(s) missing Chinese (${options.sourceId})`);
+  console.log(`translate-backlog: ${pending.length} article(s) missing Chinese (${options.sourceId ?? "global sweep"})`);
 
   if (options.dryRun) {
     for (const item of pending) console.log(`  would translate: ${item.id} — ${item.title}`);
@@ -333,7 +334,6 @@ function parseArgs(argv: string[]) {
       dryRun = true;
     }
   }
-  if (!sourceId) throw new Error('--source <id> is required');
   if (!Number.isFinite(limit) || limit < 1) throw new Error('--limit must be a positive integer');
   if (!Number.isFinite(concurrency) || concurrency < 1) concurrency = 1;
   return { sourceId, limit: Math.floor(limit), concurrency: Math.floor(concurrency), dryRun };

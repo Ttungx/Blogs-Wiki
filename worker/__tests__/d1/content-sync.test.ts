@@ -566,3 +566,58 @@ describe('pending-translations 取单', () => {
     expect(order).toEqual([urls.middle, urls.oldest, urls.newest]);
   });
 });
+
+describe('pending-translations 全局清扫', () => {
+  test('不带 sourceId 时跨来源取单（毒文章沉底仍生效）', async () => {
+    const sourceId2 = `global-blog-${Date.now()}`;
+    await handleContentSync(post(JSON.stringify({
+      sources: [{
+        id: sourceId2,
+        name: 'Global Blog',
+        type: 'company',
+        homepageUrl: 'https://global.example/',
+        blogUrl: 'https://global.example/blog',
+        domain: 'global.example',
+      }],
+      articles: [],
+      sql: [],
+    })), syncEnv());
+
+    const urlA = uniqueUrl(); // 来源1（已有 pending-blog 数据）
+    const urlB = uniqueUrl();
+    const mk = (sourceId: string, url: string, seq: number) => ({
+      id: `${sourceId}/post-${seq}`,
+      sourceId,
+      originalUrl: url,
+      originalLanguage: 'en',
+      publishedAt: '2026-08-05',
+      sourceDomain: 'global.example',
+      categories: ['AI'],
+      versions: [{
+        language: 'en',
+        title: `Global Post ${seq}`,
+        contentMarkdown: `# Post ${seq}`,
+        provenance: 'original' as const,
+      }],
+    });
+    const synced = await handleContentSync(post(JSON.stringify({
+      sources: [],
+      articles: [mk(sourceId2, urlA, 1), mk(sourceId2, urlB, 2)],
+      sql: [],
+    })), syncEnv());
+    expect(synced.status).toBe(200);
+
+    // 给 urlB 记一次失败 → 应沉到 urlA 之后
+    const report = await handleContentItems(post(JSON.stringify({
+      items: [{ sourceId: sourceId2, url: urlB, code: 'translate-failed' }],
+    })), syncEnv());
+    expect(report.status).toBe(200);
+
+    const pending = await handlePendingTranslations(post('{}'), syncEnv());
+    expect(pending.status).toBe(200);
+    const body = await pending.json() as { articles: Array<{ sourceId: string; originalUrl: string }> };
+    const urls = body.articles.map((a) => a.originalUrl);
+    expect(urls).toContain(urlA);
+    expect(urls.indexOf(urlA)).toBeLessThan(urls.indexOf(urlB));
+  });
+});

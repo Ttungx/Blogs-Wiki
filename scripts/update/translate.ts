@@ -1,7 +1,7 @@
 import { categoryPrompt, normalizeCategories } from './classify';
 import { cleanTitle } from '../../src/lib/text';
 import { assertLinkIntegrity, assertMathIntegrity } from './content-integrity';
-import { isNativeChinese, protectMarkdown, restoreMarkdown, isRestoreError, RETRY_PROTECT_HINT } from './translation-plan';
+import { isNativeChinese, protectMarkdown, restoreMarkdown, isRestoreError, isIntegrityError, RETRY_PROTECT_HINT, RETRY_INTEGRITY_HINT } from './translation-plan';
 import { execFile } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -547,13 +547,16 @@ export function createTranslateClient(options: TranslateOptions): TranslateArtic
         }
         return finalize(parsed);
       } catch (error) {
-        // 占位符还原失败（模型丢/重了 {{BW:...}}）：带提示整篇重试一次，
-        // 再失败才抛给回退链换下一个模型。2026-09-12 生产排障：链接多的
-        // 文章 stepfun 常丢占位符直接整篇报废。
-        if (!isRestoreError(error)) throw error;
+        // 占位符还原失败 / 链接·数学完整性失败：带针对性提示整篇重试一次
+        // （同模型一次调用，比跨回退链便宜），再失败才抛给回退链换下一个
+        // 模型。2026-09-12 stepfun 丢占位符、2026-09-13 flash-lite 污染链接
+        // 与私加公式，均属此类——此前完整性失败直接烧完整条回退链。
+        const restoreFailed = isRestoreError(error);
+        if (!restoreFailed && !isIntegrityError(error)) throw error;
+        const hint = restoreFailed ? RETRY_PROTECT_HINT : RETRY_INTEGRITY_HINT;
         const parsed = await run([
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `${userMessage}${RETRY_PROTECT_HINT}` },
+          { role: 'user', content: `${userMessage}${hint}` },
         ]);
         return finalize(parsed);
       }

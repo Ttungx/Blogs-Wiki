@@ -173,16 +173,16 @@ function buildChainScript(sourceId, limitArg, startedAt) {
   const translateStep =
     `npm run translate:batch -- ${sourceArg} --report logs/report` +
     ` || echo "[runner] WARN translate degraded, continuing with originals (${sourceId})"`;
-  // D1 补翻（2026-09-09）：translate:batch 只扫容器本地磁盘，而免费实例每
-  // 1-2 轮就重建，历史英文原文永远扫不到。这一步直接向 D1 要「有原文、缺
-  // 中译」的清单，翻译后写回，与容器本地状态解耦——这是英文残留的自愈通道。
+  // D1 全局补翻清扫（2026-09-13 自单源补翻升级）：不带 --source，直接向 D1
+  // 要「全库最优先」的缺中译清单（毒文章沉底排序），翻译后写回——与轮转
+  // 解耦，每轮都消化全库最优先积压，不再受 28 源 2.3h 轮一圈的频率限制。
   // 默认每轮 12 篇（并发 3 + 10 分钟预算内），TRANSLATE_BACKLOG_LIMIT=0 可关闭。
   const backlogLimit = Number((process.env.TRANSLATE_BACKLOG_LIMIT ?? '12').trim());
   const backlogStep =
     Number.isFinite(backlogLimit) && backlogLimit > 0
       ? [
-          `npm run translate:backlog -- ${sourceArg} --limit ${Math.floor(backlogLimit)}` +
-            ` || echo "[runner] WARN translate backlog degraded (${sourceId})"`,
+          `npm run translate:backlog -- --limit ${Math.floor(backlogLimit)}` +
+            ` || echo "[runner] WARN translate backlog degraded"`,
         ]
       : [];
   return [

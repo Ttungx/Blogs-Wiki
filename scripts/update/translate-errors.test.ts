@@ -8,7 +8,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { isAuthError } from './translate';
-import { isRestoreError, RETRY_PROTECT_HINT } from './translation-plan';
+import { isRestoreError, isIntegrityError, RETRY_PROTECT_HINT, RETRY_INTEGRITY_HINT } from './translation-plan';
 
 test('isAuthError 识别认证类失败（HTTP 401/403 与 key 文案）', () => {
   assert.equal(isAuthError(new Error('HTTP 401 — Unauthorized')), true);
@@ -46,4 +46,20 @@ test('isRestoreError 只认 restore failed 前缀的 Error', () => {
 test('RETRY_PROTECT_HINT 明确占位符逐字复现约束', () => {
   assert.ok(RETRY_PROTECT_HINT.includes('{{BW:'));
   assert.ok(/EXACTLY once/i.test(RETRY_PROTECT_HINT));
+});
+
+test('isIntegrityError 识别链接/数学完整性失败', () => {
+  assert.equal(
+    isIntegrityError(new Error('link integrity failed at translated index 1 (link): polluted destination')),
+    true,
+  );
+  assert.equal(isIntegrityError(new Error('math integrity failed: source has 0 math node(s)')), true);
+  assert.equal(isIntegrityError(new Error('restore failed: token appears 0 times')), false);
+  assert.equal(isIntegrityError(new Error('HTTP 400 bad request')), false);
+  assert.equal(isIntegrityError(undefined), false);
+});
+
+test('RETRY_INTEGRITY_HINT 覆盖链接与数学两条约束', () => {
+  assert.ok(/link URL/i.test(RETRY_INTEGRITY_HINT));
+  assert.ok(/never add math/i.test(RETRY_INTEGRITY_HINT));
 });

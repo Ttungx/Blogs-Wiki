@@ -1411,7 +1411,7 @@ const PENDING_TRANSLATIONS_SQL = `
    AND tf.original_url = a.original_url
    AND tf.status = 'skipped'
    AND tf.last_error = 'translate-failed'
-  WHERE a.source_id = ?
+  WHERE (?1 IS NULL OR a.source_id = ?1)
     AND NOT EXISTS (
       SELECT 1 FROM article_versions z
       WHERE z.article_id = a.id AND z.language IN ('zh', 'zh-cn')
@@ -1419,14 +1419,15 @@ const PENDING_TRANSLATIONS_SQL = `
   /* 毒文章沉底：反复补翻失败（translate-failed 负缓存，backlog 上报）的
      排到队尾，不阻塞同来源其它文章的补翻进度；失败计数随重试递增。 */
   ORDER BY COALESCE(tf.attempt_count, 0) ASC, a.published_at IS NULL, a.published_at DESC
-  LIMIT ?
+  LIMIT ?2
 `;
 
 export async function findPendingTranslations(
   db: D1Database,
-  sourceId: string,
+  sourceId: string | null,
   limit: number,
 ): Promise<PendingTranslation[]> {
+  // sourceId 为空 = 全局清扫模式（跨来源按同一排序取最优先的积压）。
   const result = await db.prepare(PENDING_TRANSLATIONS_SQL).bind(sourceId, limit).all();
   return (result.results ?? []).map((row) => ({
     id: String(row.id),
@@ -1461,14 +1462,12 @@ export async function handlePendingTranslations(
   }
 
   const sourceId = typeof payload.sourceId === 'string' ? payload.sourceId.trim() : '';
-  if (!sourceId) return json({ error: 'sourceId is required' }, 400);
-
   const raw = typeof payload.limit === 'number' ? payload.limit : Number(payload.limit);
   const limit =
     Number.isFinite(raw) && raw > 0 ? Math.min(Math.floor(raw), MAX_PENDING_TRANSLATIONS) : 20;
 
   try {
-    return json({ articles: await findPendingTranslations(env.DB, sourceId, limit) });
+    return json({ articles: await findPendingTranslations(env.DB, sourceId || null, limit) });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }

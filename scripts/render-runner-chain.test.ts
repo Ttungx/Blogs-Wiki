@@ -26,9 +26,9 @@ test('render-runner 翻译失败降级原文先行，不中断链条', async () 
   assert.match(src, /translate:batch -- \$\{sourceArg\} --report logs\/report/);
   assert.match(src, /\|\| echo "\[runner\] WARN translate degraded/);
 
-  // D1 补翻步骤（2026-09-09）：有原文缺中译的文章从 D1 取清单补翻，
-  // 不依赖容器本地磁盘（免费实例每 1-2 轮重建，本地扫描永远扫不到历史）。
-  assert.match(src, /translate:backlog -- \$\{sourceArg\}/);
+  // D1 全局补翻清扫（2026-09-13 自单源升级）：不带 --source，跨来源取
+  // 全库最优先积压（毒文章沉底排序），与轮转解耦。
+  assert.match(src, /translate:backlog -- --limit/);
   assert.match(src, /WARN translate backlog degraded/);
 
   // 链序不变：抓取 → 翻译 → D1 补翻 → 打分 → 打包 → 推送（在 buildChainScript 的
