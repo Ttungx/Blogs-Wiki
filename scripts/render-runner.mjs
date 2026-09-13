@@ -8,7 +8,7 @@
  * 一篇 HTML 就会超限；这里跑完整 Node 环境，无此限制。
  *
  * 设计要点：
- * - 无状态轮转选源：按时间片（RUN_INTERVAL_MINUTES，默认 15 分钟）取模决定
+ * - 无状态轮转选源：按时间片（RUN_INTERVAL_MINUTES，默认 5 分钟,与 cron 频率一致）取模决定
  *   本轮处理的源。容器重启/休眠唤醒不影响正确性；25 源 × 15 分钟 ≈ 每源
  *   每 6 小时更新一次（Worker cron `7,22,37,52 * * * *` 与切片同频）。
  *   ping 同时让免费实例保持常驻（约 720h/月 < 750h 免费额度），消除冷启动。
@@ -30,7 +30,7 @@
  *   PORT                  监听端口（Render 注入，默认 8080）
  *   RUNNER_KEY            /run 鉴权 key（必须设置；与 CF Worker 的
  *                         CONTENT_SYNC_TOKEN 同值）
- *   RUN_INTERVAL_MINUTES  无状态轮转时间片长度（默认 15）
+ *   RUN_INTERVAL_MINUTES  无状态轮转时间片长度（默认 5,须与 Worker cron 频率一致,否则同一片内的 ping 全部重复同源）
  *   RUNNER_ROUND_STALL_MINUTES  单轮失速看门狗阈值（默认 45）
  *   UPDATE_LIMIT          每源单次最大文章数（默认走 sources.json 配置）
  *   CONTENT_SYNC_TOKEN / CONTENT_SYNC_URL / CONTENT_SYNC_CHECK_URL /
@@ -60,7 +60,7 @@ import { spawn } from 'node:child_process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.PORT || 8080);
-const INTERVAL_MS = Number(process.env.RUN_INTERVAL_MINUTES || 15) * 60_000;
+const INTERVAL_MS = Number(process.env.RUN_INTERVAL_MINUTES || 5) * 60_000;
 const DEFAULT_LIMIT = (process.env.UPDATE_LIMIT || '').trim();
 const LOG_DIR = path.join(ROOT, 'logs', 'runs');
 const KEEP_LOGS = 50;
