@@ -693,10 +693,61 @@ export async function fetchApiArticle(
   language?: string,
 ): Promise<ExtractedArticle> {
   const api = source.api;
-  if (!api?.detail_url) {
-    throw new Error(`${source.id}: api source missing detail_url`);
+  if (!api) {
+    throw new Error(`${source.id}: api source missing api config`);
   }
   const lang = language ?? discovered.apiLang ?? 'en';
+
+  // content_in_list 模式：正文/封面/作者内嵌列表条目（qwen.ai 等无详情
+  // 端点的站点），跳过 detail 请求。正文若是 HTML（完整文档或片段），
+  // 走与 HTML 路径同一套 turndown 转换。
+  if (api.content_in_list) {
+    const rawContent = discovered.apiContent;
+    if (typeof rawContent !== 'string' || !rawContent.trim()) {
+      throw new Error(`${source.id} ${articleUrl}: content_in_list but list item has no content`);
+    }
+    const looksLikeHtml = /<!doctype\s+html|<html[\s>]|<\/[a-z]+>/i.test(rawContent.slice(0, 2000));
+    let contentText: string;
+    let contentImageUrl: string | undefined = discovered.apiImageUrl;
+    if (looksLikeHtml) {
+      const dom = new JSDOM(rawContent);
+      const { document } = dom.window;
+      const contentNode =
+        document.querySelector<HTMLElement>('article, main, .markdown-body, [role="main"]') ?? document.body;
+      if (contentNode) {
+        for (const node of Array.from(contentNode.querySelectorAll('script, style, nav, footer'))) {
+          node.remove();
+        }
+      }
+      contentImageUrl =
+        resolveHeadImage(document, articleUrl) ?? discovered.apiImageUrl;
+      contentText = normalizeArticleMarkdown(toMarkdown(contentNode ?? document.body));
+    } else {
+      contentText = normalizeArticleMarkdown(rawContent.trim());
+    }
+    if (!contentText || contentText.replace(/\s+/g, ' ').length < (source.min_content_chars ?? MIN_CONTENT_CHARS)) {
+      throw new Error(`${source.id} ${articleUrl}: api list content too short`);
+    }
+    const title = discovered.title?.trim();
+    if (!title) throw new Error(`${source.id} ${articleUrl}: list item has no title`);
+    const publishedAt = discovered.publishedAt
+      ? normalizeDate(discovered.publishedAt) ?? ''
+      : '';
+    return {
+      url: articleUrl,
+      title,
+      ...(discovered.apiAuthor?.trim() ? { author: discovered.apiAuthor.trim() } : {}),
+      ...(contentImageUrl?.trim() ? { imageUrl: contentImageUrl.trim() } : {}),
+      publishedAt: publishedAt || new Date().toISOString().slice(0, 10),
+      publishedAtSource: publishedAt ? 'published' : 'ingested',
+      originalLanguage: lang.split(/[_-]/)[0]?.toLowerCase() || 'en',
+      contentMarkdown: contentText,
+    };
+  }
+
+  if (!api.detail_url) {
+    throw new Error(`${source.id}: api source missing detail_url`);
+  }
   const body = JSON.stringify(api.detail_body
     ? Object.fromEntries(Object.entries(api.detail_body).map(([key, value]) => [
         key,

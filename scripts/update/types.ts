@@ -54,8 +54,10 @@ export interface SourceConfig {
    *  returns Markdown bodies directly). When present, discovery uses the list
    *  endpoint and fetch uses the detail endpoint instead of HTML parsing. */
   api?: {
-    /** List endpoint (POST application/json). */
+    /** List endpoint (POST application/json;list_method 可选 GET)。 */
     list_url: string;
+    /** 列表请求方法,默认 POST;GET 端点(如 qwen.ai 检索接口)显式声明。 */
+    list_method?: 'GET' | 'POST';
     /** List request body (e.g. `{ pageNum: 1, pageSize: 50 }`). */
     list_body?: Record<string, unknown>;
     /** Dot-path to the article array in the list response (e.g. `data.list`). */
@@ -63,8 +65,13 @@ export interface SourceConfig {
     /** Article URL template with `{id}` / `{slug}` placeholders (e.g.
      *  `https://hy.tencent.com/research/{slug}`). */
     article_url_template?: string;
-    /** Detail endpoint (POST application/json). */
-    detail_url: string;
+    /** 列表响应自带文章内容（HTML 或 Markdown）——置 true 时跳过 detail
+     *  请求，直接用列表条目成文。用于内容内嵌列表接口、无详情端点的站点
+     *  （qwen.ai /api/v2/article/retrieval：SPA 无 RSS/sitemap/详情页，
+     *  37 篇文章全量带 HTML 正文）。HTML 内容自动转 Markdown。 */
+    content_in_list?: boolean;
+    /** Detail endpoint (POST application/json)。content_in_list 时可省。 */
+    detail_url?: string;
     /** Detail request body with `{id}` / `{lang}` placeholders. */
     detail_body?: Record<string, unknown>;
     /** Dot-path to the Markdown body in the detail response (e.g.
@@ -157,6 +164,11 @@ export interface DiscoveredArticle {
   apiId?: string;
   /** JSON-API source default language (detail request payload). */
   apiLang?: string;
+  /** JSON-API source list-item extras（content_in_list 模式）：内嵌正文
+   *  （HTML 或 Markdown）与封面/作者，避免逐篇 detail 请求。 */
+  apiContent?: string;
+  apiImageUrl?: string;
+  apiAuthor?: string;
 }
 
 export interface ExtractedArticle {

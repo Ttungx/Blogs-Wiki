@@ -32,6 +32,10 @@ export interface WorkerDiscoveredArticle {
   publishedAt?: string;
   apiId?: string;
   apiLang?: string;
+  /** content_in_list 模式：列表条目内嵌的正文（HTML 或 Markdown）。 */
+  apiContent?: string;
+  apiImageUrl?: string;
+  apiAuthor?: string;
 }
 
 export interface WorkerArticleResult {
@@ -221,10 +225,50 @@ async function fetchWorkerApiArticle(
   language?: string,
 ): Promise<WorkerArticleResult> {
   const api = source.api;
-  if (!api?.detail_url) {
-    throw new Error(`${source.id}: api source missing detail_url`);
+  if (!api) {
+    throw new Error(`${source.id}: api source missing api config`);
   }
   const lang = language ?? discovered.apiLang ?? 'en';
+
+  // content_in_list 模式：正文/封面/作者内嵌列表条目（qwen.ai 等无详情
+  // 端点的站点），跳过 detail 请求。HTML 正文复用 extractArticle 转换。
+  if (api.content_in_list) {
+    const rawContent = discovered.apiContent;
+    if (typeof rawContent !== 'string' || !rawContent.trim()) {
+      throw new Error(`${source.id} ${articleUrl}: content_in_list but list item has no content`);
+    }
+    const looksLikeHtml = /<!doctype\s+html|<html[\s>]|<\/[a-z]+>/i.test(rawContent.slice(0, 2000));
+    let title = discovered.title?.trim() ?? '';
+    let contentMarkdown = rawContent.trim();
+    let author = discovered.apiAuthor?.trim() ?? '';
+    let imageUrl = discovered.apiImageUrl?.trim() ?? '';
+    if (looksLikeHtml) {
+      const extracted = await extractArticle({
+        html: rawContent,
+        url: articleUrl,
+        minContentChars: source.minContentChars,
+      });
+      title = extracted.title || title;
+      author = extracted.author || author;
+      imageUrl = extracted.imageUrl || imageUrl;
+      contentMarkdown = extracted.contentMarkdown;
+    }
+    if (!title) throw new Error(`${source.id} ${articleUrl}: list item has no title`);
+    const publishedAt = discovered.publishedAt ?? '';
+    return {
+      url: articleUrl,
+      title,
+      author,
+      imageUrl,
+      publishedAt: publishedAt || new Date().toISOString().slice(0, 10),
+      publishedAtSource: publishedAt ? 'published' : 'ingested',
+      originalLanguage: lang.split(/[_-]/)[0]?.toLowerCase() || 'en',
+      contentMarkdown,
+    };
+  }
+  if (!api.detail_url) {
+    throw new Error(`${source.id}: api source missing detail_url`);
+  }
   const body = JSON.stringify(api.detail_body
     ? Object.fromEntries(Object.entries(api.detail_body).map(([key, value]) => [
         key,

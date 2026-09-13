@@ -1,7 +1,7 @@
 import { createFetchBackend, type FetchBackend } from './fetch-backend';
 import { fetchKnownRemoteUrls, reportRejectedUrls, type RejectedItem } from './dedupe';
 import { discoverSource } from './discovery';
-import { createTranslateClient, routeTranslator, envPositiveInt } from './translate';
+import { createTranslateClient, routeTranslator, envPositiveInt, isAuthError } from './translate';
 import { createTranslateV2Client } from './translate-v2';
 import { resolveAiProviderChain } from './ai-provider';
 import { selectSourcesForRun } from './source-policy';
@@ -153,24 +153,40 @@ export function buildTranslator(
   });
   if (translates.length === 1) return translates[0]!;
 
-  // 多提供商：失败依次回退；主槽位连续失败达阈值即熔断（与 batch-translate
-  // 相同语义，避免坏槽位在整轮 update 里逐篇白烧请求）。
+  // 多提供商：失败依次回退；认证类失败首败熔断、其余连续失败达阈值按
+  // 槽位熔断（与 batch-translate/translate-backlog 同语义：tripped[i] 只
+  // 跳过第 i 个槽位，后续文章仍从下一个可用模型开始——此前单个布尔会把
+  // 后续文章全部打成仅剩链尾 spark，2026-09-13 qwen 轮实证）。每次回退
+  // 都留痕（保尾部原因），否则链故障在日志里完全不可见。
   const maxFailures = envPositiveInt('TRANSLATE_PROVIDER_MAX_FAILURES', 3);
-  let consecutiveFailures = 0;
-  let tripped = false;
+  const consecutiveFailures = new Array<number>(translates.length).fill(0);
+  const tripped = new Array<boolean>(translates.length).fill(false);
+  const fallbackReason = (error: unknown): string => {
+    const message = error instanceof Error ? error.message : String(error);
+    return message.length > 160 ? `…${message.slice(-160)}` : message;
+  };
   return async (article, categories) => {
     let lastError: unknown;
     for (let i = 0; i < translates.length; i += 1) {
-      if (tripped && i < translates.length - 1) continue;
+      if (tripped[i] && i < translates.length - 1) continue;
       try {
         const result = await translates[i]!(article, categories);
-        consecutiveFailures = 0;
+        consecutiveFailures[i] = 0;
         return result;
       } catch (error) {
         lastError = error;
-        consecutiveFailures += 1;
-        if (i < translates.length - 1 && consecutiveFailures >= maxFailures) {
-          tripped = true;
+        consecutiveFailures[i] += 1;
+        const isAuth = isAuthError(error);
+        const canTrip = i < translates.length - 1;
+        if (canTrip && !tripped[i] && (isAuth || consecutiveFailures[i]! >= maxFailures)) {
+          tripped[i] = true;
+          console.warn(
+            `  ! WARN provider ${providers[i]!.model} 熔断（${isAuth ? '认证失败' : `连续失败 ${consecutiveFailures[i]} 次`}），本轮剩余任务改用 ${providers[i + 1]!.model}`,
+          );
+        } else if (canTrip && !tripped[i]) {
+          console.warn(
+            `  ! ${article.url}: ${providers[i]!.model} 失败，回退 ${providers[i + 1]!.model}（${fallbackReason(error)}）`,
+          );
         }
       }
     }

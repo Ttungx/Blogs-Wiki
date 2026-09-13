@@ -109,17 +109,16 @@
     "id": "qwen",
     "name": "Qwen Blog",
     "type": "company",
-    "homepage_url": "https://qwenlm.github.io/",
-    "blog_url": "https://qwenlm.github.io/blog/",
-    "domain": "qwenlm.github.io",
-    "sitemap_url": "https://qwenlm.github.io/en/sitemap.xml",
+    "homepage_url": "https://qwen.ai/",
+    "blog_url": "https://qwen.ai/research",
+    "domain": "qwen.ai",
     "update_mode": "active",
-    "article_paths": [
-      "/blog"
-    ],
-    "prefer_official_zh": true,
-    "zh_path_map": {
-      "/blog": "/zh/blog"
+    "api": {
+      "list_url": "https://qwen.ai/api/v2/article/retrieval?type=qwen_ai&language=zh-CN",
+      "list_path": "data.articles",
+      "article_url_template": "https://qwen.ai/research/{slug}",
+      "content_in_list": true,
+      "list_method": "GET"
     }
   },
   {

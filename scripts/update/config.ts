@@ -221,8 +221,9 @@ export function validateSourceConfigs(raw: unknown): SourceConfigValidation {
     if (value.sitemap_include_paths !== undefined && value.sitemap_url === undefined) {
       issues.push({ path: `[${index}].sitemap_include_paths`, message: 'requires sitemap_url to be set' });
     }
-    if (isRecord(value.api) && value.api.list_url !== undefined && value.api.detail_url === undefined) {
-      issues.push({ path: `[${index}].api.detail_url`, message: 'required when api.list_url is set' });
+    if (isRecord(value.api) && value.api.list_url !== undefined && value.api.detail_url === undefined
+        && !value.api.content_in_list) {
+      issues.push({ path: `[${index}].api.detail_url`, message: 'required when api.list_url is set (unless content_in_list)' });
     }
     if (isRecord(value.git_date)) {
       if (typeof value.git_date.repo !== 'string' || !value.git_date.repo.trim()) {

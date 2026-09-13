@@ -282,17 +282,18 @@ async function fromApi(source: SourceConfig, fetchImpl: FetchLike): Promise<Disc
   const api = source.api;
   if (!api?.list_url) return [];
 
-  const body = JSON.stringify(api.list_body ?? {});
+  const isGet = (api.list_method ?? 'POST') === 'GET';
+  const requestBody = isGet ? undefined : JSON.stringify(api.list_body ?? {});
   const response = await fetchImpl(api.list_url, {
-    method: 'POST',
+    method: isGet ? 'GET' : 'POST',
     headers: {
       accept: 'application/json, text/plain, */*',
-      'content-type': 'application/json',
+      ...(isGet ? {} : { 'content-type': 'application/json' }),
       'user-agent': USER_AGENT(),
       origin: new URL(api.list_url).origin,
       referer: source.blog_url,
     },
-    body,
+    ...(isGet ? {} : { body: requestBody }),
     signal: AbortSignal.timeout(25_000),
   });
   if (!response.ok) throw new Error(`api list: HTTP ${response.status} ${response.statusText}`);
@@ -312,7 +313,10 @@ async function fromApi(source: SourceConfig, fetchImpl: FetchLike): Promise<Disc
     const record = item as Record<string, unknown>;
     const id = String(record.id ?? '');
     if (!id) return [];
-    const customSlug = String(record.customUrl ?? record.slug ?? '').trim();
+    const extra = typeof record.extra === 'object' && record.extra !== null
+      ? (record.extra as Record<string, unknown>)
+      : undefined;
+    const customSlug = String(record.customUrl ?? record.slug ?? record.path ?? '').trim();
     const slug = customSlug || id;
 
     let url: string | null = null;
@@ -323,12 +327,24 @@ async function fromApi(source: SourceConfig, fetchImpl: FetchLike): Promise<Disc
     }
     if (!url) return [];
 
+    // content_in_list 模式：内容/封面/作者内嵌列表条目（qwen.ai 等
+    // 无详情端点的 SPA 站点），随 discovered 项透传给抓取层。
+    const inlineContent = api.content_in_list && typeof record.content === 'string'
+      ? record.content
+      : undefined;
+
     return [{
       url,
       title: typeof record.title === 'string' ? record.title : undefined,
-      publishedAt: apiPublishedAt(record.publishedAt ?? record.publishTime ?? record.date),
+      publishedAt: apiPublishedAt(
+        record.publishedAt ?? record.publishTime ?? record.date ?? extra?.date,
+      ),
       apiId: id,
+      ...(inlineContent !== undefined ? { apiContent: inlineContent } : {}),
+      ...(typeof extra?.cover_small === 'string' ? { apiImageUrl: extra.cover_small } : {}),
+      ...(typeof extra?.author === 'string' ? { apiAuthor: extra.author } : {}),
       ...(typeof record.lang === 'string' ? { apiLang: record.lang } : {}),
+      ...(typeof record.language === 'string' ? { apiLang: record.language } : {}),
     }];
   });
 }
