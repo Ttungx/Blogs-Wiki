@@ -1,12 +1,15 @@
 # Blogs Wiki
 
+> [!IMPORTANT]
+> **本项目已停止开发与运营。** 若你需要「博客聚合 + AI 翻译 + RSS 订阅」这类功能，推荐使用 **[qiaomu-ai-rss](https://github.com/joeseesun/qiaomu-ai-rss)**（作者 joeseesun）。本仓库仅作归档保留，线上服务与自动更新均已关闭，不再接受 issue 与功能请求。
+
 [![CI/CD](https://github.com/Ttungx/Blogs-Wiki/actions/workflows/ci.yml/badge.svg)](https://github.com/Ttungx/Blogs-Wiki/actions/workflows/ci.yml)
 
 收录低频、高质量、值得长期阅读，但因为语言和分散发布而容易被错过的博客，并提供统一翻译阅读体验的数字馆藏。
 
-> 已上线：[https://blogswiki.dpdns.org/](https://blogswiki.dpdns.org/)
-> 
-> 持续开发中
+> 原线上站点 [https://blogswiki.dpdns.org/](https://blogswiki.dpdns.org/) 已下线，服务已关闭。
+>
+> 已归档，不再维护。
 
 ## 特色
 
